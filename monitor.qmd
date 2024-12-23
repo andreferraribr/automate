@@ -88,16 +88,19 @@ comparacao <-  comparacao %>% mutate(diferenca_real = saldo_atual-saldo_anterior
 datatable(comparacao)
 
 
-read.csv("log_comparacao.csv")  
+log_comparacao <- read.csv("~/R/automate/log_comparacao.csv")  
   
-log_comparacao =  rbind(log_comparacao,comparacao ) %>% unique()
+log_comparacao <-   rbind(log_comparacao,comparacao ) %>% unique()
 
 
 
 write.csv(log_comparacao, "log_comparacao.csv", row.names = FALSE)
+
+datatable(log_comparacao %>% select(fonte_recursos_codigo, fonte_recursos_nome, saldo_anterior, dia))
 ```
 
 ```{r}
+
 arquivos_tg <- list.files("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro","monitor")
 
 funcao_ler_arquivos <- function(x){ read_excel(x) %>% clean_names() %>% mutate(dia =  format(parse_date_time((as.data.frame(str_split( tail(monitor_fontes,1)[1],"\n"))[3,1]),"%d/%m/%Y"),"%Y_%m_%d"))}
