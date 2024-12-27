@@ -34,31 +34,120 @@ options(DT.options = list(pageLength = 10, fontSize = "70%", language = list(url
 ```
 
 ```{r}
-auto_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
+filtros_linhas <- read_excel("filtros.xlsx", sheet = "filtros_linhas")
 
-auto_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
+filtros_gerais_anexos_tabelas  <- read_excel("filtros.xlsx", sheet = "filtros_gerais_anexos_tabelas")
+
 
 ```
 
 ```{r}
+funcao_code_filtros_gerais <- function(x){ }
+
+
+
+```
+
+```{r}
+auto_despesa <- read_excel("auto_despesa.xlsx", 
+    col_types = c("text", "numeric", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "numeric", "numeric", "numeric", 
+        "numeric", "numeric")) 
+
+atributos_despesa_tg <- colnames(auto_despesa)
+
+auto_receita <- read_excel("auto_receita.xlsx")
+
+atributos_receita_tg <- colnames(auto_receita)
+
+
+atributos_nomes_tg <- cbind(c(atributos_despesa_tg,atributos_receita_tg) %>% unique(),c(atributos_despesa_tg,atributos_receita_tg) %>% unique() %>% make_clean_names())
+
+auto_despesa <- auto_despesa %>% clean_names()
+
+auto_receita <- auto_receita %>% clean_names()
+```
+
+```{r}
+
+
+
+
 anexo_04_rgps <- auto_despesa %>% group_by(acao_governo_codigo, acao_governo_nome, elemento_despesa_codigo, elemento_despesa_nome, esfera_orcamentaria_codigo,esfera_orcamentaria_nome,funcao_governo_codigo,funcao_governo_nome, grupo_despesa_nome, grupo_despesa_codigo_grupo, modalidade_aplicacao_codigo, modalidade_aplicacao_nome, unidade_orcamentaria_codigo, unidade_orcamentaria_nome) %>% summarise(dotacao_inicial = sum(dotacao_inicial), dotacao_atualizada = sum(dotacao_atualizada), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho), despesas_liquidadas_controle_empenho= sum(despesas_liquidadas_controle_empenho), despesas_pagas_controle_empenho = sum(despesas_pagas_controle_empenho))
 
-anexo_04_rgps_filtros <- anexo_04 %>% 
+anexo_04_rgps_filtros <- anexo_04_rgps %>% 
   filter(
     unidade_orcamentaria_codigo %in% c("33904","40904","25917","55902"))
 
 
-aposentadorias_filtro_grupo_despesa_codigo_grupo <- c(3)
+aposentadorias_filtro_grupo_despesa_codigo_grupo <- c("3")
 aposentadorias_filtro_modalidade_aplicacao_codigo <- c("91")
 aposentadorias_filtros_elemento_despesa_codigo <- c("54","53")
 
 
-valor_aposentadoria <- anexo_04_rgps %>% filter(
+valor_aposentadorias <- anexo_04_rgps %>% filter(
   grupo_despesa_codigo_grupo %in% aposentadorias_filtro_grupo_despesa_codigo_grupo,
   modalidade_aplicacao_codigo != aposentadorias_filtro_modalidade_aplicacao_codigo,
   elemento_despesa_codigo %in% aposentadorias_filtros_elemento_despesa_codigo)  %>% summarise(dotacao_inicial, dotacao_atualizada, despesas_empenhadas_controle_empenho, despesas_liquidadas_controle_empenho, despesas_pagas_controle_empenho)
 
 
-valor_aposentadoria %>%
+valor_aposentadorias %>%
   summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE)))
+```
+
+```{r}
+
+pensoes_filtro_grupo_despesa_codigo_grupo <- c("3")
+pensoes_filtro_modalidade_aplicacao_codigo <- c("91")
+pensoes_filtros_elemento_despesa_codigo <- c("55","56")
+
+
+valor_pensoes <- anexo_04_rgps %>% filter(
+  grupo_despesa_codigo_grupo %in% pensoes_filtro_grupo_despesa_codigo_grupo,
+  modalidade_aplicacao_codigo != pensoes_filtro_modalidade_aplicacao_codigo,
+  elemento_despesa_codigo %in% pensoes_filtros_elemento_despesa_codigo)  %>% summarise(dotacao_inicial, dotacao_atualizada, despesas_empenhadas_controle_empenho, despesas_liquidadas_controle_empenho, despesas_pagas_controle_empenho)
+
+funcao_filtro_anexo <- function(x,y) {x %>% filter(y)}
+
+funcao <- function(x) {df(return(x))}
+zzz <- c ("valor_pensoes <- anexo_04_rgps %>% filter(
+  grupo_despesa_codigo_grupo %in% pensoes_filtro_grupo_despesa_codigo_grupo,
+  modalidade_aplicacao_codigo != pensoes_filtro_modalidade_aplicacao_codigo,
+  elemento_despesa_codigo %in% pensoes_filtros_elemento_despesa_codigo)  %>% summarise(dotacao_inicial, dotacao_atualizada, despesas_empenhadas_controle_empenho, despesas_liquidadas_controle_empenho, despesas_pagas_controle_empenho)")
+```
+
+```{r}
+ filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>% mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
+
+teste <- filtros_gerais_anexos_tabelas %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, sequencial,filtro)  %>% count() %>% drop_na()
+
+
+ teste <- teste  %>% pivot_wider(names_from = sequencial, values_from = filtro) 
+ 
+ # colunas_com_na <- teste %>% keep(~any(is.na(.x))) %>% names
+ 
+ # teste <- teste %>% mutate_all(colunas_com_na)
+
+jjj <- teste %>% unite(col= filtrao,  !c("anexo_tabela", "n"), sep = ' ') %>% mutate (filtrao = str_remove(filtrao, " NA"))
+
+jjj <- jjj %>% mutate(filtrao = str_c(anexo_tabela, " <- auto_despesa %>%  filter( ", filtrao, " )" ))
+
+
+eval_texto <- function(x){ eval(parse(text = x))}
+
+ccc <- map(jjj$filtrao, eval_texto)
+```
+
+```{r}
+lll <- teste %>% filter(anexo_tabela == "anexo_04_rgps")
+ eee <- str_c (lll$filtro)
+ 
+ www_filtro <-  str_c( "mmm <- auto_despesa %>% filter", eee)
+
 ```
