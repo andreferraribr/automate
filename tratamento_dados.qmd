@@ -22,6 +22,7 @@ library(DT)
 library(stringr)
 library(scales)
 library(ggthemes)
+# library(operators)
 
 `%notin%` <- Negate(`%in%`)
 myNumFmt <- as.fmt(digits=0, big.mark=".")
@@ -142,6 +143,9 @@ jjj <- jjj %>% mutate(filtrao = str_c(anexo_tabela, " <- auto_despesa %>%  filte
 eval_texto <- function(x){ eval(parse(text = x))}
 
 ccc <- map(jjj$filtrao, eval_texto)
+
+
+names(ccc) <- jjj$anexo_tabela
 ```
 
 ```{r}
@@ -149,5 +153,47 @@ lll <- teste %>% filter(anexo_tabela == "anexo_04_rgps")
  eee <- str_c (lll$filtro)
  
  www_filtro <-  str_c( "mmm <- auto_despesa %>% filter", eee)
+ 
+ 
 
+```
+
+```{r}
+ filtros_linhas <- filtros_linhas %>% mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
+
+teste_linhas <- filtros_linhas %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item, sequencial,filtro)  %>% count() %>% drop_na() %>% mutate(item = item %>% make_clean_names())
+
+
+ teste_linhas<- teste_linhas  %>% pivot_wider(names_from = sequencial, values_from = filtro) 
+ 
+ # colunas_com_na <- teste %>% keep(~any(is.na(.x))) %>% names
+ 
+ # teste <- teste %>% mutate_all(colunas_com_na)
+
+jjj_linhas <- teste_linhas %>% unite(col= filtrao,  !c("anexo_tabela", "topico", "item","n"), sep = ' ') %>% mutate (filtrao = str_remove(filtrao, " NA"))
+
+jjj_linhas <- jjj_linhas %>% mutate(filtrao = str_c(item, " <- ",anexo_tabela ," %>%  filter( ", filtrao, " )" ))
+
+
+eval_texto <- function(x){ eval(parse(text = x))}
+
+# https://forum.posit.co/t/converting-elements-of-a-nested-list-into-individual-data-frames/147051/2
+
+purrr::iwalk(
+  .x = ccc,
+  .f = function(x, y) {
+    x <- as.data.frame(x)
+    y <- paste0( y)
+    assign(y, x, envir = globalenv())
+  }
+)
+
+
+
+
+
+ccc_linhas <- map(jjj_linhas %>% filter(item == "anexo_04_rgps") %>% select(filtrao), eval_texto)
+
+
+names(ccc_linhas) <- jjj_linhas$item
 ```
