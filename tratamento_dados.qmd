@@ -49,16 +49,6 @@ filtros_gerais_anexos_tabelas  <- read_excel("filtros.xlsx", sheet = "filtros_ge
 #| warning: false
 #| message: false
 #| error: false
-funcao_code_filtros_gerais <- function(x){ }
-
-
-
-```
-
-```{r}
-#| warning: false
-#| message: false
-#| error: false
 auto_despesa <- read_excel("auto_despesa.xlsx", 
     col_types = c("text", "numeric", "text", 
         "text", "text", "text", "text", "text", 
@@ -88,6 +78,7 @@ dados_receita <- dados_receita %>% clean_names()
 #| warning: false
 #| message: false
 #| error: false
+#| eval: false
 
 
  filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>% mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
@@ -116,7 +107,7 @@ names(ccc) <- jjj$anexo_tabela
 
 ```{r}
 
- filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>%
+filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>%
    mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
 
 criar_codigo_filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>%
@@ -136,7 +127,7 @@ criar_codigo_filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>%
   drop_na()
 
 
- criar_codigo_filtros_gerais_anexos_tabelas <- criar_codigo_filtros_gerais_anexos_tabelas  %>%
+criar_codigo_filtros_gerais_anexos_tabelas <- criar_codigo_filtros_gerais_anexos_tabelas  %>%
    pivot_wider(
      names_from = sequencial,
      values_from = filtro) %>%
@@ -166,11 +157,21 @@ names(lista_dados_anexos_tabelas) <- criar_codigo_filtros_gerais_anexos_tabelas$
 ```
 
 ```{r}
+receita_total <-  for (i in seq_along(lista_dados_anexos_tabelas)) {
+  print( sum(lista_dados_anexos_tabelas[[i]][21], na.rm = TRUE)/1000000000  )
+  
+}
+
+anexos <- for (i in seq_along(lista_dados_anexos_tabelas)) {
+  names(lista_dados_anexos_tabelas)
+}
 
 
+```
 
-
+```{r}
 #| eval: false
+
 lll <- criar_codigo_filtros_gerais_anexos_tabelas %>% filter(anexo_tabela == "anexo_04_rgps")
  eee <- str_c (lll$filtro)
  
@@ -184,19 +185,20 @@ lll <- criar_codigo_filtros_gerais_anexos_tabelas %>% filter(anexo_tabela == "an
 #| warning: false
 #| message: false
 #| error: false
+#| eval: false
 
  filtros_linhas <- filtros_linhas %>% mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
 
-criar_codigo_filtros_gerais_anexos_tabelas_linhas <- filtros_linhas %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item, sequencial,filtro)  %>% count() %>% drop_na() %>% mutate(item = item %>% make_clean_names())
+criar_codigo_filtros_linhas <- filtros_linhas %>% filter(topico == "receitas") %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item, sequencial,filtro)  %>% count() %>% drop_na() %>% mutate(item = item %>% make_clean_names())
 
 
- criar_codigo_filtros_gerais_anexos_tabelas_linhas<- criar_codigo_filtros_gerais_anexos_tabelas_linhas  %>% pivot_wider(names_from = sequencial, values_from = filtro) 
+criar_codigo_filtros_linhas<- criar_codigo_filtros_linhas  %>% pivot_wider(names_from = sequencial, values_from = filtro) 
  
  # colunas_com_na <- criar_codigo_filtros_gerais_anexos_tabelas %>% keep(~any(is.na(.x))) %>% names
  
  # criar_codigo_filtros_gerais_anexos_tabelas <- criar_codigo_filtros_gerais_anexos_tabelas %>% mutate_all(colunas_com_na)
 
-jjj_linhas <- criar_codigo_filtros_gerais_anexos_tabelas_linhas %>% unite(col= filtrao,  !c("anexo_tabela", "topico", "item","n"), sep = ' ') %>% mutate (filtrao = str_remove(filtrao, " NA"))
+criar_codigo_filtros_linhas <- criar_codigo_filtros_linhas %>% unite(col= filtrao,  !c("anexo_tabela", "topico", "item","n"), sep = ' ') %>% mutate (filtrao = str_remove(filtrao, " NA"))
 
 jjj_linhas <- jjj_linhas %>% mutate(filtrao = str_c(item, " <- ",anexo_tabela ," %>%  filter( ", filtrao, " )" ))
 
