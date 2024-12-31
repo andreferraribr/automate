@@ -136,6 +136,8 @@ atributos_nomes_tg <- cbind(c(atributos_despesa_tg,atributos_receita_tg) %>% uni
 
 ## Criar código com os filtros gerais dos Anexos e das Tabelas
 
+### Tópico Receitas
+
 ```{r}
 #| warning: false
 #| message: false
@@ -195,6 +197,8 @@ criar_codigo_filtros_gerais_anexos_tabelas_receitas <- criar_codigo_filtros_gera
 criar_codigo_filtros_gerais_anexos_tabelas_receitas %>% kable()
 ```
 
+### Tópico Despesas
+
 ```{r}
 filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>%
    mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
@@ -248,6 +252,10 @@ criar_codigo_filtros_gerais_anexos_tabelas_despesas <- criar_codigo_filtros_gera
 criar_codigo_filtros_gerais_anexos_tabelas_despesas %>% kable()
 ```
 
+## Criar base de dados
+
+### Base de dados das receitas
+
 ```{r}
 eval_texto <- function(x){ eval(parse(text = x))}
 
@@ -260,6 +268,8 @@ names(lista_dados_anexos_tabelas_receitas) <- criar_codigo_filtros_gerais_anexos
 
 ```
 
+### Base de dados das despesas
+
 ```{r}
 eval_texto <- function(x){ eval(parse(text = x))}
 
@@ -270,6 +280,8 @@ names(lista_dados_anexos_tabelas_despesas) <- criar_codigo_filtros_gerais_anexos
 ```
 
 ## Criar código com os filtros para as linhas individuais dos Anexos e das Tabelas
+
+### Linhas das receitas
 
 ```{r}
 #| warning: false
@@ -292,12 +304,6 @@ criar_codigo_filtros_linhas_receitas <- filtros_linhas %>% filter(topico == "rec
 
 
 
-```
-
-```{r}
-criar_codigo_filtros_linhas_despesas <- filtros_linhas %>% filter(topico == "despesas") %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item_clean, sequencial,filtro)  %>% summarise() %>% drop_na()  %>% mutate(nome_linha = str_c(anexo_tabela,"_",topico, "_", item_clean))
-
- criar_codigo_filtros_linhas_despesas %>% kable()
 ```
 
 ```{r}
@@ -332,9 +338,15 @@ criar_codigo_filtros_linhas_receitas <- criar_codigo_filtros_linhas_receitas  %>
    mutate (filtrao = str_remove(filtrao, " NA"))
 
 
- criar_codigo_filtros_linhas_receitas %>% kable()
+ criar_codigo_filtros_linhas_receitas%>% group_by(nome_linha, filtrao) %>% summarise() %>% kable()
+```
 
+### Linhas das despesas
 
+```{r}
+criar_codigo_filtros_linhas_despesas <- filtros_linhas %>% filter(topico == "despesas") %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item_clean, sequencial,filtro)  %>% summarise() %>% drop_na()  %>% mutate(nome_linha = str_c(anexo_tabela,"_",topico, "_", item_clean))
+
+ criar_codigo_filtros_linhas_despesas %>% kable()
 ```
 
 ```{r}
@@ -366,21 +378,23 @@ criar_codigo_filtros_linhas_despesas <- criar_codigo_filtros_linhas_despesas  %>
    mutate (filtrao = str_remove(filtrao, " NA"))
 
 
- criar_codigo_filtros_linhas_despesas %>% kable()
+ criar_codigo_filtros_linhas_despesas %>% group_by(nome_linha, filtrao) %>% summarise() %>% kable()
 
 
 ```
 
 ```{r}
-eval_texto <- function(x){ eval(parse(text = x))}
-
-lista_dados_anexos_tabelas_despesas <- map(criar_codigo_filtros_gerais_anexos_tabelas_despesas$filtrao, eval_texto)
-
-
-names(lista_dados_anexos_tabelas_despesas) <- criar_codigo_filtros_gerais_anexos_tabelas_despesas$anexo_tabela
+# eval_texto <- function(x){ eval(parse(text = x))}
+# 
+# lista_dados_anexos_tabelas_despesas <- map(criar_codigo_filtros_gerais_anexos_tabelas_despesas$filtrao, eval_texto)
+# 
+# 
+# names(lista_dados_anexos_tabelas_despesas) <- criar_codigo_filtros_gerais_anexos_tabelas_despesas$anexo_tabela
 ```
 
-Criar base de dados com os saldos das linhas dos Anexos e Tabelas
+## Criar base de dados com os saldos das linhas dos Anexos e Tabelas
+
+### Base de dados com os saldos das linhas das receitas
 
 ```{r}
 #| warning: false
@@ -400,6 +414,8 @@ df_linhas_receitas <- map_df(lista_linhas_receitas, as.data.frame)
 
 df_linhas_receitas%>% group_by(anexo_tabela_topico_linha) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE))%>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
 ```
+
+### Base de dados com os saldos das linhas das despesas
 
 ```{r}
 lista_linhas_despesas <- map(criar_codigo_filtros_linhas_despesas$filtrao, eval_texto)
