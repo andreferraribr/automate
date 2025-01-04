@@ -72,10 +72,13 @@ filtros_gerais_anexos_tabelas %>% head() %>% kable()
 #| warning: false
 #| message: false
 #| error: false
+#| eval: false
 
 filtros_linhas <- read_excel("filtros.xlsx", sheet = "filtros_linhas")
 
 filtros_linhas %>% head()%>% kable()
+
+filtros_linhas  <- filtros_linhas %>% mutate(linha = str_c(anexo_tabela,"_",topico,"_",item_clean))
 
 itens_linhas <- cbind(filtros_linhas$item %>% unique(),filtros_linhas$item %>% unique()%>% make_clean_names())
 
@@ -119,6 +122,7 @@ dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
 #| warning: false
 #| message: false
 #| error: false
+#| eval: false
 
 atributos_despesa_tg <- colnames(dados_despesa)
 
@@ -142,6 +146,7 @@ atributos_nomes_tg <- cbind(c(atributos_despesa_tg,atributos_receita_tg) %>% uni
 #| warning: false
 #| message: false
 #| error: false
+#| eval: false
 
 
 
@@ -172,6 +177,7 @@ criar_codigo_filtros_gerais_anexos_tabelas_receitas %>% kable()
 ```
 
 ```{r}
+#| eval: false
 criar_codigo_filtros_gerais_anexos_tabelas_receitas <- criar_codigo_filtros_gerais_anexos_tabelas_receitas  %>%
    pivot_wider(
      names_from = sequencial,
@@ -200,6 +206,7 @@ criar_codigo_filtros_gerais_anexos_tabelas_receitas %>% kable()
 ### Tópico Despesas
 
 ```{r}
+#| eval: false
 filtros_gerais_anexos_tabelas <- filtros_gerais_anexos_tabelas %>%
    mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
 
@@ -227,6 +234,7 @@ criar_codigo_filtros_gerais_anexos_tabelas_despesas %>% kable()
 ```
 
 ```{r}
+#| eval: false
 criar_codigo_filtros_gerais_anexos_tabelas_despesas <- criar_codigo_filtros_gerais_anexos_tabelas_despesas  %>%
    pivot_wider(
      names_from = sequencial,
@@ -257,6 +265,7 @@ criar_codigo_filtros_gerais_anexos_tabelas_despesas %>% kable()
 ### Base de dados das receitas
 
 ```{r}
+#| eval: false
 eval_texto <- function(x){ eval(parse(text = x))}
 
 lista_dados_anexos_tabelas_receitas <- map(criar_codigo_filtros_gerais_anexos_tabelas_receitas$filtrao, eval_texto)
@@ -287,9 +296,10 @@ names(lista_dados_anexos_tabelas_despesas) <- criar_codigo_filtros_gerais_anexos
 #| warning: false
 #| message: false
 #| error: false
+#| eval: false
 
 
- filtros_linhas <- filtros_linhas %>% mutate(operador_logico_r = str_replace_na(operador_logico_r)  )
+ filtros_linhas <- filtros_linhas %>% mutate(operador_logico_r = str_remove(operador_logico_r, "SEM")  )
  
  
  
@@ -298,6 +308,18 @@ names(lista_dados_anexos_tabelas_despesas) <- criar_codigo_filtros_gerais_anexos
 criar_codigo_filtros_linhas_receitas <- filtros_linhas %>% filter(topico == "receitas") %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item_clean, sequencial,filtro)  %>% summarise() %>% drop_na()  %>% mutate(nome_linha = str_c(anexo_tabela,"_",topico, "_", item_clean))
 
  criar_codigo_filtros_linhas_receitas %>% kable()
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+
+criar_codigo_filtros_linhas_despesas <- filtros_linhas %>% filter(topico == "despesas") %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item_clean, sequencial,filtro)  %>% summarise() %>% drop_na()  %>% mutate(nome_linha = str_c(anexo_tabela,"_",topico, "_", item_clean))
+
+ criar_codigo_filtros_linhas_despesas %>% kable()
 
 # names_linhas <- criar_codigo_filtros_linhas_receitas %>% mutate(nome_linha = str_c(anexo_tabela,"_",topico, "_", item)) %>%  group_by(nome_linha) %>% summarise() 
 
@@ -310,6 +332,7 @@ criar_codigo_filtros_linhas_receitas <- filtros_linhas %>% filter(topico == "rec
 #| warning: false
 #| message: false
 #| error: false
+#| eval: false
 criar_codigo_filtros_linhas_receitas <- criar_codigo_filtros_linhas_receitas  %>%
    pivot_wider(
      names_from = sequencial,
@@ -339,18 +362,10 @@ criar_codigo_filtros_linhas_receitas <- criar_codigo_filtros_linhas_receitas  %>
 
 
  criar_codigo_filtros_linhas_receitas%>% group_by(nome_linha, filtrao) %>% summarise() %>% kable()
-```
-
-### Linhas das despesas
-
-```{r}
-criar_codigo_filtros_linhas_despesas <- filtros_linhas %>% filter(topico == "despesas") %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item_clean, sequencial,filtro)  %>% summarise() %>% drop_na()  %>% mutate(nome_linha = str_c(anexo_tabela,"_",topico, "_", item_clean))
-
- criar_codigo_filtros_linhas_despesas %>% kable()
-```
-
-```{r}
-criar_codigo_filtros_linhas_despesas <- criar_codigo_filtros_linhas_despesas  %>%
+ 
+ 
+ 
+ criar_codigo_filtros_linhas_despesas <- criar_codigo_filtros_linhas_despesas  %>%
    pivot_wider(
      names_from = sequencial,
      values_from = filtro) %>%
@@ -375,10 +390,50 @@ criar_codigo_filtros_linhas_despesas <- criar_codigo_filtros_linhas_despesas  %>
         anexo_tabela,"_",topico,"_",item_clean,"')"
            
          )) %>%
-   mutate (filtrao = str_remove(filtrao, " NA"))
+   mutate (filtrao = str_remove_all(filtrao, "NULL"))
 
 
- criar_codigo_filtros_linhas_despesas %>% group_by(nome_linha, filtrao) %>% summarise() %>% kable()
+ criar_codigo_filtros_linhas_despesas%>% group_by(nome_linha, filtrao) %>% summarise() %>% kable()
+```
+
+### Linhas das despesas
+
+```{r}
+# criar_codigo_filtros_linhas_despesas <- filtros_linhas %>% filter(topico == "despesas") %>%mutate(operador_logico_r = str_replace_all(operador_logico_r, "NA", " "))  %>% mutate(filtro = str_c(operador_logico_r, " ",atributo_r," " ,operador_comparacao_r, " " ,valores)) %>% group_by(anexo_tabela, topico, item_clean, sequencial,filtro)  %>% summarise() %>% drop_na()  %>% mutate(nome_linha = str_c(anexo_tabela,"_",topico, "_", item_clean))
+# 
+#  criar_codigo_filtros_linhas_despesas %>% kable()
+```
+
+```{r}
+# criar_codigo_filtros_linhas_despesas <- criar_codigo_filtros_linhas_despesas  %>%
+#    pivot_wider(
+#      names_from = sequencial,
+#      values_from = filtro) %>%
+#    unite(
+#      col= filtrao,
+#      !c("anexo_tabela","topico" ,"item_clean", "nome_linha"), sep = ' ') %>%
+#    mutate (filtrao = str_remove(filtrao, " NA"))%>%
+#    mutate(
+#      filtrao = 
+#        str_c(
+#          anexo_tabela,
+#          "_",
+#          topico,
+#          "_",
+#          item_clean,
+#         " <- lista_dados_anexos_tabelas_despesas$",
+#         anexo_tabela,
+#          "%>%  filter( ",
+#          filtrao,
+#          " )" ,
+#         " %>% mutate (anexo_tabela_topico_linha = '",
+#         anexo_tabela,"_",topico,"_",item_clean,"')"
+#            
+#          )) %>%
+#    mutate (filtrao = str_remove(filtrao, " NA"))
+# 
+# 
+#  criar_codigo_filtros_linhas_despesas %>% group_by(nome_linha, filtrao) %>% summarise() %>% kable()
 
 
 ```
@@ -401,24 +456,30 @@ criar_codigo_filtros_linhas_despesas <- criar_codigo_filtros_linhas_despesas  %>
 #| message: false
 #| error: false
 
-
-lista_linhas_receitas <- map(criar_codigo_filtros_linhas_receitas$filtrao, eval_texto)
-
-
-
-
-# names(lista_linhas) <- names_linhas$nome_linha
-
-
-df_linhas_receitas <- map_df(lista_linhas_receitas, as.data.frame)
-
-df_linhas_receitas%>% group_by(anexo_tabela_topico_linha) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE))%>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+# 
+# lista_linhas_receitas <- map(criar_codigo_filtros_linhas_receitas$filtrao, eval_texto)
+# 
+# 
+# 
+# 
+# # names(lista_linhas) <- names_linhas$nome_linha
+# 
+# 
+# df_linhas_receitas <- map_df(lista_linhas_receitas, as.data.frame)
+# 
+# df_linhas_receitas%>% group_by(anexo_tabela_topico_linha) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE))%>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+# 
+# 
+# df_linhas_receitas%>%filter(anexo_tabela_topico == "tabela_01_receitas" ) %>% group_by(anexo_tabela_topico_linha) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE))%>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
 ```
 
 ### Base de dados com os saldos das linhas das despesas
 
 ```{r}
-lista_linhas_despesas <- map(criar_codigo_filtros_linhas_despesas$filtrao, eval_texto)
+# teste <- criar_codigo_filtros_linhas_despesas %>% filter(nome_linha %notin% c( "anexo_04_rgps_despesas_a_detalhar", "anexo_04_rgps_despesas_despesas_previdenciarias_intra_orcamentarias_v"))
+# 
+# lista_linhas_despesas <- map(teste$filtrao, eval_texto)
+
 
 
 
@@ -426,9 +487,11 @@ lista_linhas_despesas <- map(criar_codigo_filtros_linhas_despesas$filtrao, eval_
 # names(lista_linhas) <- names_linhas$nome_linha
 
 
-df_linhas_despesas <- map_df(lista_linhas_despesas, as.data.frame)
+#df_linhas_despesas <- map_df(lista_linhas_despesas, as.data.frame)
 
-df_linhas_despesas%>% group_by(anexo_tabela_topico_linha) %>% summarise( despesas_empenhadas_controle_empenho= sum(despesas_empenhadas_controle_empenho, na.rm = TRUE))%>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+
+# 
+# df_linhas_despesas%>% group_by(anexo_tabela_topico_linha) %>% summarise( despesas_empenhadas_controle_empenho= sum(despesas_empenhadas_controle_empenho, na.rm = TRUE))%>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
 ```
 
 ```{r}
@@ -436,16 +499,72 @@ df_linhas_despesas%>% group_by(anexo_tabela_topico_linha) %>% summarise( despesa
 #| message: false
 #| error: false
 #| eval: false
-receita_total <-  for (i in seq_along(lista_dados_anexos_tabelas_receitas)) {
-  print( sum(lista_dados_anexos_tabelas_receitas[[i]][21], na.rm = TRUE)/1000000000  )
-  
-}
+# receita_total <-  for (i in seq_along(lista_dados_anexos_tabelas_receitas)) {
+#   print( sum(lista_dados_anexos_tabelas_receitas[[i]][21], na.rm = TRUE)/1000000000  )
+#   
+# }
+# 
+# anexos <- for (i in seq_along(lista_dados_anexos_tabelas_receitas)) {
+#   names(lista_dados_anexos_tabelas_receitas)
+# }
+# 
+# df_anexos_tabelas <- map_df(lista_dados_anexos_tabelas_receitas, as.data.frame)
+# 
+# df_anexos_tabelas%>% group_by(anexo_tabela_topico) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000000000)%>% kable( digits = 1, format.args = list(big.mark = ".", decimal.mark = ","))
+```
 
-anexos <- for (i in seq_along(lista_dados_anexos_tabelas_receitas)) {
-  names(lista_dados_anexos_tabelas_receitas)
-}
+```{r}
+# (dados_receita %>% filter(esfera_orcamentaria_codigo == 2) %>%  group_by(nre1_categoria_economica_codigo,nre1_categoria_economica_nome, nre2_origem_receita_codigo_origem)  %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% kable( digits = 1, format.args = list(big.mark = ".", decimal.mark = ","))
+```
 
-df_anexos_tabelas <- map_df(lista_dados_anexos_tabelas_receitas, as.data.frame)
+```{r}
+dividir <- function(x){str_replace_all(x , c("[&]" = ";", "[|]!"= ";", "[&]!"= ";", "[|]"= ";"))}
 
-df_anexos_tabelas%>% group_by(anexo_tabela_topico) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000000000)%>% kable( digits = 1, format.args = list(big.mark = ".", decimal.mark = ","))
+
+```
+
+```{r}
+
+dados_despesa <- read_excel("auto_despesa.xlsx", 
+    col_types = c("text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "numeric", "numeric", "numeric", 
+        "numeric", "numeric")) %>% clean_names()
+
+
+
+
+dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
+
+
+
+
+eval_texto <- function(x){ eval(parse(text = x))}
+
+linhas_new  <- read_excel("filtros.xlsx", sheet = "r_filtros_linhas") 
+
+linhas_new <- linhas_new %>% filter(anexo_tabela == "anexo_04_rgps" ) %>% mutate (chave = str_c(demonstrativo,"_",anexo_tabela,"_", topico, "_",item_r))
+
+linhas_new <- linhas_new %>% mutate (codigo_filtro = str_c(chave, " <-  dados_",topico," %>% ",filtro ," %>%  mutate (chave = ' ", chave,"')"))
+
+linhas_receita <- linhas_new %>% filter(topico == "receita")
+
+linhas_despesa <- linhas_new %>% filter(topico == "despesa")
+
+linhas_receita <- map(linhas_receita$codigo_filtro, eval_texto)
+
+df_recita <- map_df(linhas_receita, as.data.frame)
+
+
+
+
+linhas_despesa <- map(linhas_despesa$codigo_filtro, eval_texto)
+
+df_despesa <- map_df(linhas_despesa, as.data.frame)
+
 ```
