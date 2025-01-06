@@ -101,20 +101,20 @@ datatable(log_comparacao %>% select(fonte_recursos_codigo, fonte_recursos_nome, 
 
 ```{r}
 
-arquivos_tg <- list.files("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro","monitor")
-
-funcao_ler_arquivos <- function(x){ read_excel(x) %>% clean_names() %>% mutate(dia =  format(parse_date_time((as.data.frame(str_split( tail(monitor_fontes,1)[1],"\n"))[3,1]),"%d/%m/%Y"),"%Y_%m_%d"))}
-
-arquivos_lidos <- map_df( str_c ("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro/", arquivos_tg), funcao_ler_arquivos) 
-
-
-links <- map( str_c ("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro/", arquivos_tg), str_c()) 
-
-
-
-funcao_ler_arquivos_dia <- function(x){ read_excel(x) %>% clean_names() %>% mutate(dia =  format(parse_date_time((as.data.frame(str_split( tail(x,1)[1],"\n"))[3,1]),"%d/%m/%Y"),"%Y_%m_%d"))}
-
-arquivos_lidos_dia <- map_df( str_c ("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro/", arquivos_tg),funcao_ler_arquivos_dia) 
+# arquivos_tg <- list.files("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro","monitor")
+# 
+# funcao_ler_arquivos <- function(x){ read_excel(x) %>% clean_names() %>% mutate(dia =  format(parse_date_time((as.data.frame(str_split( tail(monitor_fontes,1)[1],"\n"))[3,1]),"%d/%m/%Y"),"%Y_%m_%d"))}
+# 
+# arquivos_lidos <- map_df( str_c ("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro/", arquivos_tg), funcao_ler_arquivos) 
+# 
+# 
+# links <- map( str_c ("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro/", arquivos_tg), str_c()) 
+# 
+# 
+# 
+# funcao_ler_arquivos_dia <- function(x){ read_excel(x) %>% clean_names() %>% mutate(dia =  format(parse_date_time((as.data.frame(str_split( tail(x,1)[1],"\n"))[3,1]),"%d/%m/%Y"),"%Y_%m_%d"))}
+# 
+# arquivos_lidos_dia <- map_df( str_c ("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/regra_de_ouro/", arquivos_tg),funcao_ler_arquivos_dia) 
 
 
 ```

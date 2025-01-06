@@ -1,0 +1,121 @@
+```{r}
+#| warning: false
+#| message: false
+#| error: false
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(tidyverse)
+library(purrr)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(DescTools)
+library(zoo)
+library(stringr)
+library(DT)
+library(stringr)
+library(scales)
+library(ggthemes)
+```
+
+# Introduction
+
+```{r}
+dados_despesa <- read_excel("auto_despesa.xlsx", 
+    col_types = c("text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "text", "text", "text", 
+        "text", "text", "text", "text", "text", 
+        "text", "numeric", "numeric", "numeric", 
+        "numeric", "numeric")) %>% clean_names()
+
+
+
+
+dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
+```
+
+```{r}
+atributos_atuais <- read_excel("filtros.xlsx", sheet = "metodologia")
+
+atributos_atuais <- atributos_atuais %>% unique()
+
+datatable(atributos_atuais %>% group_by(atributos) %>% summarise(tabelas_associadas = n()) %>% arrange(desc(tabelas_associadas)))
+```
+
+```{r}
+datatable(atributos_atuais %>% group_by( demonstrativo) %>% summarise(quantidade_atributos = n())%>% arrange(desc(quantidade_atributos))  )
+```
+
+```{r}
+datatable(atributos_atuais %>% group_by(atributo_clean) %>%  count())  
+```
+
+```{r}
+unicos_despesa <- map(dados_despesa, unique)
+
+unicos_despesa <- map_df(unicos_despesa, length)
+
+unicos_despesa <- pivot_longer(unicos_despesa, cols = everything())
+
+
+unicos_receita <- map(dados_receita, unique)
+
+unicos_receita <- map_df(unicos_receita, length)
+
+unicos_receita <- pivot_longer(unicos_receita, cols = everything())
+
+unico <- rbind(unicos_despesa, unicos_receita)
+
+
+
+colnames(unico)[1] ="atributo_clean"
+
+
+colnames(unicos_despesa)[1] ="atributo_clean"
+
+colnames(unicos_receita)[1] ="atributo_clean"
+
+
+
+```
+
+```{r}
+
+atributos_atuais_totais <- left_join(atributos_atuais, unico)
+
+atributos_atuais_receita <- left_join(atributos_atuais, unicos_receita)
+
+atributos_atuais_despesa <- left_join(atributos_atuais, unicos_despesa)
+
+
+```
+
+```{r}
+datatable(atributos_atuais_receita %>% filter(dimensao %in% c("receita")) %>% group_by(dimensao, atributo_clean) %>% summarise(value = max(value)))
+```
+
+```{r}
+datatable(atributos_atuais_despesa %>% filter(dimensao %in% c("despesa", "despesa_receita"), is.na(value)) %>% group_by(demonstrativo, dimensao, atributo_clean) %>% summarise(value = max(value)))
+```
+
+```{r}
+datatable(atributos_atuais_totais %>% filter( is.na(value), dimensao != "receita") %>% group_by(demonstrativo, dimensao, atributo_clean) %>% summarise(value = max(value)))
+```
+
+```{r}
+datatable(dados_receita %>%filter(nre1_categoria_economica_codigo == 1) %>% group_by(nre2_origem_receita_codigo_origem, nre2_origem_receita_nome) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
+```
+
+```{r}
+datatable(dados_receita %>% filter(nre1_categoria_economica_codigo %in% c(1,2)) %>% group_by(nre2_origem_receita_codigo_origem, nre2_origem_receita_nome, nre3_especie_receita_codigo_especie, nre3_especie_receita_nome) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
+```
+
+```{r}
+datatable(dados_receita %>% filter(nre1_categoria_economica_codigo %notin% c(1,2)) %>% group_by(nre2_origem_receita_codigo_origem, nre2_origem_receita_nome, nre3_especie_receita_codigo_especie, nre3_especie_receita_nome) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
+```

@@ -92,9 +92,9 @@ linhas_despesa <- linhas_new %>% filter(topico == "despesa")
 
 linhas_receita <- map(linhas_receita$codigo_filtro, eval_texto)
 
-df_recita <- map_df(linhas_receita, as.data.frame)
+df_receita <- map_df(linhas_receita, as.data.frame)
 
-df_recita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE), receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)) %>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE), receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)) %>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
 
 
 
@@ -109,7 +109,7 @@ df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_at
 datatable(df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 
 
-datatable(df_recita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
+(df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
 
 ```
 
@@ -157,5 +157,25 @@ datatable(dados_receita %>%
 
 ```{r}
 datatable(dados_despesa %>% filter(grupo_despesa_codigo_grupo %notin% c(6)| fonte_recursos_codigo != 443 | elemento_despesa_codigo %notin% c(76,77) | subfuncao_governo_codigo %notin% c(841,842,843,844,846) ) %>% group_by(funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo, subfuncao_governo_nome) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+
+```
+
+```{r}
+library(openxlsx)
+
+# https://www.youtube.com/watch?v=SDV2jB731Fo
+
+wb <- createWorkbook()
+
+addWorksheet(wb, "receitas")
+addWorksheet(wb, "despesas")
+
+writeData(wb, "receitas",df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000) )
+
+writeData(wb, "despesas",df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000, despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)/1000, despesas_pagas_controle_empenho = sum(despesas_pagas_controle_empenho, na.rm = TRUE)/1000) )
+
+saveWorkbook(wb, file = "dados_salvos.xlsx", overwrite = TRUE)
+
+
 
 ```
