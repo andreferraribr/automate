@@ -1,0 +1,52 @@
+---
+title: "Metodologia"
+editor: visual
+lang: "pt"
+format:
+  # docx: default
+  html:
+    code-fold: true
+    code-summary: "mostrar o código"
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+#| warning: false
+#| message: false
+#| error: false
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(tidyverse)
+library(purrr)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(DescTools)
+library(zoo)
+library(stringr)
+library(DT)
+library(stringr)
+library(scales)
+library(ggthemes)
+```
+
+```{r}
+atributos_atuais <- read_excel("filtros.xlsx", sheet = "metodologia")
+
+atributos_atuais <- atributos_atuais %>% unique()
+
+datatable(atributos_atuais %>% group_by(atributos) %>% summarise(tabelas_associadas = n()) %>% arrange(desc(tabelas_associadas)))
+```
+
+```{r}
+datatable(atributos_atuais %>% group_by( demonstrativo) %>% summarise(quantidade_atributos = n())%>% arrange(desc(quantidade_atributos))  )
+```
+
+```{r}
+datatable(atributos_atuais %>% group_by(demonstrativo,atributos) %>%  summarise())  
+```

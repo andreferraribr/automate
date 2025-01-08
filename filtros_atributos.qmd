@@ -1,3 +1,20 @@
+```         
+---
+title: "Metodologia"
+editor: visual
+lang: "pt"
+format:
+  # docx: default
+  html:
+    code-fold: true
+    code-summary: "mostrar o código"
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+---
+```
+
 ```{r}
 #| warning: false
 #| message: false
@@ -18,21 +35,18 @@ library(DT)
 library(stringr)
 library(scales)
 library(ggthemes)
+
+
+
+`%notin%` <- Negate(`%in%`)
+myNumFmt <- as.fmt(digits=2, big.mark=".")
+options(scipen = 999)
 ```
 
-# Introduction
+## Metodologia
 
 ```{r}
-dados_despesa <- read_excel("auto_despesa.xlsx", 
-    col_types = c("text", "text", "text", 
-        "text", "text", "text", "text", "text", 
-        "text", "text", "text", "text", "text", 
-        "text", "text", "text", "text", 
-        "text", "text", "text", "text", "text", 
-        "text", "text", "text", "text", 
-        "text", "text", "text", "text", "text", 
-        "text", "numeric", "numeric", "numeric", 
-        "numeric", "numeric")) %>% clean_names()
+dados_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
 
 
 
@@ -118,4 +132,8 @@ datatable(dados_receita %>% filter(nre1_categoria_economica_codigo %in% c(1,2)) 
 
 ```{r}
 datatable(dados_receita %>% filter(nre1_categoria_economica_codigo %notin% c(1,2)) %>% group_by(nre2_origem_receita_codigo_origem, nre2_origem_receita_nome, nre3_especie_receita_codigo_especie, nre3_especie_receita_nome) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
+```
+
+```{r}
+
 ```

@@ -149,7 +149,7 @@ atributos_atuais_despesa <- left_join(atributos_atuais, unicos_despesa)
 ```
 
 ```{r}
-datatable(atributos_atuais_receita %>% filter(dimensao %in% c("receita", "despesa_receita")) %>% group_by(dimensao, atributo_clean) %>% summarise(value = max(value)))
+datatable(atributos_atuais_receita %>% filter(dimensao %in% c("receita")) %>% group_by(dimensao, atributo_clean) %>% summarise(value = max(value)))
 ```
 
 ```{r}

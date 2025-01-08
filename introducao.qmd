@@ -1,0 +1,60 @@
+---
+title: "Introdução"
+editor: visual
+lang: "pt"
+format:
+  # docx: default
+  html:
+    code-fold: true
+    code-summary: "mostrar o código"
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+---
+
+## Objetivo Geral
+
+Automatizar a produção dos relatórios da Geinf.
+
+### Objetivos Específicos
+
+-   Desenvolver código para automatizar a geração dos relatórios
+
+-   Gerar automaticamente:
+
+1.  Anexos e tabelas do RREO
+
+2.  Anexos do RGF
+
+3.  Séries históricas
+
+-   Disponibilizar para o cidadão o código e as bases de dados
+
+## Diretrizes
+
+Economicidade
+
+Produtividade
+
+Transparência
+
+Rastreabilidade
+
+## Visão geral
+
+![](/visao_geral.png)
+
+### Modelos
+
+![](/modelo_anexo_02.png)
+
+### Metodologia
+
+![](/metodologia_tabela_03.png)
+
+![](/metodologia_tabela_02.png)
+
+### Dados
+
+![](/dados_tg.png)
