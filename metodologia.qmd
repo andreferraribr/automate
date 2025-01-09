@@ -36,17 +36,17 @@ library(ggthemes)
 ```
 
 ```{r}
-atributos_atuais <- read_excel("filtros.xlsx", sheet = "metodologia")
+atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
 
-atributos_atuais <- atributos_atuais %>% unique()
+atributos_metodologia <- atributos_metodologia %>% unique()
 
-datatable(atributos_atuais %>% group_by(atributos) %>% summarise(tabelas_associadas = n()) %>% arrange(desc(tabelas_associadas)))
+datatable(atributos_metodologia %>% group_by(atributos) %>% summarise(tabelas_associadas = n()) %>% arrange(desc(tabelas_associadas)))
 ```
 
 ```{r}
-datatable(atributos_atuais %>% group_by( demonstrativo) %>% summarise(quantidade_atributos = n())%>% arrange(desc(quantidade_atributos))  )
+datatable(atributos_metodologia %>% group_by( demonstrativo) %>% summarise(quantidade_atributos = n())%>% arrange(desc(quantidade_atributos))  )
 ```
 
 ```{r}
-datatable(atributos_atuais %>% group_by(demonstrativo,atributos) %>%  summarise())  
+datatable(atributos_metodologia %>% group_by(demonstrativo,atributos) %>%  summarise())  
 ```

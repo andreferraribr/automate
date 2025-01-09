@@ -1,0 +1,18 @@
+---
+title: "auto"
+editor: visual
+lang: "pt"
+format:
+  # docx: default
+  html:
+    code-fold: true
+    code-summary: "mostrar o código"
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+---
+
+# 
+
+# Automatização dos relatórios da GEINF

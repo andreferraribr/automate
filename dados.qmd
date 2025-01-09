@@ -1,0 +1,127 @@
+---
+title: "Dados"
+editor: visual
+lang: "pt"
+format:
+  # docx: default
+  html:
+    code-fold: true
+    code-summary: "mostrar o código"
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+---
+
+Dados
+
+```{r}
+#| warning: false
+#| message: false
+#| error: false
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(tidyverse)
+library(purrr)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(DescTools)
+library(zoo)
+library(stringr)
+library(DT)
+library(stringr)
+library(scales)
+library(ggthemes)
+
+
+
+`%notin%` <- Negate(`%in%`)
+myNumFmt <- as.fmt(digits=2, big.mark=".")
+options(scipen = 999)
+```
+
+```{r}
+
+
+extrair_dados <- function(x){
+  read_excel(x) %>% clean_names()
+}
+
+
+
+
+dados_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
+
+
+dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
+
+
+dados_conta_contabil <- read_excel("auto_conta_contabil.xlsx") %>% clean_names()
+
+
+dados_restos_a_pagar <- read_excel("auto_restos_a_pagar.xlsx") %>% clean_names()
+
+
+
+
+```
+
+```{r}
+
+
+funcao_atributos_dados <- function(x){
+x <- head(x,-1) %>% select(-ends_with("nome"))  
+pivot_longer( map_df( map(x,unique), length), cols = everything())
+}
+
+
+datatable(funcao_atributos_dados(dados_despesa))
+```
+
+```{r}
+
+
+
+datatable(funcao_atributos_dados(dados_receita))
+```
+
+```{r}
+
+datatable(funcao_atributos_dados(dados_restos_a_pagar))
+```
+
+```{r}
+datatable(funcao_atributos_dados(dados_conta_contabil))
+```
+
+```{r}
+atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
+
+atributos_metodologia <- atributos_metodologia %>% unique()
+
+atributos_dados <- (map_df(mget(ls(pattern = "dados_") ) ,funcao_atributos_dados))
+
+colnames(atributos_dados )[1] ="atributo_clean"
+
+
+
+
+
+ausentes <- setdiff(atributos_metodologia$atributo_clean,c(intersect(atributos_dados$atributo_clean, colnames(dados_despesa)),
+intersect(atributos_dados$atributo_clean, colnames(dados_receita)),
+intersect(atributos_dados$atributo_clean, colnames(dados_restos_a_pagar)),
+intersect(atributos_dados$atributo_clean, colnames(dados_conta_contabil)))
+)
+
+
+datatable(atributos_metodologia %>% filter(atributo_clean %in% ausentes) %>% group_by(demonstrativo, atributos) %>% summarise())
+```
+
+![](ausente_anexo_06_ndd.png)
+
+![](ausente_anexo_08_po_VAAF_VAAT.png)
+
+![](ausente_anexo_12_ano_ne_restos_a_pagar.png)
