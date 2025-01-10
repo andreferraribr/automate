@@ -54,6 +54,8 @@ dividir <- function(x){str_replace_all(x , c("[&]" = ";", "[|]!"= ";", "[&]!"= "
 
 ```
 
+## Importar dados
+
 ```{r}
 #| warning: false
 #| message: false
@@ -62,72 +64,119 @@ dividir <- function(x){str_replace_all(x , c("[&]" = ";", "[|]!"= ";", "[&]!"= "
 dados_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
 
 
-
-
 dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
 
 
+dados_conta_contabil <- read_excel("auto_conta_contabil.xlsx") %>% clean_names()
 
 
-eval_texto <- function(x){ eval(parse(text = x))}
-
-linhas_new  <- read_excel("filtros.xlsx", sheet = "r_filtros_linhas") 
-
-linhas_new <- linhas_new %>% filter(anexo_tabela == "anexo_04_rgps" ) %>% mutate (chave = str_c(demonstrativo,"_",anexo_tabela,"_", topico, "_",item_r))
-
-linhas_new <- linhas_new %>% mutate (codigo_filtro = str_c(chave, " <-  dados_",topico," %>% ",filtro ," %>%  mutate (chave = ' ", chave,"')"))
-
-linhas_receita <- linhas_new %>% filter(topico == "receita")
-
-linhas_despesa <- linhas_new %>% filter(topico == "despesa")
-
-linhas_receita <- map(linhas_receita$codigo_filtro, eval_texto)
-
-df_receita <- map_df(linhas_receita, as.data.frame)
-
-df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE), receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)) %>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+dados_restos_a_pagar <- read_excel("auto_restos_a_pagar.xlsx") %>% clean_names()
 
 
 
-linhas_despesa <- map(linhas_despesa$codigo_filtro, eval_texto)
-
-df_despesa <- map_df(linhas_despesa, as.data.frame)
 
 
-df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE))%>% kable(  digits = getOption("digits"), format.args = list(big.mark = ".", decimal.mark = ","))
-
-
-datatable(df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 
 
 # (df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
 
 ```
 
+## Importar planilha com filtros da metodologia
+
 ```{r}
-datatable(dados_despesa  %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+eval_texto <- function(x){ eval(parse(text = x))}
 
-datatable(dados_despesa %>% filter(grupo_despesa_codigo_grupo %in% c(6) & fonte_recursos_codigo == 443 & elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841,842,843,844,846) ) %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>% summarise(dotacao_atualizada = -sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = -sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = -sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "r_filtros_linhas") 
 
+filtros_metodologia <- filtros_metodologia %>% filter(anexo_tabela == "anexo_04_rgps" ) %>% mutate (chave = str_c(demonstrativo,"_",anexo_tabela,"_", topico, "_",item_r))
+
+filtros_metodologia <- filtros_metodologia %>% mutate (codigo_filtro = str_c(chave, " <-  dados_",topico," %>% ",filtro ," %>%  mutate (chave = ' ", chave,"')"))
+
+
+```
+
+## Criar base de dados a partir dos filtros
+
+### df_receita
+
+```{r}
+filtros_receita<- filtros_metodologia %>% filter(topico == "receita")
+
+
+dados_receita_filtrados<- map(filtros_receita$codigo_filtro, eval_texto)
+
+df_receita <- map_df(dados_receita_filtrados, as.data.frame)
+
+df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE), receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)) %>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+
+
+
+
+
+```
+
+### df_despesa
+
+```{r}
+filtros_despesa <- filtros_metodologia %>% filter(topico == "despesa")
+
+
+dados_despesa_filtrados <- map(filtros_despesa$codigo_filtro, eval_texto)
+
+df_despesa <- map_df(dados_despesa_filtrados, as.data.frame)
+
+
+df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE))%>% kable(  digits = getOption("digits"), format.args = list(big.mark = ".", decimal.mark = ","))
+
+
+datatable(df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+```
+
+```{r}
+# datatable(dados_despesa  %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+# 
+# datatable(dados_despesa %>% filter(grupo_despesa_codigo_grupo %in% c(6) & fonte_recursos_codigo == 443 & elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841,842,843,844,846) ) %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>% summarise(dotacao_atualizada = -sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = -sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = -sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+
+
+
+
+
+
+
+
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| error: false
+#| eval: false
 
 datatable(dados_despesa %>% filter(grupo_despesa_codigo_grupo %notin% c(6)| fonte_recursos_codigo != 443 | elemento_despesa_codigo %notin% c(76,77) | subfuncao_governo_codigo %notin% c(841,842,843,844,846) ) %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 
 
-
-
-
-```
-
-```{r}
-
 datatable(dados_despesa %>% filter (esfera_orcamentaria_codigo == 2) %>% group_by(grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 
 
-datatable(dados_despesa %>% filter(resultado_eof_codigo == 6) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+
 
 ```
 
 ```{r}
+#| warning: false
+#| message: false
+#| error: false
+#| eval: false
+
+datatable(dados_despesa %>% filter(resultado_eof_codigo == 6) %>% group_by(orgao_uge_orgao_maximo_codigo,orgao_uge_orgao_maximo_nome)%>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| error: false
+#| eval: false
 datatable(dados_receita %>% filter(nre1_categoria_economica_codigo != 7)  %>% group_by(nre1_categoria_economica_codigo, nre1_categoria_economica_nome , nre2_origem_receita_codigo_origem, nre2_origem_receita_nome) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))%>% formatRound(c("previsao_atualizada_da_receita","receita_orcamentaria_liquida"), 0, mark = ".", dec.mark = "," )
 
 
@@ -150,8 +199,26 @@ datatable(dados_receita %>%
 ```
 
 ```{r}
+#| warning: false
+#| message: false
+#| error: false
+#| eval: false
 datatable(dados_despesa %>% filter(grupo_despesa_codigo_grupo %notin% c(6)| fonte_recursos_codigo != 443 | elemento_despesa_codigo %notin% c(76,77) | subfuncao_governo_codigo %notin% c(841,842,843,844,846) ) %>% group_by(funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo, subfuncao_governo_nome) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho", "despesas_liquidadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 
+```
+
+```{r}
+# auto_restos_a_pagar <- read_excel("auto_restos_a_pagar.xlsx") %>% clean_names()
+# 
+# datatable(auto_restos_a_pagar %>% filter($) %>% group_by(ne_c_cor_ano_emissao) %>% summarise(restos_a_pagar_nao_processados_inscritos = sum(restos_a_pagar_nao_processados_inscritos, na.rm = TRUE)/1000, restos_a_pagar_processados_inscritos = sum(restos_a_pagar_processados_inscritos, na.rm = TRUE)/1000))%>% formatRound(c("restos_a_pagar_nao_processados_inscritos","restos_a_pagar_processados_inscritos"), 0, mark = ".", dec.mark = "," )
+```
+
+```{r}
+#| warning: false
+#| message: false
+#| error: false
+#| eval: false
+datatable(dados_despesa %>%filter (elemento_despesa_codigo %notin% c(76,77)) %>% group_by(uf_pt_sigla, funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo, subfuncao_governo_nome) %>% summarise(despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000))%>% formatRound(c("despesas_empenhadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 ```
 
 ```{r}
@@ -171,225 +238,4 @@ writeData(wb, "receitas",df_receita %>% group_by(chave) %>% summarise(previsao_a
 writeData(wb, "despesas",df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000000, despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)/1000000, despesas_pagas_controle_empenho = sum(despesas_pagas_controle_empenho, na.rm = TRUE)/1000000) )
 
 saveWorkbook(wb, file = "dados_salvos.xlsx", overwrite = TRUE)
-
-
-
-```
-
-```{r}
-# 522130100
-# 522130200
-# 522130300
-# 522190201
-# 522190209
-# 44111
-# 44113
-# 44114
-# 44115
-# 44121
-# 44131
-# 44133
-# 44134
-# 44135
-# 44141
-# 44211
-# 44213
-# 44214
-# 44215
-# 44221
-# 445110100
-# 445210100
-# 34111
-# 34113
-# 34114
-# 34115
-# 34121
-# 34131
-# 34141
-# 34181
-# 34183
-# 34184
-# 34185
-# 34191
-# 34211
-# 34213
-# 34214
-# 34215
-# 34221
-# 34291
-# 111110200
-# 111110201
-# 111110202
-# 111110203
-# 111110205
-# 111110206
-# 111110207
-# 111110300
-# 111110301
-# 111110302
-# 111110303
-# 111110400
-# 111110401
-# 111110402
-# 111110403
-# 111110404
-# 111110500
-# 111110501
-# 111110502
-# 111110503
-# 111110504
-# 111110600
-# 111111900
-# 111111901
-# 111111902
-# 111111903
-# 111111904
-# 111111905
-# 111111906
-# 111111907
-# 111111908
-# 111111999
-# 111112000
-# 111112001
-# 111112002
-# 111113000
-# 111113001
-# 111113002
-# 111115000
-# 111115001
-# 111115002
-# 111115003
-# 111115004
-# 111115005
-# 111115006
-# 111115007
-# 111115008
-# 111115009
-# 111115010
-# 111115011
-# 111115012
-# 111115013
-# 111115099
-# 899913900
-# 899913901
-# 899913902
-# 899913903
-# 899913904
-# 899913905
-# 899913906
-# 1111150
-# 111115005
-# 111115011
-# 111115012
-# 899913901
-# 899913902
-# 899913907
-# 899913908
-# 899913900
-# 899913901
-# 899913902
-# 899913903
-# 899913904
-# 899913905
-# 899913906
-# 212110202
-# 222110102
-# 899913903
-# 899913904
-# 218912902
-# 218942902
-# 218952902
-# 218912901
-# 113813001
-# 113813002
-# 212210300
-# 212110301
-# 212110303
-# 212110700
-# 212140301
-# 212140303
-# 212150301
-# 212150303
-# 212510103
-# 212210601
-# 212310201
-# 212310202
-# 212410201
-# 212540103
-# 212550103
-# 222210200
-# 222110200
-# 217310301
-# 217310602
-# 217350402
-# 222310101
-# 222310102
-# 222410101
-# 227310301
-# 
-# 227310401
-# 631100000
-# 631300000
-# 631510000
-# 631520000
-# 631200000
-# 632100000
-# 522110101
-# 522110201
-# 522110209
-# 522120101
-# 522120103
-# 522120201
-# 522120202
-# 522120203
-# 522120301
-# 522120302
-# 522120303
-# 522190100
-# 522190300
-# 522190400
-# 522190101
-# 522190109
-# 522190201
-# 522190209
-# 522190301
-# 522190309
-# 622130300
-# 213110400
-# 213140400
-# 213150400
-# 211210100
-# 211419800
-# 211449800
-# 211459800
-# 211110101
-# 223110100
-# 214119900
-# 1111102
-# 1111103
-# 1111104
-# 1111119
-# 1112102
-# 1112103
-# 1112150
-# 1112152
-
-
-
-
-
-
-
-
-
-```
-
-```{r}
-# auto_restos_a_pagar <- read_excel("auto_restos_a_pagar.xlsx") %>% clean_names()
-# 
-# datatable(auto_restos_a_pagar %>% filter($) %>% group_by(ne_c_cor_ano_emissao) %>% summarise(restos_a_pagar_nao_processados_inscritos = sum(restos_a_pagar_nao_processados_inscritos, na.rm = TRUE)/1000, restos_a_pagar_processados_inscritos = sum(restos_a_pagar_processados_inscritos, na.rm = TRUE)/1000))%>% formatRound(c("restos_a_pagar_nao_processados_inscritos","restos_a_pagar_processados_inscritos"), 0, mark = ".", dec.mark = "," )
-```
-
-```{r}
-datatable(dados_despesa %>%filter (elemento_despesa_codigo %notin% c(76,77)) %>% group_by(uf_pt_sigla, funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo, subfuncao_governo_nome) %>% summarise(despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000))%>% formatRound(c("despesas_empenhadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 ```

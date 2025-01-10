@@ -37,7 +37,7 @@ library(scales)
 library(ggthemes)
 
 
-
+options(DT.options = list(pageLength = 10, fontSize = "70%", language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')))
 `%notin%` <- Negate(`%in%`)
 myNumFmt <- as.fmt(digits=2, big.mark=".")
 options(scipen = 999)
@@ -69,6 +69,8 @@ dados_restos_a_pagar <- read_excel("auto_restos_a_pagar.xlsx") %>% clean_names()
 
 ```
 
+## Despesa do exercício: atributos
+
 ```{r}
 
 
@@ -81,6 +83,8 @@ pivot_longer( map_df( map(x,unique), length), cols = everything())
 datatable(funcao_atributos_dados(dados_despesa))
 ```
 
+## Receita do exercício: atributos
+
 ```{r}
 
 
@@ -88,14 +92,20 @@ datatable(funcao_atributos_dados(dados_despesa))
 datatable(funcao_atributos_dados(dados_receita))
 ```
 
+## Restos a pagar: atributos
+
 ```{r}
 
 datatable(funcao_atributos_dados(dados_restos_a_pagar))
 ```
 
+## Conta contábil: atributos
+
 ```{r}
 datatable(funcao_atributos_dados(dados_conta_contabil))
 ```
+
+## Atributos ausentes (estão na metodologia, mas não estão nas bases de dados)
 
 ```{r}
 atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")

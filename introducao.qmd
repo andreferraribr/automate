@@ -39,7 +39,7 @@ Produtividade
 
 Transparência
 
-Rastreabilidade
+Replicabilidade
 
 ## Visão geral
 
