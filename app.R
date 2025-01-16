@@ -66,7 +66,8 @@ ui <- fluidPage(
                   choices = c("unit", "thousand", "million", "billion"), selected = "unit"),
       
       actionButton("save_filter", "Salvar Filtro"),
-      downloadButton("download_filters", "Download Filtros")
+      downloadButton("download_filters", "Download Filtros"),
+      downloadButton("download_table", "Download Tabela")
       
       
       
@@ -280,7 +281,6 @@ server <- function(input, output) {
       }
       code <- paste0(code, "  return(df)\n}")
       code <- paste0(code, "\n\n df <- filter_data(df)\n\n")
-      
       if(input$summarize_col != "Nenhum"){
         code <- paste0(code, "numeric_cols <- sapply(df, is.numeric)\n df <- df %>%
                          mutate(across(where(is.numeric), ~ scale_number(., scale = \"", input$scale_selector ,"\")))\n")
@@ -300,11 +300,9 @@ server <- function(input, output) {
       filters <- filter_settings()
       df <- uploaded_data()
       if(length(filters) > 0 && !is.null(df)){
-        
         code <- "library(dplyr)\n\nfilter_data <- function(df){\n"
         
         for(filter_df in filters){
-          
           attribute_cols <- names(df)[!sapply(df, is.numeric)]
           for(i in 1:nrow(filter_df)){
             col <- filter_df$attribute[i]
@@ -338,7 +336,6 @@ server <- function(input, output) {
             }
           }
         }
-        
         if(!is.null(input$group_col) && length(input$group_col) > 0){
           code <- paste0(code, "  df <- df %>% group_by(",paste(input$group_col, collapse = ", "), ")\n")
         }
@@ -346,103 +343,15 @@ server <- function(input, output) {
           code <- paste0(code, "   df <- df %>% summarise(", paste0(input$summarize_func, "_", input$summarize_col), " = ", input$summarize_func, "(", input$summarize_col, ", na.rm = TRUE))\n")
         }
         code <- paste0(code, "  return(df)\n}")
-        
         code <- paste0(code, "\n\n df <- filter_data(df)\n\n")
         if(input$summarize_col != "Nenhum"){
           code <- paste0(code, "numeric_cols <- sapply(df, is.numeric)\n df <- df %>%
                         mutate(across(where(is.numeric), ~ scale_number(., scale = \"", input$scale_selector ,"\")))\n")
         }
-        code <- paste0(code, "\n\ndf")
         write(code, file)
       }
     }
   )
-  
-  filtered_data <- reactive({
-    df <- uploaded_data()
-    if (is.null(df)) {
-      return(NULL)
-    }
-    
-    attribute_cols <- names(df)[!sapply(df, is.numeric)]
-    
-    for(col in attribute_cols){
-      filter_type <- input[[paste0("filter_type_", col)]]
-      filter_value <- input[[paste0("filter_val_", col)]]
-      
-      if (!is.null(filter_type) && filter_type != "" && !is.null(filter_value) && length(filter_value) > 0) {
-        
-        filter_value <- tryCatch(as.numeric(filter_value), warning = function(w) filter_value)
-        
-        if (filter_type == "equal") {
-          df <- df %>% filter(!!sym(col) == filter_value)
-        } else if(filter_type == "not equal") {
-          df <- df %>% filter(!!sym(col) != filter_value)
-        } else if (filter_type == "greater") {
-          df <- df %>% filter(!!sym(col) > filter_value)
-        } else if (filter_type == "less") {
-          df <- df %>% filter(!!sym(col) < filter_value)
-        }  else if (filter_type == "greater or equal") {
-          df <- df %>% filter(!!sym(col) >= filter_value)
-        }  else if (filter_type == "less or equal") {
-          df <- df %>% filter(!!sym(col) <= filter_value)
-        }  else if(filter_type == "in"){
-          
-          df <- df %>% filter(!!sym(col) %in% filter_value)
-        } else if(filter_type == "not in"){
-          
-          df <- df %>% filter(! (!!sym(col) %in% filter_value) | is.na(!!sym(col)))
-        }else if(filter_type == "starts with"){
-          df <- df %>% filter(startsWith(!!sym(col), filter_value))
-        }else if(filter_type == "ends with"){
-          df <- df %>% filter(endsWith(!!sym(col), filter_value))
-        }else if(filter_type == "contains"){
-          df <- df %>% filter(grepl(filter_value, !!sym(col), ignore.case = TRUE))
-        }
-      }
-    }
-    
-    return(df)
-  })
-  
-  summarized_data <- reactive({
-    df <- filtered_data()
-    if (is.null(df) || input$summarize_col == "Nenhum") {
-      return(df)
-    }
-    group_cols <- input$group_col
-    
-    if(is.null(group_cols) || length(group_cols) == 0){
-      if(input$summarize_func == "sum"){
-        df <- df %>% summarise(!!paste0("sum_", input$summarize_col) := sum(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "mean"){
-        df <- df %>% summarise(!!paste0("mean_", input$summarize_col) := mean(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "median"){
-        df <- df %>% summarise(!!paste0("median_", input$summarize_col) := median(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "min"){
-        df <- df %>% summarise(!!paste0("min_", input$summarize_col) := min(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "max"){
-        df <- df %>% summarise(!!paste0("max_", input$summarize_col) := max(!!sym(input$summarize_col), na.rm=TRUE))
-      }
-    }
-    else{
-      group_syms <- syms(group_cols)
-      if(input$summarize_func == "sum"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("sum_", input$summarize_col) := sum(!!sym(input$summarize_col), na.rm=TRUE))
-        
-      } else if (input$summarize_func == "mean"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("mean_", input$summarize_col) := mean(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "median"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("median_", input$summarize_col) := median(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "min"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("min_", input$summarize_col) := min(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "max"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("max_", input$summarize_col) := max(!!sym(input$summarize_col), na.rm=TRUE))
-      }
-    }
-    
-    return(df)
-  })
   
   output$custom_table <- DT::renderDataTable({
     df <- summarized_data()
@@ -487,8 +396,15 @@ server <- function(input, output) {
         
         return(DT::datatable(combined_data,
                              filter = 'top',
+                             extensions = 'Buttons',
                              options = list(
-                               dom = 't',
+                               dom = 'Bfrtip',
+                               buttons = 
+                                 list('copy', 'print', list(
+                                   extend = 'collection',
+                                   buttons = c('csv', 'excel', 'pdf'),
+                                   text = 'Download'
+                                 )),
                                order = list(list(which(names(combined_data) == summarized_col) -1 , 'desc')),
                                columnDefs = list(list(className = 'dt-right', targets = which(sapply(combined_data, is.numeric)) - 1))
                              ),
@@ -524,8 +440,15 @@ server <- function(input, output) {
         
         return(DT::datatable(combined_data,
                              filter = 'top',
+                             extensions = 'Buttons',
                              options = list(
-                               dom = 't',
+                               dom = 'Bfrtip',
+                               buttons = 
+                                 list('copy', 'print', list(
+                                   extend = 'collection',
+                                   buttons = c('csv', 'excel', 'pdf'),
+                                   text = 'Download'
+                                 )),
                                order = list(list(which(names(combined_data) == summarized_col) -1 , 'desc')),
                                columnDefs = list(list(className = 'dt-right', targets = which(sapply(combined_data, is.numeric)) - 1))
                              ),
@@ -549,8 +472,15 @@ server <- function(input, output) {
                                               billion = "Bilhões"))
       return(DT::datatable(df,
                            filter = 'top',
+                           extensions = 'Buttons',
                            options = list(
-                             dom = 't',
+                             dom = 'Bfrtip',
+                             buttons = 
+                               list('copy', 'print', list(
+                                 extend = 'collection',
+                                 buttons = c('csv', 'excel', 'pdf'),
+                                 text = 'Download'
+                               )),
                              columnDefs = list(list(className = 'dt-right', targets = which(sapply(df, is.numeric)) - 1))
                            ),
                            caption = htmltools::tags$caption(
@@ -558,6 +488,105 @@ server <- function(input, output) {
                              table_title
                            )))
     }
+  })
+  
+  output$download_table <- downloadHandler(
+    filename = function() {
+      paste("data-", Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      df <- summarized_data()
+      
+      numeric_cols <- sapply(df, is.numeric)
+      df <- df %>%
+        mutate(across(where(is.numeric), ~ scale_number(., scale = input$scale_selector)))
+      write.csv(df, file, row.names = FALSE)
+    }
+  )
+  
+  filtered_data <- reactive({
+    df <- uploaded_data()
+    if (is.null(df)) {
+      return(NULL)
+    }
+    
+    attribute_cols <- names(df)[!sapply(df, is.numeric)]
+    
+    for(col in attribute_cols){
+      filter_type <- input[[paste0("filter_type_", col)]]
+      filter_value <- input[[paste0("filter_val_", col)]]
+      
+      if (!is.null(filter_type) && filter_type != "" && !is.null(filter_value) && length(filter_value) > 0) {
+        
+        filter_value <- tryCatch(as.numeric(filter_value), warning = function(w) filter_value)
+        
+        if (filter_type == "equal") {
+          df <- df %>% filter(!!sym(col) == filter_value)
+        } else if(filter_type == "not equal") {
+          df <- df %>% filter(!!sym(col) != filter_value)
+        } else if (filter_type == "<") {
+          df <- df %>% filter(!!sym(col) < filter_value)
+        } else if (filter_type == ">") {
+          df <- df %>% filter(!!sym(col) > filter_value)
+        }  else if (filter_type == "<=") {
+          df <- df %>% filter(!!sym(col) <= filter_value)
+        }  else if (filter_type == ">=") {
+          df <- df %>% filter(!!sym(col) >= filter_value)
+        }  else if(filter_type == "in"){
+          
+          df <- df %>% filter(!!sym(col) %in% filter_value)
+        } else if(filter_type == "not in"){
+          
+          df <- df %>% filter(! (!!sym(col) %in% filter_value) | is.na(!!sym(col)))
+        }else if(filter_type == "starts with"){
+          df <- df %>% filter(startsWith(!!sym(col), filter_value))
+        }else if(filter_type == "ends with"){
+          df <- df %>% filter(endsWith(!!sym(col), filter_value))
+        }else if(filter_type == "contains"){
+          df <- df %>% filter(grepl(filter_value, !!sym(col), ignore.case = TRUE))
+        }
+      }
+    }
+    
+    return(df)
+  })
+  summarized_data <- reactive({
+    df <- filtered_data()
+    if (is.null(df) || input$summarize_col == "Nenhum") {
+      return(df)
+    }
+    group_cols <- input$group_col
+    
+    if(is.null(group_cols) || length(group_cols) == 0){
+      if(input$summarize_func == "sum"){
+        df <- df %>% summarise(!!paste0("sum_", input$summarize_col) := sum(!!sym(input$summarize_col), na.rm=TRUE))
+      } else if (input$summarize_func == "mean"){
+        df <- df %>% summarise(!!paste0("mean_", input$summarize_col) := mean(!!sym(input$summarize_col), na.rm=TRUE))
+      } else if (input$summarize_func == "median"){
+        df <- df %>% summarise(!!paste0("median_", input$summarize_col) := median(!!sym(input$summarize_col), na.rm=TRUE))
+      } else if (input$summarize_func == "min"){
+        df <- df %>% summarise(!!paste0("min_", input$summarize_col) := min(!!sym(input$summarize_col), na.rm=TRUE))
+      } else if (input$summarize_func == "max"){
+        df <- df %>% summarise(!!paste0("max_", input$summarize_col) := max(!!sym(input$summarize_col), na.rm=TRUE))
+      }
+    }
+    else{
+      group_syms <- syms(group_cols)
+      if(input$summarize_func == "sum"){
+        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("sum_", input$summarize_col) := sum(!!sym(input$summarize_col), na.rm=TRUE))
+        
+      } else if (input$summarize_func == "mean"){
+        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("mean_", input$summarize_col) := mean(!!sym(input$summarize_col), na.rm=TRUE))
+      } else if (input$summarize_func == "median"){
+        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("median_", input$summarize_col) := median(!!sym(input$summarize_col), na.rm=TRUE))
+      } else if (input$summarize_func == "min"){
+        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("min_", input$summarize_col) := min(!!sym(input$summarize_col), na.rm=TRUE))
+      } else if (input$summarize_func == "max"){
+        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("max_", input$summarize_col) := max(!!sym(input$summarize_col), na.rm=TRUE))
+      }
+    }
+    
+    return(df)
   })
 }
 
