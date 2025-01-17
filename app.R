@@ -8,6 +8,8 @@ library(janitor)
 library(writexl)
 library(scales)
 
+`%notin%` <- Negate(`%in%`)
+
 ui <- page_sidebar(
   title = "Gerador de Subsets",
   sidebar = sidebar(
@@ -153,7 +155,7 @@ server <- function(input, output, session) {
       if(input$operador %in% c("==", "!=")) {
         novo_filtro <- sprintf("%s %s c(%s)", 
                                input$var_filtro,
-                               ifelse(input$operador == "==", "%in%", "!%in%"),
+                               ifelse(input$operador == "==", "%in%", "%notin%"),
                                valores)
       } else {
         condicoes <- sapply(input$valor_filtro, function(valor) {
@@ -381,5 +383,5 @@ server <- function(input, output, session) {
     sprintf("%.1f%%", 100 * nrow(dados_filtrados()) / nrow(dados()))
   })
 }
-
+options(shiny.maxRequestSize=30*1024^2) 
 shinyApp(ui = ui, server = server)
