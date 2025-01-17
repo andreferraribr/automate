@@ -1,592 +1,384 @@
-if(!require(shiny)){install.packages("shiny")}
-if(!require(dplyr)){install.packages("dplyr")}
-if(!require(ggplot2)){install.packages("ggplot2")}
-if(!require(DT)){install.packages("DT")}
-if(!require(plotly)){install.packages("plotly")}
-if(!require(readr)){install.packages("readr")}
-if(!require(openxlsx)){install.packages("openxlsx")}
-if(!require(scales)){install.packages("scales")}
-if(!require(stringr)){install.packages("stringr")}
-if(!require(janitor)){install.packages("janitor")}
-
-
 library(shiny)
-library(dplyr)
-library(ggplot2)
+library(bslib)
 library(DT)
-library(plotly)
-library(readr)
-library(openxlsx)
-library(scales)
-library(stringr)
+library(dplyr)
+library(bsicons)
+library(readxl)
 library(janitor)
+library(writexl)
+library(scales)
 
-# Function to scale numbers
-scale_number <- function(x, scale = "unit") {
-  if (is.numeric(x)) {
-    scaled_value <- if (scale == "thousand") {
-      x / 1000
-    } else if (scale == "million") {
-      x / 1000000
-    } else if (scale == "billion") {
-      x / 1000000000
-    } else {
-      x
-    }
+ui <- page_sidebar(
+  title = "Gerador de Subsets",
+  sidebar = sidebar(
+    title = "Parâmetros do Subset",
     
-    format(round(scaled_value, 2), nsmall = 2, big.mark = ".", decimal.mark = ",")
-  } else {
-    x
-  }
-}
-
-ui <- fluidPage(
-  titlePanel("Análise de Dados Personalizável"),
-  
-  sidebarLayout(
-    sidebarPanel(
-      fileInput("file_input", "Carregar Dados (CSV ou XLSX)",
-                accept = c("text/csv",
-                           "text/comma-separated-values,text/plain",
-                           ".csv",
-                           ".xlsx")),
+    fileInput("arquivo", "Carregar arquivo (CSV ou XLSX):",
+              accept = c(".csv", ".xlsx", ".xls")),
+    
+    selectInput("vars_numericas", "Selecionar Colunas Numéricas:", 
+                choices = NULL, multiple = TRUE),
+    
+    selectInput("variaveis", "Selecionar Variáveis:", 
+                choices = NULL, multiple = TRUE),
+    
+    selectInput("vars_group", "Agrupar por:", 
+                choices = NULL, multiple = TRUE),
+    
+    selectInput("vars_sum", "Somar:", 
+                choices = NULL, multiple = TRUE),
+    
+    card(
+      card_header("Adicionar Filtro"),
+      selectInput("var_filtro", "Variável:", choices = NULL),
+      selectInput("operador", "Operador:",
+                  choices = c("==", "!=", ">", "<", ">=", "<=")),
+      selectizeInput("valor_filtro", "Valor:", choices = NULL, multiple = TRUE),
       
-      uiOutput("attribute_selector"),
-      # Grouping UI
-      uiOutput("group_selector"),
+      selectInput("operador_logico", "Operador Lógico para Próximo Filtro:",
+                  choices = c("and", "or", "and not", "or not")),
       
-      # Filtering UI
-      uiOutput("filter_selectors"),
-      
-      # Summarization UI
-      uiOutput("summarize_selector"),
-      
-      # Scale Selection
-      selectInput("scale_selector", "Escala dos Resultados",
-                  choices = c("unit", "thousand", "million", "billion"), selected = "unit"),
-      
-      actionButton("save_filter", "Salvar Filtro"),
-      downloadButton("download_filters", "Download Filtros"),
-      downloadButton("download_table", "Download Tabela")
-      
-      
-      
+      actionButton("adicionar_filtro", "Adicionar Filtro", class = "btn-primary")
     ),
     
-    mainPanel(
-      tabsetPanel(
-        tabPanel("Tabela de Dados", DT::dataTableOutput("custom_table")),
-        tabPanel("Filtro", verbatimTextOutput("filter_text"))
+    actionButton("limpar_filtros", "Limpar Filtros", class = "btn-warning"),
+    actionButton("validar", "Validar Subset", class = "btn-success")
+  ),
+  
+  layout_columns(
+    card(
+      full_screen = TRUE,
+      card_header("Preview dos Dados"),
+      downloadButton("download_data", "Baixar dados (XLSX)"),
+      tags$br(), tags$br(),
+      DTOutput("preview_dados")
+    ),
+    card(
+      full_screen = TRUE,
+      card_header("Código Gerado"),
+      verbatimTextOutput("codigo_gerado")
+    )
+  ),
+  
+  card(
+    card_header("Filtros Ativos"),
+    textOutput("filtros_ativos")
+  ),
+  
+  card(
+    card_header("Estatísticas do Subset"),
+    layout_columns(
+      value_box(
+        "Linhas no Subset",
+        textOutput("n_linhas"),
+        showcase = bs_icon("table")
+      ),
+      value_box(
+        "Colunas Selecionadas",
+        textOutput("n_colunas"),
+        showcase = bs_icon("columns-gap")
+      ),
+      value_box(
+        "% dos Dados Originais",
+        textOutput("proporcao"),
+        showcase = bs_icon("percent")
       )
     )
   )
 )
-options(shiny.maxRequestSize=30*1024^2) 
-server <- function(input, output) {
+
+server <- function(input, output, session) {
+  dados <- reactiveVal(NULL)
+  filtros <- reactiveVal(list())
   
-  uploaded_data <- reactive({
-    file <- input$file_input
-    if (is.null(file)) {
-      return(NULL)
+  observeEvent(input$arquivo, {
+    req(input$arquivo)
+    
+    ext <- tools::file_ext(input$arquivo$name)
+    
+    df <- if(tolower(ext) == "csv") {
+      read.csv(input$arquivo$datapath)
+    } else if(tolower(ext) %in% c("xlsx", "xls")) {
+      read_excel(input$arquivo$datapath)
     }
     
-    ext <- tools::file_ext(file$datapath)
+    df <- clean_names(df)
+    df <- as.data.frame(df)
     
-    tryCatch({
-      if (ext == "csv") {
-        df <- read_csv(file$datapath)
-      } else if (ext == "xlsx") {
-        sheets <- openxlsx::getSheetNames(file$datapath)
-        if(length(sheets) == 0){
-          showNotification("O arquivo excel não possui abas!", type = "error")
-          return(NULL)
-        }else{
-          df <- openxlsx::read.xlsx(file$datapath, sheet = sheets[1])
-        }
+    dados(df)
+    
+    updateSelectInput(session, "vars_numericas", choices = names(df))
+    updateSelectInput(session, "variaveis", 
+                      choices = names(df),
+                      selected = names(df)[1:min(3, ncol(df))])
+    updateSelectInput(session, "var_filtro", choices = names(df))
+    updateSelectInput(session, "vars_group", choices = names(df))
+    updateSelectInput(session, "vars_sum", choices = names(df))
+  })
+  
+  observeEvent(input$var_filtro, {
+    req(dados(), input$var_filtro)
+    valores_unicos <- unique(dados()[[input$var_filtro]])
+    valores_unicos <- sort(valores_unicos)
+    updateSelectizeInput(session, "valor_filtro", 
+                         choices = valores_unicos,
+                         selected = NULL)
+  })
+  
+  observe({
+    req(dados(), input$vars_numericas)
+    df <- dados()
+    
+    for(col in names(df)) {
+      if(col %in% input$vars_numericas) {
+        df[[col]] <- as.numeric(df[[col]])
       } else {
-        showNotification("Formato de arquivo inválido", type = "error")
-        return(NULL)
+        df[[col]] <- as.character(df[[col]])
+      }
+    }
+    
+    dados(df)
+  })
+  
+  observeEvent(input$adicionar_filtro, {
+    req(input$var_filtro, input$operador, input$valor_filtro)
+    
+    if(length(input$valor_filtro) > 1) {
+      valores <- if(input$var_filtro %in% input$vars_numericas) {
+        paste(input$valor_filtro, collapse = ", ")
+      } else {
+        paste(sprintf("'%s'", input$valor_filtro), collapse = ", ")
       }
       
-      df <- janitor::clean_names(df)
-      return(df)
-      
-    }, error = function(e){
-      showNotification(paste("Erro ao ler o arquivo:", e$message), type = "error")
-      return(NULL)
-    })
-  })
-  
-  output$attribute_selector <- renderUI({
-    df <- uploaded_data()
-    if (is.null(df)) {
-      return(NULL)
+      if(input$operador %in% c("==", "!=")) {
+        novo_filtro <- sprintf("%s %s c(%s)", 
+                               input$var_filtro,
+                               ifelse(input$operador == "==", "%in%", "!%in%"),
+                               valores)
+      } else {
+        condicoes <- sapply(input$valor_filtro, function(valor) {
+          sprintf("%s %s %s", 
+                  input$var_filtro,
+                  input$operador,
+                  if(input$var_filtro %in% input$vars_numericas) valor 
+                  else sprintf("'%s'", valor))
+        })
+        novo_filtro <- paste(condicoes, collapse = " | ")
+      }
+    } else {
+      novo_filtro <- sprintf("%s %s %s", 
+                             input$var_filtro,
+                             input$operador,
+                             if(input$var_filtro %in% input$vars_numericas) input$valor_filtro 
+                             else sprintf("'%s'", input$valor_filtro))
     }
     
-    attribute_cols <- names(df)[!sapply(df, is.numeric)]
-    
-    
-    return(NULL)
-  })
-  
-  output$group_selector <- renderUI({
-    df <- uploaded_data()
-    if (is.null(df)) {
-      return(NULL)
-    }
-    attribute_cols <- names(df)[!sapply(df, is.numeric)]
-    
-    selectInput("group_col", "Selecionar Variáveis de Agrupamento (Opcional)",
-                choices =  attribute_cols, multiple = TRUE, selected = NULL)
-  })
-  
-  output$filter_selectors <- renderUI({
-    df <- uploaded_data()
-    if(is.null(df)){
-      return(NULL)
-    }
-    attribute_cols <- names(df)[!sapply(df, is.numeric)]
-    
-    filter_ui_elements <- lapply(attribute_cols, function(col) {
-      
-      choices <- unique(df[[col]])
-      tagList(
-        selectInput(paste0("filter_type_", col),
-                    paste("Tipo de filtro", col),
-                    choices = c("equal", "not equal", "greater", "less", "greater or equal", "less or equal",  "in", "not in", "starts with", "ends with", "contains")),
-        
-        selectInput(paste0("filter_val_", col),
-                    paste("Valor do filtro", col),
-                    choices = choices, multiple = TRUE)
-      )
-    })
-    
-    filter_ui_elements
-  })
-  
-  output$summarize_selector <- renderUI({
-    df <- uploaded_data()
-    if(is.null(df)){
-      return(NULL)
-    }
-    
-    metric_cols <- names(df)[sapply(df, is.numeric)]
-    
-    tagList(
-      selectInput("summarize_col", "Selecionar Coluna para Sumarizar (Opcional)",
-                  choices = c("Nenhum", metric_cols), selected = "Nenhum"),
-      
-      conditionalPanel(
-        condition = "input$summarize_col != 'Nenhum'",
-        selectInput("summarize_func", "Selecionar Função de Sumarização",
-                    choices = c("sum", "mean", "median", "min", "max"), selected = "sum")
-      )
+    filtros_atuais <- filtros()
+    novo_item <- list(
+      filtro = novo_filtro,
+      operador = input$operador_logico
     )
+    filtros(c(filtros_atuais, list(novo_item)))
   })
   
+  observeEvent(input$limpar_filtros, {
+    filtros(list())
+  })
   
-  filter_settings <- reactiveVal(list())
-  
-  observeEvent(input$save_filter, {
+  dados_filtrados <- reactive({
+    req(dados())
+    df <- dados()
     
-    df <- uploaded_data()
-    if (is.null(df)) {
-      showNotification("Nenhum dado carregado.", type = "error")
-      return(NULL)
+    vars_disponiveis <- names(df)
+    
+    vars_select <- input$variaveis[input$variaveis %in% vars_disponiveis]
+    vars_group <- input$vars_group[input$vars_group %in% vars_disponiveis]
+    vars_sum <- input$vars_sum[input$vars_sum %in% vars_disponiveis]
+    
+    if(length(filtros()) > 0) {
+      filtros_texto <- sapply(seq_along(filtros()), function(i) {
+        filtro_item <- filtros()[[i]]
+        if(i == 1) return(filtro_item$filtro)
+        
+        op <- switch(filtro_item$operador,
+                     "and" = " & ",
+                     "or" = " | ",
+                     "and not" = " & !(",
+                     "or not" = " | !(")
+        
+        paste0(op, filtro_item$filtro, 
+               if(filtro_item$operador %in% c("and not", "or not")) ")" else "")
+      })
+      
+      filtro_completo <- paste(filtros_texto, collapse = "")
+      df <- df %>% filter(eval(parse(text = filtro_completo)))
     }
     
-    attribute_cols <- names(df)[!sapply(df, is.numeric)]
-    current_filters <- data.frame(attribute = character(),
-                                  type = character(),
-                                  value = character(),
-                                  stringsAsFactors = FALSE)
+    if(length(vars_select) > 0) {
+      vars_select <- unique(c(vars_select, vars_group, vars_sum))
+      df <- df %>% select(all_of(vars_select))
+    }
     
-    for(col in attribute_cols){
-      filter_type <- input[[paste0("filter_type_", col)]]
-      filter_value <- input[[paste0("filter_val_", col)]]
+    if(length(vars_group) > 0 && length(vars_sum) > 0) {
+      vars_sum_existentes <- vars_sum[vars_sum %in% names(df)]
       
-      if (!is.null(filter_type) && filter_type != "" && !is.null(filter_value) && length(filter_value) > 0) {
-        current_filters <- rbind(current_filters,
-                                 data.frame(attribute = col,
-                                            type = filter_type,
-                                            value = paste(filter_value, collapse = ", "),
-                                            stringsAsFactors = FALSE)
+      if(length(vars_sum_existentes) > 0) {
+        df <- df %>%
+          group_by(across(all_of(vars_group))) %>%
+          summarise(across(all_of(vars_sum_existentes), sum, na.rm = TRUE))
+      }
+    }
+    
+    return(df)
+  })
+  
+  output$preview_dados <- renderDT({
+    req(dados_filtrados())
+    df <- dados_filtrados()
+    
+    # Identifica colunas numéricas
+    cols_numericas <- sapply(df, is.numeric)
+    
+    datatable(
+      df,
+      options = list(
+        pageLength = 5,
+        language = list(
+          decimal = ",",
+          thousands = "."
         )
-      }
-    }
-    
-    if (nrow(current_filters) == 0) {
-      showNotification("Nenhum filtro selecionado.", type = "error")
-      return(NULL)
-    }
-    
-    filter_list <- filter_settings()
-    filter_list <- append(filter_list, list(current_filters))
-    filter_settings(filter_list)
-    
-    showModal(modalDialog(
-      title = "Filtro salvo",
-      "Filtro salvo com sucesso!",
-      easyClose = TRUE,
-      footer = modalButton("Fechar")
-    ))
+      )
+    ) %>%
+      formatCurrency(
+        columns = which(cols_numericas),
+        currency = "",
+        mark = ".",
+        dec.mark = ",",
+        digits = 2
+      )
   })
   
-  
-  
-  output$filter_text <- renderText({
-    filters <- filter_settings()
-    df <- uploaded_data()
-    if(length(filters) > 0 && !is.null(df)){
-      code <- "library(dplyr)\n\nfilter_data <- function(df){\n"
-      for(filter_df in filters){
-        attribute_cols <- names(df)[!sapply(df, is.numeric)]
-        for(i in 1:nrow(filter_df)){
-          col <- filter_df$attribute[i]
-          filter_type <- filter_df$type[i]
-          filter_value <- filter_df$value[i]
-          
-          code <- paste0(code, "  df <- df %>% filter(")
-          
-          if (filter_type == "equal") {
-            code <- paste0(code, col, " == ", deparse(filter_value),")\n")
-          } else if(filter_type == "not equal") {
-            code <- paste0(code, col, " != ", deparse(filter_value),")\n")
-          } else if (filter_type == "greater") {
-            code <- paste0(code, col, " > ", deparse(filter_value),")\n")
-          } else if (filter_type == "less") {
-            code <- paste0(code, col, " < ", deparse(filter_value),")\n")
-          }  else if (filter_type == "greater or equal") {
-            code <- paste0(code, col, " >= ", deparse(filter_value),")\n")
-          }  else if (filter_type == "less or equal") {
-            code <- paste0(code, col, " <= ", deparse(filter_value),")\n")
-          }  else if(filter_type == "in"){
-            code <- paste0(code, col, " %in%  ", deparse(filter_value),")\n")
-          } else if(filter_type == "not in"){
-            code <- paste0(code, "! (", col, " %in% ", deparse(filter_value),") | is.na(", col, "))\n")
-          }else if(filter_type == "starts with"){
-            code <- paste0(code, "startsWith(", col, ", ", deparse(filter_value),")\n")
-          }else if(filter_type == "ends with"){
-            code <- paste0(code, "endsWith(", col, ", ", deparse(filter_value),")\n")
-          }else if(filter_type == "contains"){
-            code <- paste0(code, "grepl(", deparse(filter_value),", ", col, ", ignore.case = TRUE))\n")
-          }
-        }
-      }
-      if(!is.null(input$group_col) && length(input$group_col) > 0){
-        code <- paste0(code, "  df <- df %>% group_by(",paste(input$group_col, collapse = ", "), ")\n")
-      }
-      if(input$summarize_col != "Nenhum" && input$summarize_func != ""){
-        code <- paste0(code, "   df <- df %>% summarise(", paste0(input$summarize_func, "_", input$summarize_col), " = ", input$summarize_func, "(", input$summarize_col, ", na.rm = TRUE))\n")
-      }
-      code <- paste0(code, "  return(df)\n}")
-      code <- paste0(code, "\n\n df <- filter_data(df)\n\n")
-      if(input$summarize_col != "Nenhum"){
-        code <- paste0(code, "numeric_cols <- sapply(df, is.numeric)\n df <- df %>%
-                         mutate(across(where(is.numeric), ~ scale_number(., scale = \"", input$scale_selector ,"\")))\n")
-      }
-      code <- paste0(code, "\n\ndf")
-      code
-    } else {
-      "Nenhum filtro salvo"
-    }
-  })
-  
-  output$download_filters <- downloadHandler(
+  output$download_data <- downloadHandler(
     filename = function() {
-      paste("filters-", Sys.Date(), ".txt", sep = "")
+      paste0("dados_filtrados_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".xlsx")
     },
     content = function(file) {
-      filters <- filter_settings()
-      df <- uploaded_data()
-      if(length(filters) > 0 && !is.null(df)){
-        code <- "library(dplyr)\n\nfilter_data <- function(df){\n"
-        
-        for(filter_df in filters){
-          attribute_cols <- names(df)[!sapply(df, is.numeric)]
-          for(i in 1:nrow(filter_df)){
-            col <- filter_df$attribute[i]
-            filter_type <- filter_df$type[i]
-            filter_value <- filter_df$value[i]
-            
-            code <- paste0(code, "  df <- df %>% filter(")
-            
-            if (filter_type == "equal") {
-              code <- paste0(code, col, " == ", deparse(filter_value),")\n")
-            } else if(filter_type == "not equal") {
-              code <- paste0(code, col, " != ", deparse(filter_value),")\n")
-            } else if (filter_type == "greater") {
-              code <- paste0(code, col, " > ", deparse(filter_value),")\n")
-            } else if (filter_type == "less") {
-              code <- paste0(code, col, " < ", deparse(filter_value),")\n")
-            }  else if (filter_type == "greater or equal") {
-              code <- paste0(code, col, " >= ", deparse(filter_value),")\n")
-            }  else if (filter_type == "less or equal") {
-              code <- paste0(code, col, " <= ", deparse(filter_value),")\n")
-            }  else if(filter_type == "in"){
-              code <- paste0(code, col, " %in%  ", deparse(filter_value),")\n")
-            } else if(filter_type == "not in"){
-              code <- paste0(code, "! (", col, " %in% ", deparse(filter_value),") | is.na(", col, "))\n")
-            }else if(filter_type == "starts with"){
-              code <- paste0(code, "startsWith(", col, ", ", deparse(filter_value),")\n")
-            }else if(filter_type == "ends with"){
-              code <- paste0(code, "endsWith(", col, ", ", deparse(filter_value),")\n")
-            }else if(filter_type == "contains"){
-              code <- paste0(code, "grepl(", deparse(filter_value),", ", col, ", ignore.case = TRUE))\n")
-            }
-          }
-        }
-        if(!is.null(input$group_col) && length(input$group_col) > 0){
-          code <- paste0(code, "  df <- df %>% group_by(",paste(input$group_col, collapse = ", "), ")\n")
-        }
-        if(input$summarize_col != "Nenhum" && input$summarize_func != ""){
-          code <- paste0(code, "   df <- df %>% summarise(", paste0(input$summarize_func, "_", input$summarize_col), " = ", input$summarize_func, "(", input$summarize_col, ", na.rm = TRUE))\n")
-        }
-        code <- paste0(code, "  return(df)\n}")
-        code <- paste0(code, "\n\n df <- filter_data(df)\n\n")
-        if(input$summarize_col != "Nenhum"){
-          code <- paste0(code, "numeric_cols <- sapply(df, is.numeric)\n df <- df %>%
-                        mutate(across(where(is.numeric), ~ scale_number(., scale = \"", input$scale_selector ,"\")))\n")
-        }
-        write(code, file)
-      }
+      write_xlsx(dados_filtrados(), file)
     }
   )
   
-  output$custom_table <- DT::renderDataTable({
-    df <- summarized_data()
-    req(df)
+  output$codigo_gerado <- renderText({
+    req(dados())
     
-    scale <- input$scale_selector
+    codigo <- "dados %>%\n  clean_names()"
     
-    if(input$summarize_col != "Nenhum"){
-      if(!is.null(input$group_col) && length(input$group_col) > 0){
+    if(length(filtros()) > 0) {
+      filtros_texto <- sapply(seq_along(filtros()), function(i) {
+        filtro_item <- filtros()[[i]]
+        if(i == 1) return(filtro_item$filtro)
         
-        original_data <- filtered_data()
-        if(!is.null(original_data)){
-          
-          group_syms <- syms(input$group_col)
-          
-          sum_data <- original_data %>%
-            group_by(!!!group_syms) %>%
-            summarise(total = sum(!!sym(input$summarize_col), na.rm = TRUE)) %>%
-            mutate(total = scale_number(total, scale = scale))
-          
-        } else{
-          sum_data <- data.frame()
-        }
+        op <- switch(filtro_item$operador,
+                     "and" = " & ",
+                     "or" = " | ",
+                     "and not" = " & !(",
+                     "or not" = " | !(")
         
-        combined_data <- left_join(df, sum_data, by=input$group_col)
-        
-        # Scale the numeric columns
-        numeric_cols <- sapply(combined_data, is.numeric)
-        combined_data <- combined_data %>%
-          mutate(across(where(is.numeric), ~ scale_number(., scale = scale)))
-        
-        
-        table_title <- paste("Dados em", switch(scale,
-                                                unit = "Unidades",
-                                                thousand = "Milhares",
-                                                million = "Milhões",
-                                                billion = "Bilhões"))
-        
-        # Get the name of the summarized column
-        summarized_col <- names(combined_data)
-        summarized_col <- summarized_col[grepl("sum_|mean_|median_|min_|max_", summarized_col)][1]
-        
-        return(DT::datatable(combined_data,
-                             filter = 'top',
-                             extensions = 'Buttons',
-                             options = list(
-                               dom = 'Bfrtip',
-                               buttons = 
-                                 list('copy', 'print', list(
-                                   extend = 'collection',
-                                   buttons = c('csv', 'excel', 'pdf'),
-                                   text = 'Download'
-                                 )),
-                               order = list(list(which(names(combined_data) == summarized_col) -1 , 'desc')),
-                               columnDefs = list(list(className = 'dt-right', targets = which(sapply(combined_data, is.numeric)) - 1))
-                             ),
-                             caption = htmltools::tags$caption(
-                               style = 'caption-side: top; text-align: center;',
-                               table_title
-                             )))
-      } else{
-        original_data <- filtered_data()
-        if(!is.null(original_data)){
-          sum_data <- original_data %>%
-            summarise(total = sum(!!sym(input$summarize_col), na.rm = TRUE)) %>%
-            mutate(total = scale_number(total, scale = scale))
-        }else{
-          sum_data <- data.frame()
-        }
-        combined_data <- cbind(df,sum_data)
-        
-        # Scale the numeric columns
-        numeric_cols <- sapply(combined_data, is.numeric)
-        combined_data <- combined_data %>%
-          mutate(across(where(is.numeric), ~ scale_number(., scale = scale)))
-        
-        table_title <- paste("Dados em", switch(scale,
-                                                unit = "Unidades",
-                                                thousand = "Milhares",
-                                                million = "Milhões",
-                                                billion = "Bilhões"))
-        
-        # Get the name of the summarized column
-        summarized_col <- names(combined_data)
-        summarized_col <- summarized_col[grepl("sum_|mean_|median_|min_|max_", summarized_col)][1]
-        
-        return(DT::datatable(combined_data,
-                             filter = 'top',
-                             extensions = 'Buttons',
-                             options = list(
-                               dom = 'Bfrtip',
-                               buttons = 
-                                 list('copy', 'print', list(
-                                   extend = 'collection',
-                                   buttons = c('csv', 'excel', 'pdf'),
-                                   text = 'Download'
-                                 )),
-                               order = list(list(which(names(combined_data) == summarized_col) -1 , 'desc')),
-                               columnDefs = list(list(className = 'dt-right', targets = which(sapply(combined_data, is.numeric)) - 1))
-                             ),
-                             caption = htmltools::tags$caption(
-                               style = 'caption-side: top; text-align: center;',
-                               table_title
-                             )))
-        
-      }
+        paste0(op, filtro_item$filtro, 
+               if(filtro_item$operador %in% c("and not", "or not")) ")" else "")
+      })
       
-    } else {
-      # Scale the numeric columns
-      numeric_cols <- sapply(df, is.numeric)
-      df <- df %>%
-        mutate(across(where(is.numeric), ~ scale_number(., scale = scale)))
-      
-      table_title <- paste("Dados em", switch(scale,
-                                              unit = "Unidades",
-                                              thousand = "Milhares",
-                                              million = "Milhões",
-                                              billion = "Bilhões"))
-      return(DT::datatable(df,
-                           filter = 'top',
-                           extensions = 'Buttons',
-                           options = list(
-                             dom = 'Bfrtip',
-                             buttons = 
-                               list('copy', 'print', list(
-                                 extend = 'collection',
-                                 buttons = c('csv', 'excel', 'pdf'),
-                                 text = 'Download'
-                               )),
-                             columnDefs = list(list(className = 'dt-right', targets = which(sapply(df, is.numeric)) - 1))
-                           ),
-                           caption = htmltools::tags$caption(
-                             style = 'caption-side: top; text-align: center;',
-                             table_title
-                           )))
+      filtro_completo <- paste(filtros_texto, collapse = "")
+      codigo <- paste0(codigo, " %>%\n  filter(", filtro_completo, ")")
     }
+    
+    if(length(input$vars_group) > 0 && length(input$vars_sum) > 0) {
+      vars_group <- paste(input$vars_group, collapse = ", ")
+      vars_sum <- paste(input$vars_sum, collapse = ", ")
+      
+      codigo <- paste0(codigo, " %>%\n",
+                       "  group_by(", vars_group, ") %>%\n",
+                       "  summarise(across(c(", vars_sum, "), sum, na.rm = TRUE))")
+    }
+    
+    return(codigo)
   })
   
-  output$download_table <- downloadHandler(
-    filename = function() {
-      paste("data-", Sys.Date(), ".csv", sep = "")
-    },
-    content = function(file) {
-      df <- summarized_data()
-      
-      numeric_cols <- sapply(df, is.numeric)
-      df <- df %>%
-        mutate(across(where(is.numeric), ~ scale_number(., scale = input$scale_selector)))
-      write.csv(df, file, row.names = FALSE)
-    }
-  )
+  observeEvent(input$limpar_filtros, {
+    filtros(list())
+  })
   
-  filtered_data <- reactive({
-    df <- uploaded_data()
-    if (is.null(df)) {
-      return(NULL)
+  dados_filtrados <- reactive({
+    req(dados())
+    df <- dados()
+    
+    vars_disponiveis <- names(df)
+    
+    vars_select <- input$variaveis[input$variaveis %in% vars_disponiveis]
+    vars_group <- input$vars_group[input$vars_group %in% vars_disponiveis]
+    vars_sum <- input$vars_sum[input$vars_sum %in% vars_disponiveis]
+    
+    if(length(filtros()) > 0) {
+      filtros_texto <- sapply(seq_along(filtros()), function(i) {
+        filtro_item <- filtros()[[i]]
+        if(i == 1) return(filtro_item$filtro)
+        
+        op <- switch(filtro_item$operador,
+                     "and" = " & ",
+                     "or" = " | ",
+                     "and not" = " & !(",
+                     "or not" = " | !(")
+        
+        paste0(op, filtro_item$filtro, 
+               if(filtro_item$operador %in% c("and not", "or not")) ")" else "")
+      })
+      
+      filtro_completo <- paste(filtros_texto, collapse = "")
+      df <- df %>% filter(eval(parse(text = filtro_completo)))
     }
     
-    attribute_cols <- names(df)[!sapply(df, is.numeric)]
+    if(length(vars_select) > 0) {
+      vars_select <- unique(c(vars_select, vars_group, vars_sum))
+      df <- df %>% select(all_of(vars_select))
+    }
     
-    for(col in attribute_cols){
-      filter_type <- input[[paste0("filter_type_", col)]]
-      filter_value <- input[[paste0("filter_val_", col)]]
+    if(length(vars_group) > 0 && length(vars_sum) > 0) {
+      vars_sum_existentes <- vars_sum[vars_sum %in% names(df)]
       
-      if (!is.null(filter_type) && filter_type != "" && !is.null(filter_value) && length(filter_value) > 0) {
-        
-        filter_value <- tryCatch(as.numeric(filter_value), warning = function(w) filter_value)
-        
-        if (filter_type == "equal") {
-          df <- df %>% filter(!!sym(col) == filter_value)
-        } else if(filter_type == "not equal") {
-          df <- df %>% filter(!!sym(col) != filter_value)
-        } else if (filter_type == "<") {
-          df <- df %>% filter(!!sym(col) < filter_value)
-        } else if (filter_type == ">") {
-          df <- df %>% filter(!!sym(col) > filter_value)
-        }  else if (filter_type == "<=") {
-          df <- df %>% filter(!!sym(col) <= filter_value)
-        }  else if (filter_type == ">=") {
-          df <- df %>% filter(!!sym(col) >= filter_value)
-        }  else if(filter_type == "in"){
-          
-          df <- df %>% filter(!!sym(col) %in% filter_value)
-        } else if(filter_type == "not in"){
-          
-          df <- df %>% filter(! (!!sym(col) %in% filter_value) | is.na(!!sym(col)))
-        }else if(filter_type == "starts with"){
-          df <- df %>% filter(startsWith(!!sym(col), filter_value))
-        }else if(filter_type == "ends with"){
-          df <- df %>% filter(endsWith(!!sym(col), filter_value))
-        }else if(filter_type == "contains"){
-          df <- df %>% filter(grepl(filter_value, !!sym(col), ignore.case = TRUE))
-        }
+      if(length(vars_sum_existentes) > 0) {
+        df <- df %>%
+          group_by(across(all_of(vars_group))) %>%
+          summarise(across(all_of(vars_sum_existentes), sum, na.rm = TRUE))
       }
     }
     
     return(df)
   })
-  summarized_data <- reactive({
-    df <- filtered_data()
-    if (is.null(df) || input$summarize_col == "Nenhum") {
-      return(df)
-    }
-    group_cols <- input$group_col
+  
+  output$filtros_ativos <- renderText({
+    if(length(filtros()) == 0) return("Nenhum filtro aplicado")
     
-    if(is.null(group_cols) || length(group_cols) == 0){
-      if(input$summarize_func == "sum"){
-        df <- df %>% summarise(!!paste0("sum_", input$summarize_col) := sum(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "mean"){
-        df <- df %>% summarise(!!paste0("mean_", input$summarize_col) := mean(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "median"){
-        df <- df %>% summarise(!!paste0("median_", input$summarize_col) := median(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "min"){
-        df <- df %>% summarise(!!paste0("min_", input$summarize_col) := min(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "max"){
-        df <- df %>% summarise(!!paste0("max_", input$summarize_col) := max(!!sym(input$summarize_col), na.rm=TRUE))
-      }
-    }
-    else{
-      group_syms <- syms(group_cols)
-      if(input$summarize_func == "sum"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("sum_", input$summarize_col) := sum(!!sym(input$summarize_col), na.rm=TRUE))
-        
-      } else if (input$summarize_func == "mean"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("mean_", input$summarize_col) := mean(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "median"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("median_", input$summarize_col) := median(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "min"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("min_", input$summarize_col) := min(!!sym(input$summarize_col), na.rm=TRUE))
-      } else if (input$summarize_func == "max"){
-        df <- df %>% group_by(!!!group_syms) %>% summarise(!!paste0("max_", input$summarize_col) := max(!!sym(input$summarize_col), na.rm=TRUE))
-      }
-    }
+    filtros_texto <- sapply(seq_along(filtros()), function(i) {
+      filtro_item <- filtros()[[i]]
+      if(i == 1) return(filtro_item$filtro)
+      paste(filtro_item$operador, filtro_item$filtro)
+    })
     
-    return(df)
+    paste("Filtros:", paste(filtros_texto, collapse = " "))
+  })
+  
+  output$n_linhas <- renderText({
+    req(dados_filtrados())
+    nrow(dados_filtrados())
+  })
+  
+  output$n_colunas <- renderText({
+    req(dados_filtrados())
+    ncol(dados_filtrados())
+  })
+  
+  output$proporcao <- renderText({
+    req(dados(), dados_filtrados())
+    sprintf("%.1f%%", 100 * nrow(dados_filtrados()) / nrow(dados()))
   })
 }
 
