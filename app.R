@@ -7,6 +7,7 @@ library(readxl)
 library(janitor)
 library(writexl)
 library(scales)
+library(tidyr)
 
 `%notin%` <- Negate(`%in%`)
 
@@ -30,7 +31,17 @@ ui <- page_sidebar(
                     choices = NULL, multiple = TRUE),
         
         selectInput("vars_sum", "Somar:", 
-                    choices = NULL, multiple = TRUE)
+                    choices = NULL, multiple = TRUE),
+        
+        checkboxInput("pivot_wider", "Pivotar dados (formato largo)", FALSE),
+        
+        conditionalPanel(
+          condition = "input.pivot_wider == true",
+          selectInput("pivot_cols", "Coluna para pivotar:", 
+                      choices = NULL, multiple = FALSE),
+          selectInput("pivot_values", "Valores para as colunas:", 
+                      choices = NULL, multiple = FALSE)
+        )
       ),
       
       accordion_panel(
@@ -141,6 +152,7 @@ server <- function(input, output, session) {
       updateSelectInput(session, "vars_sum", 
                         choices = colunas_numericas,
                         selected = NULL)
+      updateSelectInput(session, "pivot_values", choices = colunas_numericas)
       
       removeNotification(id = "loading")
       showNotification("Arquivo carregado com sucesso!", type = "success")
@@ -160,6 +172,12 @@ server <- function(input, output, session) {
     updateSelectizeInput(session, "valor_filtro", 
                          choices = valores_unicos,
                          selected = NULL)
+  })
+  
+  observeEvent(input$vars_group, {
+    updateSelectInput(session, "pivot_cols", 
+                      choices = input$vars_group,
+                      selected = NULL)
   })
   
   observeEvent(input$limpar_filtros, {
@@ -243,6 +261,29 @@ server <- function(input, output, session) {
         summarise(across(all_of(input$vars_sum), \(x) sum(x, na.rm = TRUE)))
     }
     
+    if(input$pivot_wider && !is.null(input$pivot_cols) && !is.null(input$pivot_values)) {
+      df <- df %>%
+        pivot_wider(
+          names_from = input$pivot_cols,
+          values_from = input$pivot_values,
+          values_fill = 0
+        )
+    }
+    
+    # Add totals only if we have numeric columns
+    if(any(sapply(df, is.numeric))) {
+      # Add total row
+      df <- df %>%
+        bind_rows(
+          summarise(., across(where(is.numeric), sum, na.rm = TRUE)) %>%
+            mutate(across(where(is.character), ~"Total"))
+        ) %>%
+        # Add total column
+        mutate(
+          Total = rowSums(select(., where(is.numeric)), na.rm = TRUE)
+        )
+    }
+    
     return(df)
   })
   
@@ -296,7 +337,6 @@ server <- function(input, output, session) {
       paste0("codigo_r_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".txt")
     },
     content = function(file) {
-      # Generate the code directly here instead of trying to read from output
       codigo <- "dados %>%\n  clean_names()"
       
       if(length(filtros()) > 0) {
@@ -325,6 +365,15 @@ server <- function(input, output, session) {
         codigo <- paste0(codigo, " %>%\n",
                          "  group_by(", vars_group, ") %>%\n",
                          "  summarise(across(c(", vars_sum, "), \\(x) sum(x, na.rm = TRUE)))")
+        
+        if(input$pivot_wider && !is.null(input$pivot_cols) && !is.null(input$pivot_values)) {
+          codigo <- paste0(codigo, " %>%\n",
+                           "  pivot_wider(\n",
+                           "    names_from = ", input$pivot_cols, ",\n",
+                           "    values_from = ", input$pivot_values, ",\n",
+                           "    values_fill = 0\n",
+                           "  )")
+        }
       }
       
       writeLines(codigo, file)
@@ -363,21 +412,18 @@ server <- function(input, output, session) {
       codigo <- paste0(codigo, " %>%\n",
                        "  group_by(", vars_group, ") %>%\n",
                        "  summarise(across(c(", vars_sum, "), \\(x) sum(x, na.rm = TRUE)))")
+      
+      if(input$pivot_wider && !is.null(input$pivot_cols) && !is.null(input$pivot_values)) {
+        codigo <- paste0(codigo, " %>%\n",
+                         "  pivot_wider(\n",
+                         "    names_from = ", input$pivot_cols, ",\n",
+                         "    values_from = ", input$pivot_values, ",\n",
+                         "    values_fill = 0\n",
+                         "  )")
+      }
     }
     
     return(codigo)
-  })
-  
-  output$filtros_ativos <- renderText({
-    if(length(filtros()) == 0) return("Nenhum filtro aplicado")
-    
-    filtros_texto <- sapply(seq_along(filtros()), function(i) {
-      filtro_item <- filtros()[[i]]
-      if(i == 1) return(filtro_item$filtro)
-      paste(filtro_item$operador, filtro_item$filtro)
-    })
-    
-    paste("Filtros:", paste(filtros_texto, collapse = " "))
   })
   
   output$n_linhas <- renderText({
