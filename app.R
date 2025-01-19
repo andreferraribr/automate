@@ -19,7 +19,7 @@ ui <- page_sidebar(
   title = "Gerador de Subsets",
   sidebar = sidebar(
     title = "Parâmetros do Subset",
-    width = 350,
+    width = 400,
     
     fileInput("arquivo", "Carregar arquivo (CSV ou XLSX):",
               accept = c(".csv", ".xlsx", ".xls")),
@@ -68,12 +68,16 @@ ui <- page_sidebar(
   
   card(
     full_screen = TRUE,
+    min_height = "350px",  # Add minimum height
     card_header(
       class = "d-flex justify-content-between align-items-center",
       "Preview dos Dados",
       downloadButton("download_data", "Baixar dados (XLSX)")
     ),
-    uiOutput("preview_container")
+    card_body(
+      class = "p-0",  # Remove padding to maximize space
+      uiOutput("preview_container")
+    )
   ),
   
   card(
@@ -86,37 +90,46 @@ ui <- page_sidebar(
     verbatimTextOutput("codigo_gerado")
   ),
   
-  layout_columns(
-    col_widths = c(6, 6),
-    card(
-      card_header("Filtros Ativos"),
-      textOutput("filtros_ativos")
-    ),
-    
-    card(
-      card_header("Estatísticas do Subset"),
-      layout_columns(
-        value_box(
-          "Linhas no Subset",
-          textOutput("n_linhas"),
-          showcase = bs_icon("table"),
-          theme = "primary"
-        ),
-        value_box(
-          "Colunas Selecionadas",
-          textOutput("n_colunas"),
-          showcase = bs_icon("columns-gap"),
-          theme = "secondary"
-        ),
-        value_box(
-          "% dos Dados Originais",
-          textOutput("proporcao"),
-          showcase = bs_icon("percent"),
-          theme = "success"
-        )
-      )
+  # layout_columns(
+  #   col_widths = c(12),
+  #   card(
+  #     card_header("Filtros Ativos"),
+  #     textOutput("filtros_ativos")
+  #   )
+  # ),
+  
+  div(
+    class = "d-flex justify-content-end align-items-center mt-2 mb-2",
+    "Desenvolvido com assistência do ",
+    a(
+      href = "https://claude.ai",
+      target = "_blank",
+      class = "text-decoration-none ms-1",
+      tags$i(class = "bi bi-robot"),
+      " Claude AI"
     )
-  )
+  
+  ),
+  
+  # Add credits card here
+  # card(
+  #   class = "mt-3",
+  #   card_header(
+  #     class = "d-flex align-items-center gap-2",
+  #     bs_icon("info-circle"),
+  #     "Créditos"
+  #   ),
+  #   div(
+  #     class = "text-center p-2",
+  #     HTML(paste(
+  #       "App desenvolvido com assistência do Claude AI (Anthropic)",
+  #       "<br>",
+  #       "<a href='https://claude.ai' target='_blank' class='text-decoration-none'>",
+  #       "<i class='bi bi-robot'></i> claude.ai",
+  #       "</a>"
+  #     ))
+  #   )
+  # )
 )
 
 server <- function(input, output, session) {
@@ -152,7 +165,7 @@ server <- function(input, output, session) {
       updateSelectInput(session, "vars_sum", 
                         choices = colunas_numericas,
                         selected = NULL)
-      updateSelectInput(session, "pivot_values", choices = colunas_numericas)
+
       
       removeNotification(id = "loading")
       showNotification("Arquivo carregado com sucesso!", type = "success")
@@ -177,6 +190,12 @@ server <- function(input, output, session) {
   observeEvent(input$vars_group, {
     updateSelectInput(session, "pivot_cols", 
                       choices = input$vars_group,
+                      selected = NULL)
+  })
+  
+  observeEvent(input$vars_sum, {
+    updateSelectInput(session, "pivot_values", 
+                      choices = input$vars_sum,
                       selected = NULL)
   })
   
@@ -232,6 +251,8 @@ server <- function(input, output, session) {
     mostrar_preview(FALSE)
   })
   
+  
+ 
   dados_filtrados <- reactive({
     req(dados())
     df <- dados()
@@ -256,9 +277,12 @@ server <- function(input, output, session) {
     }
     
     if(length(input$vars_group) > 0 && length(input$vars_sum) > 0) {
+      # Convert group_by variables to character before grouping
       df <- df %>%
+        mutate(across(all_of(input$vars_group), as.character)) %>%
         group_by(across(all_of(input$vars_group))) %>%
-        summarise(across(all_of(input$vars_sum), \(x) sum(x, na.rm = TRUE)))
+        summarise(across(all_of(input$vars_sum), \(x) sum(x, na.rm = TRUE))) %>%
+        ungroup()  # Ungroup to avoid issues with further operations
     }
     
     if(input$pivot_wider && !is.null(input$pivot_cols) && !is.null(input$pivot_values)) {
@@ -271,17 +295,23 @@ server <- function(input, output, session) {
     }
     
     # Add totals only if we have numeric columns
-    if(any(sapply(df, is.numeric))) {
+    numeric_cols <- names(df)[sapply(df, is.numeric)]
+    if(length(numeric_cols) > 0) {
       # Add total row
       df <- df %>%
         bind_rows(
-          summarise(., across(where(is.numeric), sum, na.rm = TRUE)) %>%
+          df %>%
+            summarise(across(all_of(numeric_cols), sum, na.rm = TRUE)) %>%
             mutate(across(where(is.character), ~"Total"))
-        ) %>%
-        # Add total column
-        mutate(
-          Total = rowSums(select(., where(is.numeric)), na.rm = TRUE)
         )
+      
+      # Add total column only if we have more than one numeric column
+      if(length(numeric_cols) > 1) {
+        df <- df %>%
+          mutate(
+            Total = rowSums(select(., all_of(numeric_cols)), na.rm = TRUE)
+          )
+      }
     }
     
     return(df)
@@ -289,10 +319,14 @@ server <- function(input, output, session) {
   
   output$preview_container <- renderUI({
     if (mostrar_preview()) {
-      DTOutput("preview_dados")
+      div(
+        style = "height: 100%;",
+        DTOutput("preview_dados")
+      )
     } else {
       div(
         class = "text-center p-4",
+        style = "height: 100%;",
         "Clique em 'Atualizar Preview' para visualizar os dados"
       )
     }
@@ -307,7 +341,9 @@ server <- function(input, output, session) {
     datatable(
       df,
       options = list(
-        pageLength = 5,
+        pageLength = 5,  # Increased from 5 to 10
+        scrollY = "400px",  # Add vertical scrolling
+        scrollCollapse = TRUE,
         language = list(
           decimal = ",",
           thousands = "."
