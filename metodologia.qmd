@@ -40,8 +40,8 @@ options(DT.options = list(pageLength = 10, fontSize = "70%", language = list(url
 ## Atributos utilizados para gerar cada um dos anexos/tabelas do RREO
 
 ```{r}
-atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
-
+atributos_metodologia <- 
+filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "metodologia") 
 atributos_metodologia <- atributos_metodologia %>% unique()
 
 datatable(atributos_metodologia %>% group_by(demonstrativo,atributos) %>%  summarise())

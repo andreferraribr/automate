@@ -1,0 +1,322 @@
+---
+title: "Elaboração das Séries Históricas"
+editor: visual
+lang: "pt"
+format:
+  # docx: default
+  html:
+    code-fold: true
+    code-summary: "mostrar o código"
+    code-overflow: wrap
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+#| warning: false
+#| message: false
+#| error: false
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(tidyverse)
+library(purrr)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(DescTools)
+library(zoo)
+library(stringr)
+library(DT)
+library(stringr)
+library(scales)
+library(ggthemes)
+
+`%notin%` <- Negate(`%in%`)
+myNumFmt <- as.fmt(digits=2, big.mark=".")
+options(scipen = 999)
+
+options(DT.options = 
+          list(
+            pageLength = 30,
+            language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')
+            )
+        )
+# https://rstudio.github.io/DT/004-i18n.html
+# https://rstudio.github.io/DT/options.html
+# %>% formatCurrency(c('A', 'C')) %>% formatPercentage('D', 2)%>% formatRound('E', 3)
+
+
+```
+
+### Importar dados
+
+```{r}
+
+dados_despesa_sh <- read_excel("auto_despesa_sh_dez.xlsx") %>% clean_names()
+
+
+dados_receita_sh <- read_excel("auto_receita_dez.xlsx") %>% clean_names()
+
+```
+
+```         
+```
+
+#### Receita por natureza da receita
+
+```{r receita_por_natureza}
+
+
+datatable(
+  dados_receita_sh%>%head(-1) %>% 
+  clean_names() %>%
+  filter(nre1_categoria_economica_codigo %notin% c(7, 8)) %>%
+  group_by(nre2_origem_receita_codigo_origem, nre2_origem_receita_nome, natureza_receita_codigo_completo, natureza_receita_nome) %>%
+  summarise(across(c(receita_orcamentaria_liquida), \(x) sum(x, na.rm = TRUE))) %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c( "Origem Código", "Origem nome","Natureza código", "Natureza Nome", "Receita líquida"))%>% formatRound("receita_orcamentaria_liquida", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+ 
+```
+
+#### Receita para categora e origem (exceto refinanciamento)
+
+```{r receita}
+
+datatable(
+  dados_receita_sh%>%head(-1) %>% 
+  clean_names() %>%
+  filter(nre1_categoria_economica_codigo %notin% c(7, 8) & natureza_receita_codigo_completo %notin% c(81110201,21110201,21210201)) %>%
+  group_by(nre1_categoria_economica_codigo, nre1_categoria_economica_nome, nre2_origem_receita_codigo_origem, nre2_origem_receita_nome) %>%
+  summarise(across(c(receita_orcamentaria_liquida), \(x) sum(x, na.rm = TRUE))) %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Categoria código", "Categoria Nome", "Origem Código", "Origem nome", "Receita líquida"))%>% formatRound("receita_orcamentaria_liquida", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+
+
+
+
+```
+
+#### Receita para categora e origem (refinanciamento)
+
+```{r receita_refinanciamento }
+
+
+
+datatable(
+  dados_receita_sh%>%head(-1) %>% 
+  clean_names() %>%
+  filter(nre1_categoria_economica_codigo %notin% c(7, 8) & natureza_receita_codigo_completo %in% c(81110201,21110201,21210201)) %>%
+  group_by(nre1_categoria_economica_codigo, nre1_categoria_economica_nome, nre2_origem_receita_codigo_origem, nre2_origem_receita_nome) %>%
+  summarise(across(c(receita_orcamentaria_liquida), \(x) sum(x, na.rm = TRUE))) %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Categoria código", "Categoria Nome", "Origem Código", "Origem nome", "Receita líquida"))%>% formatRound("receita_orcamentaria_liquida", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+
+
+
+
+
+```
+
+#### Receita para categora e origem (completo)
+
+```{r receita_filtro_refinanciamento_rbind}
+receita_refinanciamento <- c(81110201,21110201,21210201)
+receita_intra <- c(7, 8)
+
+
+
+
+
+
+
+datatable(
+ rbind( 
+   
+   dados_receita_sh %>% 
+     head(-1) %>% 
+     clean_names() %>%
+     filter(
+       nre1_categoria_economica_codigo %notin% receita_intra &
+         natureza_receita_codigo_completo %notin% receita_refinanciamento) %>% group_by(
+   nre1_categoria_economica_codigo,
+   nre1_categoria_economica_nome,
+   nre2_origem_receita_codigo_origem,
+   nre2_origem_receita_nome) %>%
+   
+   summarise(
+     across(c(receita_orcamentaria_liquida), \(x) sum(x, na.rm = TRUE))),
+  
+   dados_receita_sh %>% 
+    head(-1) %>% 
+    clean_names() %>%
+    filter(
+      nre1_categoria_economica_codigo %notin% receita_intra &
+        natureza_receita_codigo_completo %in% receita_refinanciamento) %>% group_by(
+   nre1_categoria_economica_codigo,
+   nre1_categoria_economica_nome,
+   nre2_origem_receita_codigo_origem,
+   nre2_origem_receita_nome) %>% 
+     mutate(nre2_origem_receita_nome = "Refinanciamento") %>% 
+   
+   summarise(
+     across(c(receita_orcamentaria_liquida), \(x) sum(x, na.rm = TRUE))) 
+  )
+ %>%
+   adorn_totals("row"),
+ rownames = FALSE,
+  colnames = 
+   c("Categoria código",
+     "Categoria Nome",
+     "Origem Código",
+     "Origem nome",
+     "Receita líquida")
+ ) %>%
+  formatRound (
+    "receita_orcamentaria_liquida",
+    2,
+    mark = ".",
+    dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+
+
+```
+
+```{r}
+datatable(dados_despesa_sh %>%
+ filter( !(elemento_despesa_codigo %in% c('76', '77') ) |!(fonte_recursos_codigo == '443' ) | !(subfuncao_governo_codigo %in% c('841', '842', '843', '844', '845', '846'))) %>%
+  group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+```
+
+```{r}
+datatable(dados_despesa_sh %>%
+ filter(( (grupo_despesa_codigo_grupo == 6 &  elemento_despesa_codigo %in% c('76', '77') ) & (fonte_recursos_codigo == '443' ) & (subfuncao_governo_codigo %in% c('841', '842', '843', '844',  '846')))) %>%
+  group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+```
+
+```{r}
+
+
+
+despesa_exceto_refinanciamento <- dados_despesa_sh  %>% 
+                              filter(!( grupo_despesa_codigo_grupo == 6 & elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  ) )
+
+despesa_refinanciamento <- setdiff(dados_despesa_sh, despesa_exceto_refinanciamento)
+
+sum(despesa_exceto_refinanciamento$despesas_liquidadas, na.rm = TRUE) + sum(despesa_refinanciamento$despesas_liquidadas, na.rm = TRUE)
+
+datatable(setdiff(dados_despesa_sh, dados_despesa_sh %>% 
+                    filter(modalidade_aplicacao_codigo != 91) %>% 
+            filter(grupo_despesa_codigo_grupo == 6 &  elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  )) %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+
+
+datatable(dados_despesa_sh %>% filter(   modalidade_aplicacao_codigo != c(91)) %>% 
+                              filter(!(grupo_despesa_codigo_grupo == 6 & elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  ) )%>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+```
+
+```{r}
+datatable(rbind(despesa_exceto_refinanciamento %>% filter(   modalidade_aplicacao_codigo != c(91)) %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) ),despesa_refinanciamento %>%filter(modalidade_aplicacao_codigo != c(91))  %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% mutate(grupo_despesa_nome = "Refinanciamento") %>% summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) )) %>%
+   adorn_totals("row"),
+ rownames = FALSE,
+  colnames = 
+   c("Grupo código",
+     "Grupo Nome",
+     "Despesas liquidadas")
+ ) %>%
+  formatRound (
+    "despesas_liquidadas",
+    2,
+    mark = ".",
+    dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+```
+
+```{r}
+setdiff(dados_despesa_sh, dados_despesa_sh %>% 
+            filter(grupo_despesa_codigo_grupo == 6 &  elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  )) 
+```
+
+```{r}
+tabela <- function(d, n) {(datatable(d %>%
+   adorn_totals("row"),
+ rownames = FALSE
+ ) %>%
+  formatRound (
+    n,
+    2,
+    mark = ".",
+    dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%'))}
+```
+
+```{r}
+
+anexo_01 <- rbind(
+  despesa_exceto_refinanciamento %>%
+    mutate (
+      tipo_modalidade = ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra")) %>%
+    group_by(tipo_modalidade, grupo_despesa_codigo_grupo,grupo_despesa_nome) %>%
+    summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) ),
+  despesa_refinanciamento %>%
+    mutate(
+      grupo_despesa_nome = "Refinanciamento",
+      tipo_modalidade = ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra")) %>%
+    group_by(tipo_modalidade, grupo_despesa_codigo_grupo,grupo_despesa_nome) %>%
+    summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) ))  
+
+
+tail(despesa_exceto_refinanciamento, 1)
+
+anexo_01 <- anexo_01 %>% filter(!is.na(grupo_despesa_codigo_grupo))
+
+
+
+
+tabela(anexo_01 , "despesas_liquidadas")
+```
+
+```{r}
+anexo_02 <- 
+  despesa_exceto_refinanciamento %>%
+    mutate (
+      tipo_modalidade = ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra")) %>%
+  group_by(
+    tipo_modalidade, funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo, subfuncao_governo_nome) %>%
+    summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE) )
+```
+
+```{r}
+
+
+anexo_02 <- anexo_02 %>% filter(!is.na(funcao_governo_codigo))
+
+tabela(anexo_02 %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>%
+    summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE))  , "despesas_liquidadas")
+```
+
+```{r}
+
+anexo_02 <- anexo_02 %>% filter(!is.na(funcao_governo_codigo))
+
+anexo_02_subfuncao <- anexo_02 %>% mutate(
+  funcao_governo_codigo = ifelse(tipo_modalidade == "intra", "intra", funcao_governo_codigo),
+  funcao_governo_nome = ifelse(tipo_modalidade == "intra", "intra", funcao_governo_nome),
+  subfuncao_governo_codigo = ifelse(tipo_modalidade == "intra", "intra", subfuncao_governo_codigo),
+  subfuncao_governo_nome = ifelse(tipo_modalidade == "intra", "intra", subfuncao_governo_nome)
+  ) %>% 
+  group_by(tipo_modalidade, funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo,subfuncao_governo_nome) %>% 
+  summarise(despesas_liquidadas = sum(despesas_liquidadas, na.rm = TRUE))
+
+
+tabela(anexo_02_subfuncao  , "despesas_liquidadas")
+```

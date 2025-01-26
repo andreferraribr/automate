@@ -89,7 +89,7 @@ eval_texto <- function(x){ eval(parse(text = x))}
 
 filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "r_filtros_linhas") 
 
-filtros_metodologia <- filtros_metodologia %>% filter(anexo_tabela == "anexo_04_rgps" ) %>% mutate (chave = str_c(demonstrativo,"_",anexo_tabela,"_", topico, "_",item_r))
+filtros_metodologia <- filtros_metodologia %>% filter(anexo_tabela == "anexo_04_rgps" ) %>% mutate (chave = str_c(demonstrativo,"___",anexo_tabela,"___", topico, "___",item_r))
 
 filtros_metodologia <- filtros_metodologia %>% mutate (codigo_filtro = str_c(chave, " <-  dados_",topico," %>% ",filtro ," %>%  mutate (chave = ' ", chave,"')"))
 
@@ -108,7 +108,12 @@ dados_receita_filtrados<- map(filtros_receita$codigo_filtro, eval_texto)
 
 df_receita <- map_df(dados_receita_filtrados, as.data.frame)
 
-df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE), receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)) %>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+
+
+separate(df_receita, col = chave, into =c("demontrativo", "anexo", "topico", "item"), sep = "___" )%>% group_by( anexo, item) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE), receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)) %>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
+
+
+
 
 
 
@@ -129,8 +134,10 @@ df_despesa <- map_df(dados_despesa_filtrados, as.data.frame)
 
 df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE))%>% kable(  digits = getOption("digits"), format.args = list(big.mark = ".", decimal.mark = ","))
 
+separate(df_despesa, col = chave, into =c("demontrativo", "anexo", "topico", "item"), sep = "___" )%>% group_by( anexo, item) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000) %>% kable( digits = 2, format.args = list(big.mark = ".", decimal.mark = ","))
 
-datatable(df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
+
+# datatable(df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000))%>% formatRound(c("dotacao_atualizada","despesas_empenhadas_controle_empenho"), 0, mark = ".", dec.mark = "," )
 ```
 
 ```{r}
@@ -232,10 +239,99 @@ addWorksheet(wb, "receitas")
 addWorksheet(wb, "despesas")
 addWorksheet(wb, "conta_contabil")
 addWorksheet(wb, "restos_a_pagar")
+addWorksheet(wb,"dados_anexo_02")
 
 writeData(wb, "receitas",df_receita %>% group_by(chave) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000000) )
 
 writeData(wb, "despesas",df_despesa %>% group_by(chave) %>% summarise(dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE)/1000000, despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000000, despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)/1000000, despesas_pagas_controle_empenho = sum(despesas_pagas_controle_empenho, na.rm = TRUE)/1000000) )
 
-saveWorkbook(wb, file = "dados_salvos.xlsx", overwrite = TRUE)
+
+writeData(wb, "dados_anexo_02",dados_despesa %>% filter(grupo_despesa_codigo_grupo %notin% c(6)| fonte_recursos_codigo != 443 | elemento_despesa_codigo %notin% c(76,77) | subfuncao_governo_codigo %notin% c(841,842,843,844,846) ) %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>% summarise(  dotacao_inicial = sum(dotacao_inicial, na.rm = TRUE), dotacao_atualizada = sum(dotacao_atualizada, na.rm = TRUE), despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE),despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE), despesas_pagas_controle_empenho = sum(despesas_pagas_controle_empenho, na.rm = TRUE)))
+
+saveWorkbook(wb, file = "C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/r_automate/dados_salvos.xlsx", overwrite = TRUE)
+```
+
+![](dados_salvos_planilha.png)
+
+```{r}
+datatable(df_receita %>% group_by(nre1_categoria_economica_codigo,nre1_categoria_economica_nome,nre2_origem_receita_codigo_origem,nre2_origem_receita_nome, nre3_especie_receita_nome) %>%  summarise(previsao_inicial_da_receita = sum(previsao_inicial_da_receita, na.rm = TRUE)/1000,   previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000))
+```
+
+```{r}
+linhas_anexo_02 <-  c("RECEITA CORRENTE (I)","      Impostos, Taxas e Contribuições de Melhoria",      "Receita de Contribuições",      "Receita Patrimonial",      "Receita Agropecuária",      "Receita Industrial",      "Receita de Serviços",      "Transferências Correntes",      "Receitas Correntes a Classificar¹",      "Outras Receitas Correntes,DEDUÇÕES (II)",      "Transf. Constitucionais e Legais",      "Contrib. Emp. e Trab. p/ Seg. Social",      "Contrib. Plano Seg. Social do Servidor",      "       Compensação Financeira RGPS/RPPS",      "Contr. p/ Custeio Pensões Militares",      "Contribuição p/ PIS/PASEP",            "PIS",            "PASEP"  )
+
+linhas_anexo_02 %>% make_clean_names()
+
+
+
+
+```
+
+```{r}
+linhas_anexo_03 <- read_excel("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/r_automate/automate_metodologia.xlsx", 
+    sheet = "Anexo 3 - Estrutura", range = "A1:A100") 
+```
+
+```{r}
+
+colnames(linhas_anexo_03)[1] ="linhas"
+linhas_anexo_03 <-  tail(linhas_anexo_03,-11)
+linhas_anexo_03 <- linhas_anexo_03 %>% filter(!is.na(linhas))
+linhas_anexo_03 <- linhas_anexo_03 %>% mutate(linhas_clean = make_clean_names(linhas))
+
+
+
+linhas_anexo_03
+
+
+```
+
+```{r}
+anexo_03_receita <- dados_receita %>% filter(nre1_categoria_economica_codigo ==1) %>% group_by(nre2_origem_receita_codigo_origem,nre2_origem_receita_nome) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000)
+
+anexo_03_receita <- anexo_03_receita %>% mutate(linhas_clean = make_clean_names(nre2_origem_receita_nome))
+
+linhas_anexo_03 %>% inner_join(anexo_03_receita)
+
+
+
+
+anexo_03_deducoes_transferencia <- dados_despesa %>% filter(
+      # programa_governo_codigo %in% c(0903,2030,2080) &
+      # modalidade_aplicacao_codigo %in% c(30,31,32,35,36,40,41,42,45,46) &
+      acao_governo_codigo %in% c("0044","0045","0046","0050","0051","00H6","006M","00G6","0169","0223","0369","0546","0547","0999","099B","0A53","0C03","0C33","0E25","0E36","00S3","00S7","00S8","00SE","00PX","00RX","00UH") ) %>% summarise(despesas_empenhadas_controle_empenho = sum(despesas_empenhadas_controle_empenho, na.rm = TRUE)/1000)
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+data(diamonds)
+library(fuzzyjoin)
+
+diamonds <- tbl_df(diamonds)
+
+d <- data_frame(regex_name = c("^Idea", "mium", "Good"),
+                type = 1:3)
+
+# When they are inner_joined, only Good<->Good matches
+diamonds %>%
+  inner_join(d, by = c(cut = "regex_name"))
+
+# but we can regex match them
+diamonds %>%
+ regex_inner_join(d, by = c(cut = "regex_name"))
+
+
+
+anexo_03_receita %>% regex_inner_join(linhas_anexo_03, by = c("linhas_clean"))
+```
+
+`{r}data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAaCAYAAADFTB7LAAAAa0lEQVR42u3OywnAIBBAwcXSUoCW5D11xDoNCBGNv0MOecJOBSOi1OZMsJ4dvFxEJ1OQnMxBarIKEpNNkJbsBknJYZCSnAYJyVVQziNig7/nZkFEbhTE5HpBVO4dxOXKIDL3BLG5BJ1T6rsbMfep2CaMN00AAAAASUVORK5CYII=} library(bslib) library(DT) library(dplyr) library(bsicons) dados_receita %>%   clean_names() %>%   filter(esfera_orcamentaria_codigo == '2') %>%   group_by(unidade_orcamentaria_codigo, unidade_orcamentaria_nome) %>%   summarise(across(c(receita_orcamentaria_liquida), sum, na.rm = TRUE))`
+
+```{r}
+dados_despesa %>% 
+  clean_names() %>%
+  filter(esfera_orcamentaria_codigo == '2') %>%
+  group_by(grupo_despesa_codigo_grupo, grupo_despesa_nome, elemento_despesa_codigo, elemento_despesa_nome) %>%
+  summarise(across(c(dotacao_inicial, dotacao_atualizada, despesas_empenhadas_controle_empenho, despesas_liquidadas_controle_empenho, despesas_pagas_controle_empenho), sum, na.rm = TRUE))
 ```
