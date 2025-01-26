@@ -268,12 +268,13 @@ linhas_anexo_02 %>% make_clean_names()
 ```
 
 ```{r}
+#| eval: false
 linhas_anexo_03 <- read_excel("C:/Users/andre.ferrari/OneDrive - Secretaria do Tesouro Nacional/General/3. Projetos/2. Execução/automate/r_automate/automate_metodologia.xlsx", 
     sheet = "Anexo 3 - Estrutura", range = "A1:A100") 
 ```
 
 ```{r}
-
+#| eval: false
 colnames(linhas_anexo_03)[1] ="linhas"
 linhas_anexo_03 <-  tail(linhas_anexo_03,-11)
 linhas_anexo_03 <- linhas_anexo_03 %>% filter(!is.na(linhas))
@@ -287,6 +288,7 @@ linhas_anexo_03
 ```
 
 ```{r}
+#| eval: false
 anexo_03_receita <- dados_receita %>% filter(nre1_categoria_economica_codigo ==1) %>% group_by(nre2_origem_receita_codigo_origem,nre2_origem_receita_nome) %>% summarise(previsao_atualizada_da_receita = sum(previsao_atualizada_da_receita, na.rm = TRUE)/1000, receita_orcamentaria_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)/1000)
 
 anexo_03_receita <- anexo_03_receita %>% mutate(linhas_clean = make_clean_names(nre2_origem_receita_nome))
@@ -303,32 +305,7 @@ anexo_03_deducoes_transferencia <- dados_despesa %>% filter(
 ```
 
 ```{r}
-library(dplyr)
-library(ggplot2)
-data(diamonds)
-library(fuzzyjoin)
-
-diamonds <- tbl_df(diamonds)
-
-d <- data_frame(regex_name = c("^Idea", "mium", "Good"),
-                type = 1:3)
-
-# When they are inner_joined, only Good<->Good matches
-diamonds %>%
-  inner_join(d, by = c(cut = "regex_name"))
-
-# but we can regex match them
-diamonds %>%
- regex_inner_join(d, by = c(cut = "regex_name"))
-
-
-
-anexo_03_receita %>% regex_inner_join(linhas_anexo_03, by = c("linhas_clean"))
-```
-
-`{r}data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAaCAYAAADFTB7LAAAAa0lEQVR42u3OywnAIBBAwcXSUoCW5D11xDoNCBGNv0MOecJOBSOi1OZMsJ4dvFxEJ1OQnMxBarIKEpNNkJbsBknJYZCSnAYJyVVQziNig7/nZkFEbhTE5HpBVO4dxOXKIDL3BLG5BJ1T6rsbMfep2CaMN00AAAAASUVORK5CYII=} library(bslib) library(DT) library(dplyr) library(bsicons) dados_receita %>%   clean_names() %>%   filter(esfera_orcamentaria_codigo == '2') %>%   group_by(unidade_orcamentaria_codigo, unidade_orcamentaria_nome) %>%   summarise(across(c(receita_orcamentaria_liquida), sum, na.rm = TRUE))`
-
-```{r}
+#| eval: false
 dados_despesa %>% 
   clean_names() %>%
   filter(esfera_orcamentaria_codigo == '2') %>%
