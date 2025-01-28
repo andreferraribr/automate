@@ -498,7 +498,19 @@ tabela (tabela_04 %>% filter(linha == "escape") %>%  group_by(fonte_recursos_cod
 ```{r}
 tabela( tabela_04 %>%
   filter(
-           conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621340000, 621390000))%>% 
+           conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621390000))%>% 
   group_by(fonte_recursos_codigo) %>%
   summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
+```
+
+```{r}
+tabela_04_pagamentos <- tabela_04 %>%
+  filter(
+           conta_contabil_numero %in% c (622920104, 631400000, 632200000))%>% 
+  group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf,c_con_tipo_saldo) %>%
+  summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
+
+tabela(tabela_04_pagamentos %>% group_by(linha) %>% summarise(saldo = sum(saldo)), "saldo")
+tabela(tabela_04_pagamentos %>% group_by(conta_contabil_numero, c_con_tipo_saldo) %>% summarise(saldo = sum(saldo)), "saldo")
+tabela (tabela_04 %>% filter(linha == "escape") %>%  group_by(fonte_recursos_codigo) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
 ```
