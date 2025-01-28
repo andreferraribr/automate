@@ -55,7 +55,7 @@ options(DT.options =
 
 ```{r}
 
-dados_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
+dados_despesa <- read_excel("auto_despesa_completa_doe.xlsx") %>% clean_names()
 
 
 dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
@@ -187,16 +187,16 @@ datatable(
 ```{r}
 datatable(dados_despesa %>%
  filter( !(elemento_despesa_codigo %in% c('76', '77') ) |!(fonte_recursos_codigo == '443' ) | !(subfuncao_governo_codigo %in% c('841', '842', '843', '844', '845', '846'))) %>%
-  group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
-  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas_controle_empenho", 2, mark = ".", dec.mark = "," )%>% 
+  group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
 
 ```{r}
 datatable(dados_despesa %>%
  filter(( (grupo_despesa_codigo_grupo == 6 &  elemento_despesa_codigo %in% c('76', '77') ) & (fonte_recursos_codigo == '443' ) & (subfuncao_governo_codigo %in% c('841', '842', '843', '844',  '846')))) %>%
-  group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
-  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas_controle_empenho", 2, mark = ".", dec.mark = "," )%>% 
+  group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
 
@@ -209,23 +209,23 @@ despesa_exceto_refinanciamento <- dados_despesa  %>%
 
 despesa_refinanciamento <- setdiff(dados_despesa, despesa_exceto_refinanciamento)
 
-sum(despesa_exceto_refinanciamento$despesas_liquidadas_controle_empenho, na.rm = TRUE) + sum(despesa_refinanciamento$despesas_liquidadas_controle_empenho, na.rm = TRUE)
+sum(despesa_exceto_refinanciamento$saldo_r_item_informacao, na.rm = TRUE) + sum(despesa_refinanciamento$saldo_r_item_informacao, na.rm = TRUE)
 
 datatable(setdiff(dados_despesa, dados_despesa %>% 
                     filter(modalidade_aplicacao_codigo != 91) %>% 
-            filter(grupo_despesa_codigo_grupo == 6 &  elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  )) %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
-  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas_controle_empenho", 2, mark = ".", dec.mark = "," )%>% 
+            filter(grupo_despesa_codigo_grupo == 6 &  elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  )) %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 
 
 datatable(dados_despesa %>% filter(   modalidade_aplicacao_codigo != c(91)) %>% 
-                              filter(!(grupo_despesa_codigo_grupo == 6 & elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  ) )%>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
-  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("despesas_liquidadas_controle_empenho", 2, mark = ".", dec.mark = "," )%>% 
+                              filter(!(grupo_despesa_codigo_grupo == 6 & elemento_despesa_codigo %in% c(76,77) & subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) & fonte_recursos_codigo == "443"  ) )%>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("Grupo código", "Grupo Nome", "Despesa liquidada"))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
 
 ```{r}
-datatable(rbind(despesa_exceto_refinanciamento %>% filter(   modalidade_aplicacao_codigo != c(91)) %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) ),despesa_refinanciamento %>%filter(modalidade_aplicacao_codigo != c(91))  %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% mutate(grupo_despesa_nome = "Refinanciamento") %>% summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) )) %>%
+datatable(rbind(despesa_exceto_refinanciamento %>% filter(   modalidade_aplicacao_codigo != c(91)) %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) ),despesa_refinanciamento %>%filter(modalidade_aplicacao_codigo != c(91))  %>% group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>% mutate(grupo_despesa_nome = "Refinanciamento") %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) )) %>%
    adorn_totals("row"),
  rownames = FALSE,
   colnames = 
@@ -234,7 +234,7 @@ datatable(rbind(despesa_exceto_refinanciamento %>% filter(   modalidade_aplicaca
      "Despesas liquidadas")
  ) %>%
   formatRound (
-    "despesas_liquidadas_controle_empenho",
+    "saldo_r_item_informacao",
     2,
     mark = ".",
     dec.mark = "," )%>% 
@@ -266,13 +266,13 @@ anexo_01 <- rbind(
     mutate (
       tipo_modalidade = ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra")) %>%
     group_by(tipo_modalidade, grupo_despesa_codigo_grupo,grupo_despesa_nome) %>%
-    summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) ),
+    summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) ),
   despesa_refinanciamento %>%
     mutate(
       grupo_despesa_nome = "Refinanciamento",
       tipo_modalidade = ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra")) %>%
     group_by(tipo_modalidade, grupo_despesa_codigo_grupo,grupo_despesa_nome) %>%
-    summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) ))  
+    summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) ))  
 
 
 tail(despesa_exceto_refinanciamento, 1)
@@ -282,7 +282,7 @@ anexo_01 <- anexo_01 %>% filter(!is.na(grupo_despesa_codigo_grupo))
 
 
 
-tabela(anexo_01 , "despesas_liquidadas_controle_empenho")
+tabela(anexo_01 , "saldo_r_item_informacao")
 ```
 
 ```{r}
@@ -292,7 +292,7 @@ anexo_02 <-
       tipo_modalidade = ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra")) %>%
   group_by(
     tipo_modalidade, funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo, subfuncao_governo_nome) %>%
-    summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) )
+    summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) )
 ```
 
 ```{r}
@@ -301,7 +301,7 @@ anexo_02 <-
 anexo_02 <- anexo_02 %>% filter(!is.na(funcao_governo_codigo))
 
 tabela(anexo_02 %>% group_by(funcao_governo_codigo, funcao_governo_nome) %>%
-    summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE))  , "despesas_liquidadas_controle_empenho")
+    summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE))  , "saldo_r_item_informacao")
 ```
 
 ```{r}
@@ -315,17 +315,17 @@ anexo_02_subfuncao <- anexo_02 %>% mutate(
   subfuncao_governo_nome = ifelse(tipo_modalidade == "intra", "intra", subfuncao_governo_nome)
   ) %>% 
   group_by(tipo_modalidade, funcao_governo_codigo, funcao_governo_nome, subfuncao_governo_codigo,subfuncao_governo_nome) %>% 
-  summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE))
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE))
 
 
-tabela(anexo_02_subfuncao  , "despesas_liquidadas_controle_empenho")
+tabela(anexo_02_subfuncao  , "saldo_r_item_informacao")
 ```
 
 ```{r}
-dados_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
-
-
-dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
+# dados_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
+# 
+# 
+# dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
 ```
 
 ```{r}
@@ -334,11 +334,11 @@ tabela_01_despesas <- rbind(
   despesa_exceto_refinanciamento %>%
     filter(esfera_orcamentaria_codigo == 2) %>% 
     group_by(grupo_despesa_codigo_grupo,grupo_despesa_nome) %>%
-    summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) ),
+    summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) ),
   despesa_refinanciamento %>%
     filter(esfera_orcamentaria_codigo == 2) %>% 
     group_by( grupo_despesa_codigo_grupo,grupo_despesa_nome) %>%
-    summarise(despesas_liquidadas_controle_empenho = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE) ))  
+    summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE) ))  
 
 
 
@@ -348,7 +348,7 @@ tabela_01_despesas <- tabela_01_despesas %>% filter(!is.na(grupo_despesa_codigo_
 
 
 
-tabela(tabela_01_despesas , "despesas_liquidadas_controle_empenho")
+tabela(tabela_01_despesas , "saldo_r_item_informacao")
 
 ```
 
@@ -413,9 +413,92 @@ tabela(dados_receita %>% filter(esfera_orcamentaria_codigo == 2) %>% group_by(nr
 ```
 
 ```{r}
-tabela(dados_despesa %>% filter(resultado_eof_codigo == 6) %>% group_by(orgao_uge_orgao_maximo_codigo, orgao_uge_orgao_maximo_nome) %>% summarise(despesas_liquidadas = sum(despesas_liquidadas_controle_empenho, na.rm = TRUE)), "despesas_liquidadas")
+tabela(dados_despesa %>% filter(resultado_eof_codigo == 6) %>% group_by(orgao_uge_orgao_maximo_codigo, orgao_uge_orgao_maximo_nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE)), "saldo_r_item_informacao")
 ```
 
 ```{r}
-tabela(dados_receita_sh %>% filter(nre1_categoria_economica_codigo == 1) %>% group_by(nre2_origem_receita_codigo_origem, nre2_origem_receita_nome) %>% summarise(receita_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)), "receita_liquida")
+tabela(dados_receita %>% filter(nre1_categoria_economica_codigo == 1) %>% group_by(nre2_origem_receita_codigo_origem, nre2_origem_receita_nome) %>% summarise(receita_liquida = sum(receita_orcamentaria_liquida, na.rm = TRUE)), "receita_liquida")
+```
+
+```{r}
+ tabela(dados_despesa %>% filter(
+  plano_orcamentario_codigo_po %in% c("0001") &
+    fonte_recursos_codigo %notin% c(008,035,133,134,213,242 ) &
+    acao_governo_codigo %in%  c("0E36", "00SB")) %>% group_by(mes_lancamento) %>%
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE)), "saldo_r_item_informacao")
+ 
+```
+
+```{r}
+
+
+tabela_04 <- read_excel("C:/Users/andre.ferrari/Desktop/__tabela_04_item_slim.xlsx") %>% clean_names()
+```
+
+```{r}
+tabela_04 <- tabela_04 %>%
+  mutate( linha =
+    case_when( 
+      fonte_recursos_codigo %in% ("000") ~ "0_nao_vinculados",
+      fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",
+      fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", "035", "040", "048", "049", "094", "122", "123", "126", "155", "156", "179", "184")  ~ "2_seguridade_exceto_previdencia",
+      fonte_recursos_codigo %in% c ("122", "123") & detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "2_seguridade_exceto_previdencia",
+      fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",
+      fonte_recursos_codigo %in% c("054") ~ "4_rgps",
+      fonte_recursos_codigo %in% c("400", "401", "443", "444", "448")  ~ "5_divida",
+      fonte_recursos_codigo %in% c ("034", "121", "122", "123") & detalhe_orgao_central_codigo_detalhe_oc == "000278" ~ "5_divida",
+      fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", "210", "211", "213", "219", "229", "234", "235", "241", "242", "251", "286", "287", "288", "289") ~ "6_transferencias",
+      fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019", "020", "021", "022", "025", "026", "027", "028", "029", "030", "031", "032", "033", "036", "037", "038", "039", "041", "042", "043", "044", "045", "046", "047", "050", "051", "052", "053", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068", "069", "070", "071", "072", "073", "074", "075", "076", "077", "078", "079", "080", "081", "082", "083", "084", "085", "086", "087", "088", "089", "090", "091", "092", "093", "095", "096", "097", "098", "099", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "124", "127", "128", "129", "131", "135", "136", "137", "138", "139", "140", "177", "178", "180", "181", "183", "447", "449")  ~ "7_fundos_orgaos_programa",
+      fonte_recursos_codigo %in% c("034", "121") &  detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "7_fundos_orgaos_programa",
+      fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
+      fonte_recursos_codigo %in% c("490") ~ "9_nao_classificados",
+      TRUE ~ "escape"
+    ))
+```
+
+```{r}
+
+tabela (tabela_04 %>% group_by(linha, fonte_recursos_codigo, detalhe_orgao_central_codigo_detalhe_oc) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
+
+```
+
+```{r}
+tabela (tabela_04 %>% group_by(linha) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
+```
+
+```{r}
+disponibilidade_bruta <- tabela_04 %>% filter(conta_contabil_numero %in% c(111000000, 111110205, 822140101, 894320000, 894310000, 111113001)) %>% group_by( linha, conta_contabil_numero, conta_contabil_nome) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
+
+disponibilidade_bruta_new <- tabela_04 %>%
+  filter(orgao_uge_poder_codigo == 0 &
+         orgao_uge_orgao_maximo_codigo %notin% c(59000,29000) &
+    c_con_classe_1_codigo == 1 &
+      c_con_grupo_2_codigo_grupo == 1 &
+      c_con_subgrupo_3_codigo_subgrupo == 1 &
+      c_con_isf == "F" &!
+      conta_contabil_numero == 111110205)%>% 
+  group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf) %>%
+  summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
+
+tabela(disponibilidade_bruta_new  , "saldo")
+```
+
+```{r}
+tabela_04_receitas <- tabela_04 %>%
+  filter(
+           conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621390000))%>% 
+  group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf,c_con_tipo_saldo) %>%
+  summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
+
+tabela(tabela_04_receitas %>% group_by(linha) %>% summarise(saldo = sum(saldo)), "saldo")
+tabela(tabela_04_receitas %>% group_by(conta_contabil_numero, c_con_tipo_saldo) %>% summarise(saldo = sum(saldo)), "saldo")
+tabela (tabela_04 %>% filter(linha == "escape") %>%  group_by(fonte_recursos_codigo) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
+```
+
+```{r}
+tabela( tabela_04 %>%
+  filter(
+           conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621340000, 621390000))%>% 
+  group_by(fonte_recursos_codigo) %>%
+  summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
 ```
