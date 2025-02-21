@@ -47,6 +47,8 @@ atributos_metodologia <- atributos_metodologia %>% unique()
 datatable(atributos_metodologia %>% group_by(demonstrativo,atributos) %>%  summarise())
 
 
+
+
 ```
 
 ## Atributos mencionados na metodologia do RREO
@@ -74,11 +76,35 @@ datatable(atributos_metodologia %>% group_by( demonstrativo) %>% summarise(quant
 `%notin%` <- Negate(`%in%`)
 filtros_anexo_01_despesa <- read_excel("filtros_anexo_01_despesa.xlsx")
 
-filtros_dados <- as.data.frame(colnames(filtros_anexo_01_despesa %>% clean_names()))
-names(filtros_dados)[1] ="atributo_clean"
-
-datatable(filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean & dimensao == "despesa"  ) )
 
 
+# filtros_dados_despesa <- as.data.frame(colnames(filtros_anexo_01_despesa %>% clean_names()))
+# names(filtros_dados_despesa)[1] ="atributo_clean"
 
+
+filtros_dados_despesa <- as.data.frame(colnames(dados_despesa %>% clean_names()))
+names(filtros_dados_despesa)[1] ="atributo_clean"
+
+filtros_dados_receita <- as.data.frame(colnames(dados_receita %>% clean_names()))
+names(filtros_dados_receita)[1] ="atributo_clean"
+
+filtros_dados_anexo_08 <- as.data.frame(colnames(auto_despesa_anexo_08 <- read_excel("auto_despesa_anexo_08.xlsx") %>% clean_names()))
+names(filtros_dados_anexo_08)[1] ="atributo_clean"
+
+filtros_dados <- rbind(filtros_dados_despesa, filtros_dados_receita)
+
+datatable(filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean & !dimensao %in% c("despesa","despesa_recita" )& demonstrativo == "Tabela_04" ) )
+
+
+
+verificar_filtros <- function(x) {
+  filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean  & demonstrativo == x )
+}
+
+
+df_filtros_ausentes <- map_df(filtros_metodologia$demonstrativo %>% unique(), verificar_filtros)
+
+datatable(df_filtros_ausentes)
+
+(filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados_anexo_08$atributo_clean  & demonstrativo  == "Anexo_08"))
 ```

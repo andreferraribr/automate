@@ -725,3 +725,25 @@ dados_despesa%>%
 
  
 ```
+
+```{r}
+filtros_anexo_12_rp <- read_excel("filtros_anexo_12_rp.xlsx") %>% clean_names()
+
+datatable(datatable(filtros_anexo_12_rp %>% group_by(mes_lancamento) %>% filter(iduso_codigo == 6, fonte_recursos_codigo %notin% c("45", "79"), grupo_despesa_codigo_grupo %notin% c(2,6), programa_governo_codigo %notin% c("0089" , "2019")) %>% summarise(restos_a_pagar_processados_pagos = sum(restos_a_pagar_processados_pagos, na.rm = TRUE)/1000)))
+
+tabela((filtros_anexo_12_rp %>% group_by(ne_c_cor_ano_emissao) %>% filter( fonte_recursos_codigo %notin% c("45", "79"), programa_governo_codigo %notin% c("0089" , "2019")) %>% summarise(valor = sum(restos_a_pagar_inscritos_proc_e_n_proc, na.rm = TRUE))),"valor" )
+
+
+tabela(dados_despesa %>% filter(modalidade_aplicacao_codigo %in% c(45,46,95,96,35,36)) %>% group_by(mes))
+```
+
+```{r}
+filtros_anexo_07_rp <- read_excel("filtros_anexo_07_rp.xlsx") %>% clean_names()
+
+filtros_anexo_07_rp <- filtros_anexo_07_rp %>%  
+    mutate (
+      tipo_modalidade = ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra"))
+
+
+tabela(filtros_anexo_07_rp %>% group_by( orgao_uge_orgao_maximo_codigo, orgao_uge_orgao_maximo_nome) %>% filter(tipo_modalidade == "intra") %>% summarise(rpnp_pagos = sum(rpnp_pagos, na.rm = TRUE)/1000), "rpnp_pagos")
+```
