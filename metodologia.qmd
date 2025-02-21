@@ -68,3 +68,17 @@ datatable(atributos_metodologia %>% group_by( demonstrativo) %>% summarise(quant
 ![](filtro_metodologia.png)
 
 ![](filtros_r.png){width="600"}
+
+```{r}
+
+`%notin%` <- Negate(`%in%`)
+filtros_anexo_01_despesa <- read_excel("filtros_anexo_01_despesa.xlsx")
+
+filtros_dados <- as.data.frame(colnames(filtros_anexo_01_despesa %>% clean_names()))
+names(filtros_dados)[1] ="atributo_clean"
+
+datatable(filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean & dimensao == "despesa"  ) )
+
+
+
+```
