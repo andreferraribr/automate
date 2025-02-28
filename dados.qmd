@@ -43,35 +43,11 @@ myNumFmt <- as.fmt(digits=2, big.mark=".")
 options(scipen = 999)
 ```
 
-```{r}
-
-
-extrair_dados <- function(x){
-  read_excel(x) %>% clean_names()
-}
-
-
-
-
-dados_despesa <- read_excel("auto_despesa.xlsx") %>% clean_names()
-
-
-dados_receita <- read_excel("auto_receita.xlsx") %>% clean_names()
-
-
-dados_conta_contabil <- read_excel("auto_conta_contabil.xlsx") %>% clean_names()
-
-
-dados_restos_a_pagar <- read_excel("auto_restos_a_pagar.xlsx") %>% clean_names()
-
-
-
-
-```
+{{< include importar_arquivos.qmd >}}
 
 ## Despesa do exercício: atributos
 
-```{r}
+```{r despesa_atributos}
 
 
 funcao_atributos_dados <- function(x){
@@ -85,7 +61,7 @@ datatable(funcao_atributos_dados(dados_despesa))
 
 ## Receita do exercício: atributos
 
-```{r}
+```{r receita_atributos}
 
 
 
@@ -94,20 +70,20 @@ datatable(funcao_atributos_dados(dados_receita))
 
 ## Restos a pagar: atributos
 
-```{r}
+```{r rp_atributos}
 
-datatable(funcao_atributos_dados(dados_restos_a_pagar))
+# datatable(funcao_atributos_dados(dados_restos_a_pagar))
 ```
 
 ## Conta contábil: atributos
 
-```{r}
-datatable(funcao_atributos_dados(dados_conta_contabil))
+```{r conta_contabil_atributos}
+# datatable(funcao_atributos_dados(dados_conta_contabil))
 ```
 
 ## Atributos ausentes (estão na metodologia, mas não estão nas bases de dados)
 
-```{r}
+```{r atributos_ausentes}
 atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
 
 atributos_metodologia <- atributos_metodologia %>% unique()
@@ -117,21 +93,48 @@ atributos_dados <- (map_df(mget(ls(pattern = "dados_") ) ,funcao_atributos_dados
 colnames(atributos_dados )[1] ="atributo_clean"
 
 
-
-
-
 ausentes <- setdiff(atributos_metodologia$atributo_clean,c(intersect(atributos_dados$atributo_clean, colnames(dados_despesa)),
-intersect(atributos_dados$atributo_clean, colnames(dados_receita)),
-intersect(atributos_dados$atributo_clean, colnames(dados_restos_a_pagar)),
-intersect(atributos_dados$atributo_clean, colnames(dados_conta_contabil)))
-)
+intersect(atributos_dados$atributo_clean, colnames(dados_receita))))
+
+
+# ausentes <- setdiff(atributos_metodologia$atributo_clean,c(intersect(atributos_dados$atributo_clean, colnames(dados_despesa)),
+# intersect(atributos_dados$atributo_clean, colnames(dados_receita)),
+# intersect(atributos_dados$atributo_clean, colnames(dados_restos_a_pagar)),
+# intersect(atributos_dados$atributo_clean, colnames(dados_conta_contabil)))
+# )
 
 
 datatable(atributos_metodologia %>% filter(atributo_clean %in% ausentes) %>% group_by(demonstrativo, atributos) %>% summarise())
 ```
 
-![](ausente_anexo_06_ndd.png)
+```{r}
+`%notin%` <- Negate(`%in%`)
 
-![](ausente_anexo_08_po_VAAF_VAAT.png)
 
-![](ausente_anexo_12_ano_ne_restos_a_pagar.png)
+
+filtros_dados_despesa <- as.data.frame(colnames(dados_despesa %>% clean_names()))
+names(filtros_dados_despesa)[1] ="atributo_clean"
+
+filtros_dados_receita <- as.data.frame(colnames(dados_receita %>% clean_names()))
+names(filtros_dados_receita)[1] ="atributo_clean"
+
+
+filtros_dados <- rbind(filtros_dados_despesa, filtros_dados_receita)
+
+datatable(filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean & !dimensao %in% c("despesa","despesa_recita" )& demonstrativo == "Tabela_04" ) )
+
+
+
+verificar_filtros <- function(x) {
+  filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean  & demonstrativo == x )
+}
+
+
+df_filtros_ausentes <- map_df(filtros_metodologia$demonstrativo %>% unique(), verificar_filtros)
+
+datatable(df_filtros_ausentes)
+
+
+```
+
+![](images/ausente_anexo_06_ndd.png)

@@ -312,3 +312,7 @@ dados_despesa %>%
   group_by(grupo_despesa_codigo_grupo, grupo_despesa_nome, elemento_despesa_codigo, elemento_despesa_nome) %>%
   summarise(across(c(dotacao_inicial, dotacao_atualizada, despesas_empenhadas_controle_empenho, despesas_liquidadas_controle_empenho, despesas_pagas_controle_empenho), sum, na.rm = TRUE))
 ```
+
+```{r}
+
+```

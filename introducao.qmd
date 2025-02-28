@@ -43,18 +43,18 @@ Replicabilidade
 
 ## Visão geral
 
-![](/visao_geral.png)
+![](images/visao_geral.png)
 
 ### Modelos
 
-![](/modelo_anexo_02.png)
+![](images/modelo_anexo_02.png)
 
 ### Metodologia
 
-![](/metodologia_tabela_03.png)
+![](images/metodologia_tabela_03.png)
 
-![](/metodologia_tabela_02.png)
+![](images/metodologia_tabela_02.png)
 
 ### Dados
 
-![](/dados_tg.png)
+![](images/dados_tg.png)
