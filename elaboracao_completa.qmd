@@ -481,32 +481,7 @@ tabela_04 <- tabela_04 %>%
     ))
 ```
 
-```{r}
-
-tabela (tabela_04 %>% group_by(linha, fonte_recursos_codigo, detalhe_orgao_central_codigo_detalhe_oc) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
-
-```
-
-```{r}
-tabela (tabela_04 %>% group_by(linha) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
-```
-
-```{r}
-disponibilidade_bruta <- tabela_04 %>% filter(conta_contabil_numero %in% c(111000000, 111110205, 822140101, 894320000, 894310000, 111113001)) %>% group_by( linha, conta_contabil_numero, conta_contabil_nome) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
-
-disponibilidade_bruta_new <- tabela_04 %>%
-  filter(orgao_uge_poder_codigo == 0 &
-         orgao_uge_orgao_maximo_codigo %notin% c(59000,29000) &
-    c_con_classe_1_codigo == 1 &
-      c_con_grupo_2_codigo_grupo == 1 &
-      c_con_subgrupo_3_codigo_subgrupo == 1 &
-      c_con_isf == "F" &!
-      conta_contabil_numero == 111110205)%>% 
-  group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf) %>%
-  summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
-
-tabela(disponibilidade_bruta_new  , "saldo")
-```
+#### Receitas (b) União
 
 ```{r}
 tabela_04_receitas <- tabela_04 %>%
@@ -515,24 +490,24 @@ tabela_04_receitas <- tabela_04 %>%
   group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf,c_con_tipo_saldo) %>%
   summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
 
-tabela_04_receitas_executivo <- tabela_04 %>%
-    filter(orgao_uge_poder_codigo == 0 & orgao_uge_orgao_maximo_codigo %notin% c(59000, 29000) &
-        conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621390000))%>% 
-    group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf,c_con_tipo_saldo) %>%
-    summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
+
 
 tabela(tabela_04_receitas_executivo %>% group_by(linha) %>% summarise(saldo = sum(saldo)), "saldo")
 tabela(tabela_04_receitas %>% group_by(conta_contabil_numero, c_con_tipo_saldo) %>% summarise(saldo = sum(saldo)), "saldo")
 tabela (tabela_04 %>% filter(linha == "escape") %>%  group_by(fonte_recursos_codigo) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
 ```
 
+#### Receitas (b) Executivo
+
 ```{r}
-tabela( tabela_04 %>%
-  filter(
-           conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621390000))%>% 
-  group_by(fonte_recursos_codigo) %>%
-  summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)), "saldo")
+tabela_04_receitas_executivo <- tabela_04 %>%
+    filter(orgao_uge_poder_codigo == 0 & orgao_uge_orgao_maximo_codigo %notin% c(59000, 29000) &
+        conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621390000))%>% 
+    group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf,c_con_tipo_saldo) %>%
+    summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
 ```
+
+#### Despesas (c) 
 
 ```{r}
 tabela_04_pagamentos <- tabela_04 %>%
@@ -557,16 +532,6 @@ tabela(tabela_04_rp_exercicios_anteriores %>% group_by(linha) %>% summarise(sald
 ```
 
 ```{r}
-tabela_04_deducao_limite <- tabela_04 %>%
-  filter(
-           conta_contabil_numero %in% c (218924001, 218924002))%>% 
-  group_by(linha, conta_contabil_numero, conta_contabil_nome, c_con_isf,c_con_tipo_saldo) %>%
-  summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
-
-tabela(tabela_04_deducao_limite %>% group_by(linha) %>% summarise(saldo = sum(saldo)), "saldo")
-```
-
-```{r}
 
 tabela_04_rpnp_exec_anteriores <- tabela_04 %>%
   filter(
@@ -577,6 +542,8 @@ tabela_04_rpnp_exec_anteriores <- tabela_04 %>%
 tabela(tabela_04_rpnp_exec_anteriores %>% group_by(linha) %>% summarise(saldo = sum(saldo)), "saldo")
 
 ```
+
+#### e.4. Dedução das Demais Obrigações (2189X4001)
 
 ```{r}
 tabela_04_2189x4001 <- tabela_04 %>%
@@ -632,6 +599,8 @@ rp_emp_nao_liq_exe_pos <- c(531710100, 531720100)
 emp_nao_liq_canc_pos <- c(631910000)
 ```
 
+#### RPP  de Exercícios Anteriores (f)
+
 ```{r}
 tabela_04_2189x4001 <- tabela_04 %>%
   filter(orgao_uge_poder_codigo == "0" &
@@ -643,6 +612,8 @@ tabela_04_2189x4001 <- tabela_04 %>%
 tabela(tabela_04_2189x4001 %>% group_by(linha) %>% summarise(saldo = sum(saldo)), "saldo")
 ```
 
+#### RPNP do Exercício
+
 ```{r}
 tabela_04_2189x4001 <- tabela_04 %>%
   filter(orgao_uge_poder_codigo == "0" &
@@ -652,18 +623,6 @@ tabela_04_2189x4001 <- tabela_04 %>%
   summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
 
 tabela(tabela_04_2189x4001 %>% group_by(linha) %>% summarise(saldo = sum(saldo)), "saldo")
-```
-
-```{r}
-dados_despesa%>%
-    clean_names() %>%
-    filter(subfuncao_governo_codigo %notin% c('841', '842', '843', '844', '846') & elemento_despesa_codigo %notin% c('76', '77') & grupo_despesa_codigo_grupo != 6 & fonte_recursos_codigo != '443') %>%
-    group_by(mes_lancamento) %>%
-    summarise(across(c(despesas_empenhadas), \(x) sum(x, na.rm = TRUE))) %>% kable()
-
-
-
- 
 ```
 
 ### Anexo 12
