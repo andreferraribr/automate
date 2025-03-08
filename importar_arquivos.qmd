@@ -30,90 +30,63 @@ library(DT)
 library(stringr)
 library(scales)
 
+# https://stackoverflow.com/questions/56997814/how-to-use-vector-of-column-names-as-input-into-dplyrgroup-by
 
+# funcao para pivotar a tabela a partir dos itens de informacao
+
+tabela_pivotada <- function(df, grupo){
+  itens <- df$item_informacao %>% unique() %>% na.omit()
+  
+  df <- df  %>% group_by(!!!syms(grupo))  %>% pivot_wider(names_from = item_informacao, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
+  
+  return(df)
+  
+}
+
+
+# funcao para formatar a tabela
+
+dt_formatada <- function(df, grupo){
+  datatable(df%>% adorn_totals("row"), rownames = FALSE,
+            extensions = 'Buttons',
+            options = list(
+            dom = 'Bfrtip',
+            buttons = list(
+              'excel'
+            )
+          ))%>% formatRound(setdiff( df %>% colnames(), grupo), 2, mark = ".", dec.mark = "," )%>% 
+    DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+} 
+
+
+
+
+# opcoes globais
+
+`%notin%` <- Negate(`%in%`)
+
+myNumFmt <- as.fmt(digits=2, big.mark=".")
+
+options(scipen = 999)
+
+options(DT.options = 
+          list(
+            pageLength = 10,
+            language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')
+            )
+        )
+# https://rstudio.github.io/DT/004-i18n.html
+# https://rstudio.github.io/DT/options.html
+
+
+# selecionar e ler todos os arquivos com dados da despesa
 
 arq_despesa <- list.files( pattern='despesa_parte')
 
 
 dados_despesa <- map_df(arq_despesa,read_excel) %>% clean_names()
 
-tabela <- function(d, n) {(datatable(d %>%
-   adorn_totals("row"),
- rownames = FALSE
- ) %>%
-  formatRound (
-    n,
-    2,
-    mark = ".",
-    dec.mark = "," )%>% 
-  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%'))}
-
-# https://stackoverflow.com/questions/56997814/how-to-use-vector-of-column-names-as-input-into-dplyrgroup-by
-
-# https://forum.posit.co/t/how-can-i-use-dplyr-group-by-in-a-function/45681
-
-# https://dplyr.tidyverse.org/articles/programming.html
-
-tabela_pivotada <- function(df, grupo,mes){
-  itens <- df$item_informacao %>% unique() %>% na.omit()
-  
-  df <- df %>% filter(mes_lancamento == mes) %>% group_by(!!!syms(grupo))  %>% pivot_wider(names_from = item_informacao, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
-  
-  return(df)
-  
-}
-
-
-dt_formatada <- function(df, grupo){
-  datatable(df%>% adorn_totals("row"), rownames = FALSE)%>% formatRound(setdiff( df %>% colnames(), grupo), 2, mark = ".", dec.mark = "," )%>% 
-    DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
-} 
-
-
-dt_formatada( tabela_pivotada(dados_despesa %>% filter(refinanciamento == "sim"), teste_grupo, "DEZ/2024"), teste_grupo)
-
-tabela_pivotada_01 <- function(df, grupo,mes){
-  itens <- df$item_informacao %>% unique() %>% na.omit()
-  
-  df <- df %>% filter(mes_lancamento == mes) %>% group_by({grupo})  %>% pivot_wider(names_from = item_informacao, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
-  
-  return(df)
-  
-}
-
-
-
-
-`%notin%` <- Negate(`%in%`)
-myNumFmt <- as.fmt(digits=2, big.mark=".")
-options(scipen = 999)
-
-options(DT.options = 
-          list(
-            pageLength = 30,
-            language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')
-            )
-        )
-# https://rstudio.github.io/DT/004-i18n.html
-# https://rstudio.github.io/DT/options.html
-# %>% formatCurrency(c('A', 'C')) %>% formatPercentage('D', 2)%>% formatRound('E', 3)
-
-# dados_2024_despesa_parte_01 <- read_excel("dados_2024_despesa_parte_01.xlsx")
-# 
-# dados_2024_despesa_parte_02 <- read_excel("dados_2024_despesa_parte_02.xlsx")
-# 
-# dados_2024_despesa_parte_03 <- read_excel("dados_2024_despesa_parte_03.xlsx")
-# 
-# dados_2024_despesa_parte_04 <- read_excel("dados_2024_despesa_parte_04.xlsx")
-# 
-# dados_despesa <- full_join(dados_2024_despesa_parte_01, dados_2024_despesa_parte_02) 
-# 
-# dados_despesa <- full_join (dados_despesa,dados_2024_despesa_parte_03 )
-# 
-# dados_despesa <- full_join (dados_despesa,dados_2024_despesa_parte_04 ) %>% clean_names()
-# 
-# dados_despesa <- dados_despesa %>% relocate(dotacao_inicial, .before = dotacao_atualizada )
-
+# criar as variaveis tipo de modalidade, refinanciamento e poder
 dados_despesa <- dados_despesa %>%  
     mutate (
       tipo_modalidade =
@@ -137,10 +110,12 @@ dados_despesa <- dados_despesa %>%
         
       )
 
-
-itens_despesa <- dados_despesa$item_informacao %>% unique() %>% na.omit()
+# importar dados da receita
 
 dados_receita <- read_excel("dados_2024_receita.xlsx") %>% clean_names()
+
+
+# criar as variaveis tipo de modalidade e refinanciamento
 
 dados_receita <- dados_receita %>% 
   mutate(tipo_modalidade =
@@ -150,34 +125,35 @@ dados_receita <- dados_receita %>%
     
   )
 
-itens_receita <- dados_receita$item_informacao %>% unique() %>% na.omit()
+# importar dados do anexo 7 e criar as variáveis tipo_modalidade e poder
 
-filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "metodologia") 
+dados_rp_anexo_07 <- read_excel("dados_2024_rp_anexo_07.xlsx") %>% clean_names()
 
+
+dados_rp_anexo_07 <- dados_rp_anexo_07 %>%  
+    mutate (
+      tipo_modalidade =
+        ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra"),
+      poder = case_when(
+        orgao_uge_orgao_maximo_codigo %in% c(59000)  ~ "MINISTÉRIO PÚBLICO DA UNIÃO",
+        orgao_uge_orgao_maximo_codigo %in% c(29000) ~ "DEFENSORIA PÚBLICA",
+        TRUE ~ orgao_uge_poder_nome
+      )
+        
+      )
+
+
+# importar os dados de RP do anexo 12
+
+dados_rp_anexo_12 <- read_excel("dados_2024_rp_anexo_12.xlsx") %>% clean_names()
+
+# importar as contas contabeis para a tabela 04
 
 dados_tabela_04 <- read_excel("dados_2024_conta_contabil_tabela_04.xlsx") %>% clean_names()
 
-dados_anexo_12_rp <- read_excel("dados_2024_rp_anexo_12.xlsx") %>% clean_names()
+# importar as tabelas referentes a metodologia
 
-itens_anexo_12_rp <- dados_anexo_12_rp$item_informacao %>% unique() %>% na.omit()
+filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "metodologia") 
 
 atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
-
-
-dados_rp_anexo_07 <- read_excel("dados_2024_rp_anexo_07.xlsx") %>% clean_names()
-itens_rp_anexo_07 <- dados_rp_anexo_07$item_informacao %>% unique() %>% na.omit()
-```
-
-```{r}
-
-```
-
-```{r}
-
-
-# tipo_modalidade
-# refinanciamento
-# poder
-
-
 ```

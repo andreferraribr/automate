@@ -13,47 +13,25 @@ execute:
   message: false
 ---
 
-Dados
-
-```{r}
-#| warning: false
-#| message: false
-#| error: false
-library(readxl)
-library(tidyverse)
-library(janitor)
-library(lubridate)
-library(tidyverse)
-library(purrr)
-library(plotly)
-library(knitr)
-library(kableExtra)
-library(DescTools)
-library(zoo)
-library(stringr)
-library(DT)
-library(stringr)
-library(scales)
-library(ggthemes)
-
-
-options(DT.options = list(pageLength = 10, fontSize = "70%", language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')))
-`%notin%` <- Negate(`%in%`)
-myNumFmt <- as.fmt(digits=2, big.mark=".")
-options(scipen = 999)
-```
-
 {{< include importar_arquivos.qmd >}}
+
+\
+
+## Função atritudos da base de dados
+
+```{r funcao_atributos_dados}
+funcao_atributos_dados <- function(x){
+x <- head(x,-1) %>% select(-ends_with("nome"))  
+pivot_longer( map_df( map(x,unique), length), cols = everything())
+}
+```
 
 ## Despesa do exercício: atributos
 
 ```{r despesa_atributos}
 
 
-funcao_atributos_dados <- function(x){
-x <- head(x,-1) %>% select(-ends_with("nome"))  
-pivot_longer( map_df( map(x,unique), length), cols = everything())
-}
+
 
 
 datatable(funcao_atributos_dados(dados_despesa))
@@ -68,17 +46,25 @@ datatable(funcao_atributos_dados(dados_despesa))
 datatable(funcao_atributos_dados(dados_receita))
 ```
 
-## Restos a pagar: atributos
+## Restos a pagar: anexo 07
 
-```{r rp_atributos}
+```{r rp_anexo_07_atributos}
 
-# datatable(funcao_atributos_dados(dados_restos_a_pagar))
+datatable(funcao_atributos_dados(dados_rp_anexo_07))
 ```
 
-## Conta contábil: atributos
+## Restos a pagar: anexo 12
 
-```{r conta_contabil_atributos}
-# datatable(funcao_atributos_dados(dados_conta_contabil))
+```{r rp_anexo_12_atributos}
+
+
+datatable(funcao_atributos_dados(dados_rp_anexo_12))
+```
+
+## Conta contábil: tabela_04
+
+```{r conta_contabil_tabela_04}
+datatable(funcao_atributos_dados(dados_tabela_04))
 ```
 
 ## Atributos ausentes (estão na metodologia, mas não estão nas bases de dados)
@@ -97,11 +83,6 @@ ausentes <- setdiff(atributos_metodologia$atributo_clean,c(intersect(atributos_d
 intersect(atributos_dados$atributo_clean, colnames(dados_receita))))
 
 
-# ausentes <- setdiff(atributos_metodologia$atributo_clean,c(intersect(atributos_dados$atributo_clean, colnames(dados_despesa)),
-# intersect(atributos_dados$atributo_clean, colnames(dados_receita)),
-# intersect(atributos_dados$atributo_clean, colnames(dados_restos_a_pagar)),
-# intersect(atributos_dados$atributo_clean, colnames(dados_conta_contabil)))
-# )
 
 
 datatable(atributos_metodologia %>% filter(atributo_clean %in% ausentes) %>% group_by(demonstrativo, atributos) %>% summarise())
@@ -112,21 +93,21 @@ datatable(atributos_metodologia %>% filter(atributo_clean %in% ausentes) %>% gro
 
 
 
-filtros_dados_despesa <- as.data.frame(colnames(dados_despesa %>% clean_names()))
-names(filtros_dados_despesa)[1] ="atributo_clean"
+filtros_despesa <- as.data.frame(colnames(dados_despesa %>% clean_names()))
+names(filtros_despesa)[1] ="atributo_clean"
 
-filtros_dados_receita <- as.data.frame(colnames(dados_receita %>% clean_names()))
-names(filtros_dados_receita)[1] ="atributo_clean"
+filtros_receita <- as.data.frame(colnames(dados_receita %>% clean_names()))
+names(filtros_receita)[1] ="atributo_clean"
 
 
-filtros_dados <- rbind(filtros_dados_despesa, filtros_dados_receita)
+filtros_todos <- rbind(filtros_despesa, filtros_receita)
 
-datatable(filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean & !dimensao %in% c("despesa","despesa_recita" )& demonstrativo == "Tabela_04" ) )
+datatable(filtros_metodologia %>% filter(atributo_clean %notin% filtros_todos$atributo_clean & !dimensao %in% c("despesa","despesa_recita" )& demonstrativo == "Tabela_04" ) )
 
 
 
 verificar_filtros <- function(x) {
-  filtros_metodologia %>% filter(atributo_clean %notin% filtros_dados$atributo_clean  & demonstrativo == x )
+  filtros_metodologia %>% filter(atributo_clean %notin% filtros_todos$atributo_clean  & demonstrativo == x )
 }
 
 
