@@ -1,5 +1,5 @@
 ---
-title: "Introdução"
+title: "Projeto"
 editor: visual
 lang: "pt"
 format:
@@ -12,6 +12,25 @@ execute:
   warning: false
   message: false
 ---
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(plotly)
+library(knitr)
+library(kableExtra)
+library(DescTools)
+library(zoo)
+library(stringr)
+library(DT)
+library(scales)
+library(ggthemes)
+
+```
+
+# Introdução
 
 ## Objetivo Geral
 
@@ -58,3 +77,397 @@ Replicabilidade
 ### Dados
 
 ![](images/dados_tg.png)
+
+# Importar dados e funções
+
+```{r}
+# https://stackoverflow.com/questions/56997814/how-to-use-vector-of-column-names-as-input-into-dplyrgroup-by
+
+# funcao para pivotar a tabela a partir dos itens de informacao
+
+tabela_pivotada <- function(df, grupo){
+  itens <- df$item_informacao %>% unique() %>% na.omit()
+  
+  df <- df  %>% group_by(!!!syms(grupo))  %>% pivot_wider(names_from = item_informacao, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
+  
+  return(df)
+  
+}
+
+
+# funcao para formatar a tabela
+
+dt_formatada <- function(df, grupo){
+  datatable(df%>% adorn_totals("row"), rownames = FALSE,
+            extensions = 'Buttons',
+            options = list(
+            dom = 'Bfrtip',
+            buttons = list(
+              'excel'
+            )
+          ))%>% formatRound(setdiff( df %>% colnames(), grupo), 2, mark = ".", dec.mark = "," )%>% 
+    DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+} 
+
+
+
+
+# opcoes globais
+
+`%notin%` <- Negate(`%in%`)
+
+myNumFmt <- as.fmt(digits=2, big.mark=".")
+
+options(scipen = 999)
+
+options(DT.options = 
+          list(
+            pageLength = 10,
+            language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')
+            )
+        )
+# https://rstudio.github.io/DT/004-i18n.html
+# https://rstudio.github.io/DT/options.html
+
+
+# selecionar e ler todos os arquivos com dados da despesa
+
+arq_despesa <- list.files( pattern='despesa_parte')
+
+
+dados_despesa <- map_df(arq_despesa,read_excel) %>% clean_names()
+
+# criar as variaveis tipo de modalidade, refinanciamento e poder
+dados_despesa <- dados_despesa %>%  
+    mutate (
+      tipo_modalidade =
+        ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra"),
+      refinanciamento =
+        case_when(
+        grupo_despesa_codigo_grupo == 6 &
+          elemento_despesa_codigo %in% c(76,77) &
+          subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) &
+          fonte_recursos_codigo == "443"  ~ "sim",
+        !(grupo_despesa_codigo_grupo == 6 &
+          elemento_despesa_codigo %in% c(76,77) &
+          subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) &
+          fonte_recursos_codigo == "443" )  ~ "nao",
+        TRUE ~ "escape"),
+      poder = case_when(
+        orgao_uge_orgao_maximo_codigo %in% c(59000)  ~ "MINISTÉRIO PÚBLICO DA UNIÃO",
+        orgao_uge_orgao_maximo_codigo %in% c(29000) ~ "DEFENSORIA PÚBLICA",
+        TRUE ~ orgao_uge_poder_nome
+      )
+        
+      )
+
+# importar dados da receita
+
+dados_receita <- read_excel("dados_2024_receita.xlsx") %>% clean_names()
+
+
+# criar as variaveis tipo de modalidade e refinanciamento
+
+dados_receita <- dados_receita %>% 
+  mutate(tipo_modalidade =
+           ifelse(nre1_categoria_economica_codigo %in% c(7,8), "intra", "exceto intra"),
+         refinanciamento = 
+           ifelse(natureza_receita_codigo_completo %in% c(81110201,21110201,21210201), "sim", "nao")
+    
+  )
+
+# importar dados do anexo 7 e criar as variáveis tipo_modalidade e poder
+
+dados_rp_anexo_07 <- read_excel("dados_2024_rp_anexo_07.xlsx") %>% clean_names()
+
+
+dados_rp_anexo_07 <- dados_rp_anexo_07 %>%  
+    mutate (
+      tipo_modalidade =
+        ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra"),
+      poder = case_when(
+        orgao_uge_orgao_maximo_codigo %in% c(59000)  ~ "MINISTÉRIO PÚBLICO DA UNIÃO",
+        orgao_uge_orgao_maximo_codigo %in% c(29000) ~ "DEFENSORIA PÚBLICA",
+        TRUE ~ orgao_uge_poder_nome
+      )
+        
+      )
+
+
+# importar os dados de RP do anexo 12
+
+dados_rp_anexo_12 <- read_excel("dados_2024_rp_anexo_12.xlsx") %>% clean_names()
+
+# importar as contas contabeis para a tabela 04
+
+dados_tabela_04 <- read_excel("dados_2024_conta_contabil_tabela_04.xlsx") %>% clean_names()
+
+# importar as tabelas referentes a metodologia
+
+filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "metodologia") 
+
+atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
+```
+
+# Metodologia atual
+
+## Atributos utilizados para gerar cada um dos anexos/tabelas do RREO
+
+```{r metodologia_atributos}
+
+atributos_metodologia <- atributos_metodologia %>% unique() 
+
+datatable(atributos_metodologia %>% group_by(demonstrativo,atributos) %>%  summarise())    
+```
+
+## Atributos mencionados na metodologia do RREO
+
+```{r}
+
+datatable(atributos_metodologia %>% group_by(atributos) %>% summarise(tabelas_associadas = n()) %>% arrange(desc(tabelas_associadas)))
+```
+
+## Ranking dos anexos/tabelas por quantidade de atributos
+
+```{r}
+datatable(atributos_metodologia %>% group_by( demonstrativo) %>% summarise(quantidade_atributos = n())%>% arrange(desc(quantidade_atributos))  )
+```
+
+## De-Para: metodologia (planilha Excel) - código em R
+
+<!-- ![](images/filtro_metodologia_geral.png) -->
+
+<!-- ![](images/metodologia_tabela_03.png) -->
+
+<!-- ![](images/metodologia_tabela_02.png) -->
+
+![](images/filtro_metodologia.png)
+
+![](images/filtros_r.png){width="600"}
+
+# Visão dos dados extraídos do Tesouro Gerencial
+
+## Função atritudos da base de dados
+
+```{r funcao_atributos_dados}
+
+funcao_atributos_dados <- function(x){ 
+  x <- head(x,-1) %>% select(-ends_with("nome"))
+  pivot_longer( map_df( map(x,unique), length), cols = everything())
+  
+  }
+```
+
+## dados_despesa
+
+```{r despesa_atributos}
+datatable(funcao_atributos_dados(dados_despesa))
+
+
+
+```
+
+## dados_receita
+
+```{r receita_atributos}
+datatable(funcao_atributos_dados(dados_receita))
+```
+
+## dados_rp_anexo_07
+
+```{r rp_anexo_07_atributos}
+datatable(funcao_atributos_dados(dados_rp_anexo_07))
+```
+
+## dados_rp_anexo_12
+
+```{r rp_anexo_12_atributos}
+datatable(funcao_atributos_dados(dados_rp_anexo_12))
+```
+
+## dados_tabela_04
+
+```{r conta_contabil_tabela_04}
+
+datatable(funcao_atributos_dados(dados_tabela_04))
+```
+
+```{r}
+atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
+
+atributos_metodologia <- atributos_metodologia %>% unique()
+
+atributos_despesa <- 
+
+atributos_dados <- (map_df(mget(ls(pattern = "dados_") ) ,funcao_atributos_dados))
+
+colnames(atributos_dados )[1] ="atributo_clean"
+
+
+ausentes <- setdiff(atributos_metodologia$atributo_clean,c(intersect(atributos_dados$atributo_clean, colnames(dados_despesa)),
+intersect(atributos_dados$atributo_clean, colnames(dados_receita))))
+
+
+
+
+datatable(atributos_metodologia %>% filter(atributo_clean %in% ausentes ) %>% group_by(demonstrativo, atributos,dimensao) %>% summarise())
+```
+
+![](images/ausente_anexo_06_ndd.png)
+
+# Elaborar relatórios
+
+## Séries Históricas
+
+### Receita por natureza da receita
+
+```{r receita_por_natureza}
+
+sh_receita_natureza <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome", "natureza_receita_codigo_completo", "natureza_receita_nome", "item_informacao") 
+dt_formatada(tabela_pivotada(dados_receita%>%filter(mes_lancamento == "DEZ/2024") %>%    filter(nre1_categoria_economica_codigo %notin% c(7, 8)), sh_receita_natureza), sh_receita_natureza ) 
+```
+
+```{r receita_categoria_origem_rbind}
+
+sh_receita_categoria_origem <- c("refinanciamento", "tipo_modalidade", "nre1_categoria_economica_codigo", "nre1_categoria_economica_nome", "nre2_origem_receita_codigo_origem",      "nre2_origem_receita_nome")
+dt_formatada(tabela_pivotada(dados_receita %>% filter(mes_lancamento == "DEZ/2024"), sh_receita_categoria_origem),sh_receita_categoria_origem)    
+```
+
+### Despesa por categoria e grupo
+
+```{r despesa_categoria_grupo_1}
+
+agrupado_despesa_categoria_grupo <- c("categoria_economica_despesa_codigo", "categoria_economica_despesa_nome", "grupo_despesa_codigo_grupo", "grupo_despesa_nome") 
+dt_formatada(tabela_pivotada(dados_despesa %>%  filter(mes_lancamento == "DEZ/2024", refinanciamento == "nao"),agrupado_despesa_categoria_grupo ),agrupado_despesa_categoria_grupo)  
+```
+
+### Despesas de refinanciamento
+
+```{r despesa_categoria_grupo_refinanciamento}
+
+dt_formatada(tabela_pivotada(dados_despesa %>%  filter(mes_lancamento == "DEZ/2024", refinanciamento == "sim"),agrupado_despesa_categoria_grupo ),agrupado_despesa_categoria_grupo)
+```
+
+### Despesa por UF e Programa
+
+```{r despesa_uf_progama}
+
+agrupado_despesa_uf_programa <- c("uge_uf_sigla", "uge_uf_nome", "programa_governo_codigo", "programa_governo_nome")
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_programa), agrupado_despesa_uf_programa)  
+```
+
+### Despesa por UF e Ação
+
+```{r despesa_uf_acao}
+
+agrupado_despesa_uf_acao <- c("uge_uf_sigla", "uge_uf_nome", "acao_governo_codigo", "acao_governo_nome")
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_acao), agrupado_despesa_uf_acao)
+```
+
+### Despesa com irrigação
+
+```{r despesa_irrigacao}
+
+agrupado_despesa_uf <- c("uge_uf_sigla", "uge_uf_nome")  # dt_formatada(tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ), agrupado_despesa_uf)   tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ) 
+```
+
+## RREO
+
+### Anexo 01
+
+```{r}
+
+datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"),
+            extensions = 'Buttons',
+            options = list(
+            dom = 'Bfrtip',
+            buttons = list(
+              'excel'
+            )
+          ), rownames = FALSE,   colnames = c("refinanciamento", "Grupo código", "Grupo Nome", "Despesa empenhada"))%>% formatRound("despesa_empenhada", 2, mark = ".", dec.mark = "," )%>%    DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+```
+
+```{r anexo_01}
+agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo <- c( "tipo_modalidade"  ,"refinanciamento","categoria_economica_despesa_codigo", "categoria_economica_despesa_nome", "grupo_despesa_codigo_grupo", "grupo_despesa_nome")
+
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024"), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)    
+```
+
+### Anexo 2
+
+```{r anexo_02_mutate_intra}
+
+agrupado_despesa_tipo_modalidade_funcao <-  c( "tipo_modalidade", "funcao_governo_codigo", "funcao_governo_nome")
+
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", refinanciamento == "nao"), agrupado_despesa_tipo_modalidade_funcao), agrupado_despesa_tipo_modalidade_funcao)
+
+agrupado_despesa_tipo_modalidade_funcao_subfuncao <-  c( "tipo_modalidade", "funcao_governo_codigo", "funcao_governo_nome", "subfuncao_governo_codigo", "subfuncao_governo_nome" )
+
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", refinanciamento == "nao"), agrupado_despesa_tipo_modalidade_funcao_subfuncao), agrupado_despesa_tipo_modalidade_funcao_subfuncao) 
+```
+
+### Anexo 07
+
+#### Restos a pagar
+
+```{r anexo_07}
+agrupado_despesa_tipo_modalidade_orgao <- c ("tipo_modalidade", "orgao_uge_orgao_maximo_codigo", "orgao_uge_orgao_maximo_nome" )
+
+dt_formatada(tabela_pivotada(dados_rp_anexo_07, agrupado_despesa_tipo_modalidade_orgao ), agrupado_despesa_tipo_modalidade_orgao)  
+```
+
+### Anexo 12
+
+#### Restos a pagar
+
+```{r}
+dt_formatada(tabela_pivotada(dados_rp_anexo_12 %>%  filter( iduso_codigo == 6, fonte_recursos_codigo %notin% c("45", "79"), grupo_despesa_codigo_grupo %notin% c(2,6), programa_governo_codigo %notin% c("0089" , "2019")), "mes_lancamento"),"mes_lancamento")        
+```
+
+### Tabela 01
+
+#### despesas
+
+```{r tabela_01_despesas}
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", esfera_orcamentaria_codigo == 2), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)    
+```
+
+#### Receitas
+
+```{r receitas}
+agrupado_receita_origem <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome")
+
+dt_formatada(tabela_pivotada(dados_receita %>% filter(mes_lancamento == "DEZ/2024", esfera_orcamentaria_codigo == 2)%>% mutate(nre2_origem_receita_nome = str_remove(nre2_origem_receita_nome, "-INTRA")), agrupado_receita_origem), agrupado_receita_origem)   
+```
+
+### Tabela 03
+
+```{r}
+agrupado_despesa_orgao <- c("orgao_uge_orgao_maximo_codigo", "orgao_uge_orgao_maximo_nome")
+
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(resultado_eof_codigo == 6), agrupado_despesa_orgao),agrupado_despesa_orgao)
+```
+
+### Tabela 04
+
+```{r tabela_04_linhas}
+
+tabela_04 <- dados_tabela_04 %>%   mutate( linhas =     case_when(        fonte_recursos_codigo %in% ("000") ~ "0_nao_vinculados",       fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",       fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", "035", "040", "048", "049", "094", "122", "123", "126", "155", "156", "179", "184")  ~ "2_seguridade_exceto_previdencia",       fonte_recursos_codigo %in% c ("122", "123") & detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "2_seguridade_exceto_previdencia",       fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",       fonte_recursos_codigo %in% c("054") ~ "4_rgps",       fonte_recursos_codigo %in% c("400", "401", "443", "444", "448")  ~ "5_divida",       fonte_recursos_codigo %in% c ("034", "121", "122", "123") & detalhe_orgao_central_codigo_detalhe_oc == "000278" ~ "5_divida",       fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", "210", "211", "213", "219", "229", "234", "235", "241", "242", "251", "286", "287", "288", "289") ~ "6_transferencias",       fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019", "020", "021", "022", "025", "026", "027", "028", "029", "030", "031", "032", "033", "036", "037", "038", "039", "041", "042", "043", "044", "045", "046", "047", "050", "051", "052", "053", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068", "069", "070", "071", "072", "073", "074", "075", "076", "077", "078", "079", "080", "081", "082", "083", "084", "085", "086", "087", "088", "089", "090", "091", "092", "093", "095", "096", "097", "098", "099", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "124", "127", "128", "129", "131", "135", "136", "137", "138", "139", "140", "177", "178", "180", "181", "183", "447", "449")  ~ "7_fundos_orgaos_programa",       fonte_recursos_codigo %in% c("034", "121") &  detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "7_fundos_orgaos_programa",       fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",       fonte_recursos_codigo %in% c("490") ~ "9_nao_classificados",       TRUE ~ "escape"     ))
+```
+
+```{r tabela_04_colunas}
+
+tabela_04 <- tabela_04 %>%   mutate (      colunas =        case_when(         conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621390000) ~ "receitas",         conta_contabil_numero %in% c (622920104, 631400000, 632200000) ~ "despesas",         conta_contabil_numero %in% c (63110000, 63120000, 631510000, 631520000, 631540000, 631530000) ~ "rp_exercicios_anteriores",         conta_contabil_numero %in% c (218914001, 218924001) ~ "demais_obrigacoes_2189X4001",         TRUE ~ "escape"                ))  
+```
+
+```{r}
+
+datatable(tabela_04 %>% group_by(linhas, colunas) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)) %>% pivot_wider(names_from = "colunas", values_from = "saldo")%>% relocate(any_of(c("linhas", "receitas", "despesas", "demais_obrigacoes_2189X4001", "rp_exercicios_anteriores", "escape")))%>%    adorn_totals("row"),
+            extensions = 'Buttons',
+            options = list(
+            dom = 'Bfrtip',
+            buttons = list(
+              'excel'
+            )
+          ),  rownames = FALSE) %>%   formatRound (     2:6,     2,     mark = ".",     dec.mark = "," )%>%    DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')        
+```
