@@ -13,8 +13,6 @@ execute:
   message: false
 ---
 
-
-
 {{< include importar_arquivos.qmd >}}
 
 ## Séries Históricas
@@ -23,18 +21,12 @@ execute:
 
 ```{r receita_por_natureza}
 
-sh_receita_natureza <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome", "natureza_receita_codigo_completo", "natureza_receita_nome", "item_informacao")
+sh_receita_natureza <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome", "natureza_receita_codigo_completo", "natureza_receita_nome", "item_informacao_nome")
 
 dt_formatada(tabela_pivotada(dados_receita%>%filter(mes_lancamento == "DEZ/2024") %>% 
   filter(nre1_categoria_economica_codigo %notin% c(7, 8)), sh_receita_natureza), sh_receita_natureza )
 
 ```
-
-
-
-
-
-
 
 ```{r receita_categoria_origem_rbind}
 
@@ -74,7 +66,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>%
 ```{r despesa_uf_progama}
 agrupado_despesa_uf_programa <- c("uge_uf_sigla", "uge_uf_nome", "programa_governo_codigo", "programa_governo_nome")
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_programa), agrupado_despesa_uf_programa)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_programa), agrupado_despesa_uf_programa)
 
 
 ```
@@ -84,7 +76,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 ```{r despesa_uf_acao}
 agrupado_despesa_uf_acao <- c("uge_uf_sigla", "uge_uf_nome", "acao_governo_codigo", "acao_governo_nome")
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_acao), agrupado_despesa_uf_acao)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_acao), agrupado_despesa_uf_acao)
 ```
 
 ### Despesa com irrigação
@@ -94,10 +86,10 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 
 agrupado_despesa_uf <- c("uge_uf_sigla", "uge_uf_nome")
 
-# dt_formatada(tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ), agrupado_despesa_uf)
+# dt_formatada(tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ), agrupado_despesa_uf)
 
 
-tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf )
+tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf )
 
 ```
 
@@ -105,14 +97,11 @@ tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_info
 
 ### Anexo 01
 
-
-
-
 ```{r}
 
 
 
-datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao_nome == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
   colnames = c("refinanciamento", "Grupo código", "Grupo Nome", "Despesa empenhada"))%>% formatRound("despesa_empenhada", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
@@ -143,7 +132,6 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 
 ```
 
-
 ### Anexo 07
 
 #### Restos a pagar
@@ -156,7 +144,6 @@ dt_formatada(tabela_pivotada(dados_rp_anexo_07, agrupado_despesa_tipo_modalidade
 
 
 ```
-
 
 ### Anexo 12
 
@@ -174,9 +161,6 @@ dt_formatada(tabela_pivotada(dados_rp_anexo_12 %>%  filter( iduso_codigo == 6, f
 
 
 ```
-
-
-
 
 ### Tabela 01
 
@@ -214,13 +198,7 @@ agrupado_despesa_orgao <- c("orgao_uge_orgao_maximo_codigo", "orgao_uge_orgao_ma
 dt_formatada(tabela_pivotada(dados_despesa %>% filter(resultado_eof_codigo == 6), agrupado_despesa_orgao),agrupado_despesa_orgao)
 ```
 
-
-
-
-
 ### Tabela 04
-
-
 
 ```{r tabela_04_linhas}
 tabela_04 <- dados_tabela_04 %>%
@@ -276,9 +254,6 @@ datatable(tabela_04 %>% group_by(linhas, colunas) %>% summarise(saldo = sum(sald
  
 ```
 
-
-
-
 ```{r}
 #| echo: true
 #| eval: false
@@ -325,13 +300,3 @@ rp_emp_nao_liq_exe_pos <- c(531710100, 531720100)
 # Empenhos Não Liquidados Cancelados
 emp_nao_liq_canc_pos <- c(631910000)
 ```
-
-
-
-
-
-
-
-
-
-

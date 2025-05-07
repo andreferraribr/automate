@@ -11,6 +11,7 @@ format:
 execute:
   warning: false
   message: false
+  echo: false
 ---
 
 ```{r}
@@ -80,15 +81,17 @@ Replicabilidade
 
 # Importar dados e funções
 
+## Funções
+
 ```{r}
 # https://stackoverflow.com/questions/56997814/how-to-use-vector-of-column-names-as-input-into-dplyrgroup-by
 
 # funcao para pivotar a tabela a partir dos itens de informacao
 
 tabela_pivotada <- function(df, grupo){
-  itens <- df$item_informacao %>% unique() %>% na.omit()
+  itens <- df$item_informacao_nome %>% unique() %>% na.omit()
   
-  df <- df  %>% group_by(!!!syms(grupo))  %>% pivot_wider(names_from = item_informacao, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
+  df <- df  %>% group_by(!!!syms(grupo))  %>% pivot_wider(names_from = item_informacao_nome, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
   
   return(df)
   
@@ -130,6 +133,12 @@ options(DT.options =
 # https://rstudio.github.io/DT/options.html
 
 
+
+```
+
+## Importar e tratar dados da despesa
+
+```{r}
 # selecionar e ler todos os arquivos com dados da despesa
 
 arq_despesa <- list.files( pattern='despesa_parte')
@@ -140,6 +149,10 @@ dados_despesa <- map_df(arq_despesa,read_excel) %>% clean_names()
 # criar as variaveis tipo de modalidade, refinanciamento e poder
 dados_despesa <- dados_despesa %>%  
     mutate (
+      tipo_uf_sigla =
+        ifelse( is.na(uge_uf_sigla), "BR", uge_uf_sigla),
+      tipo_uf_nome =
+        ifelse( is.na(uge_uf_nome), "NACIONAL", uge_uf_nome),
       tipo_modalidade =
         ifelse(modalidade_aplicacao_codigo == 91, "intra", "exceto intra"),
       refinanciamento =
@@ -161,6 +174,12 @@ dados_despesa <- dados_despesa %>%
         
       )
 
+
+```
+
+## Importar e tratar dados da receita
+
+```{r}
 # importar dados da receita
 
 dados_receita <- read_excel("dados_2024_receita.xlsx") %>% clean_names()
@@ -176,6 +195,14 @@ dados_receita <- dados_receita %>%
     
   )
 
+
+
+
+```
+
+## Importar e tradar dados de restos a pagar (anexo 07 e anexo 12)
+
+```{r}
 # importar dados do anexo 7 e criar as variáveis tipo_modalidade e poder
 
 dados_rp_anexo_07 <- read_excel("dados_2024_rp_anexo_07.xlsx") %>% clean_names()
@@ -198,18 +225,28 @@ dados_rp_anexo_07 <- dados_rp_anexo_07 %>%
 
 dados_rp_anexo_12 <- read_excel("dados_2024_rp_anexo_12.xlsx") %>% clean_names()
 
-# importar as contas contabeis para a tabela 04
-
-dados_tabela_04 <- read_excel("dados_2024_conta_contabil_tabela_04.xlsx") %>% clean_names()
 
 # importar as tabelas referentes a metodologia
+```
 
+## Importar saldos contábeis da tabela 04
+
+```{r}
+# importar as contas contabeis para a tabela 04
+
+dados_tabela_04 <- read_excel("dados_2025_02_conta_contabil_tabela_04.xlsx") %>% clean_names()
+
+```
+
+# Metodologia atual
+
+## Importar os dados referentes à metodologia
+
+```{r}
 filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "metodologia") 
 
 atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
 ```
-
-# Metodologia atual
 
 ## Atributos utilizados para gerar cada um dos anexos/tabelas do RREO
 
@@ -247,7 +284,7 @@ datatable(atributos_metodologia %>% group_by( demonstrativo) %>% summarise(quant
 
 # Visão dos dados extraídos do Tesouro Gerencial
 
-## Função atritudos da base de dados
+## Função atribudos da base de dados
 
 ```{r funcao_atributos_dados}
 
@@ -292,12 +329,14 @@ datatable(funcao_atributos_dados(dados_rp_anexo_12))
 datatable(funcao_atributos_dados(dados_tabela_04))
 ```
 
+## Atributos da metodologia x atributos da base de dados
+
 ```{r}
 atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
 
 atributos_metodologia <- atributos_metodologia %>% unique()
 
-atributos_despesa <- 
+
 
 atributos_dados <- (map_df(mget(ls(pattern = "dados_") ) ,funcao_atributos_dados))
 
@@ -323,7 +362,7 @@ datatable(atributos_metodologia %>% filter(atributo_clean %in% ausentes ) %>% gr
 
 ```{r receita_por_natureza}
 
-sh_receita_natureza <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome", "natureza_receita_codigo_completo", "natureza_receita_nome", "item_informacao") 
+sh_receita_natureza <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome", "natureza_receita_codigo_completo", "natureza_receita_nome", "item_informacao_nome") 
 dt_formatada(tabela_pivotada(dados_receita%>%filter(mes_lancamento == "DEZ/2024") %>%    filter(nre1_categoria_economica_codigo %notin% c(7, 8)), sh_receita_natureza), sh_receita_natureza ) 
 ```
 
@@ -353,7 +392,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>%  filter(mes_lancamento == "DEZ/20
 ```{r despesa_uf_progama}
 
 agrupado_despesa_uf_programa <- c("uge_uf_sigla", "uge_uf_nome", "programa_governo_codigo", "programa_governo_nome")
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_programa), agrupado_despesa_uf_programa)  
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_programa), agrupado_despesa_uf_programa)  
 ```
 
 ### Despesa por UF e Ação
@@ -361,14 +400,14 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 ```{r despesa_uf_acao}
 
 agrupado_despesa_uf_acao <- c("uge_uf_sigla", "uge_uf_nome", "acao_governo_codigo", "acao_governo_nome")
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_acao), agrupado_despesa_uf_acao)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_acao), agrupado_despesa_uf_acao)
 ```
 
 ### Despesa com irrigação
 
 ```{r despesa_irrigacao}
 
-agrupado_despesa_uf <- c("uge_uf_sigla", "uge_uf_nome")  # dt_formatada(tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ), agrupado_despesa_uf)   tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ) 
+agrupado_despesa_uf <- c("uge_uf_sigla", "uge_uf_nome")  # dt_formatada(tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ), agrupado_despesa_uf)   tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ) 
 ```
 
 ## RREO
@@ -377,7 +416,7 @@ agrupado_despesa_uf <- c("uge_uf_sigla", "uge_uf_nome")  # dt_formatada(tabela_p
 
 ```{r}
 
-datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"),
+datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao_nome == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"),
             extensions = 'Buttons',
             options = list(
             dom = 'Bfrtip',
@@ -452,22 +491,1229 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(resultado_eof_codigo == 6)
 
 ```{r tabela_04_linhas}
 
-tabela_04 <- dados_tabela_04 %>%   mutate( linhas =     case_when(        fonte_recursos_codigo %in% ("000") ~ "0_nao_vinculados",       fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",       fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", "035", "040", "048", "049", "094", "122", "123", "126", "155", "156", "179", "184")  ~ "2_seguridade_exceto_previdencia",       fonte_recursos_codigo %in% c ("122", "123") & detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "2_seguridade_exceto_previdencia",       fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",       fonte_recursos_codigo %in% c("054") ~ "4_rgps",       fonte_recursos_codigo %in% c("400", "401", "443", "444", "448")  ~ "5_divida",       fonte_recursos_codigo %in% c ("034", "121", "122", "123") & detalhe_orgao_central_codigo_detalhe_oc == "000278" ~ "5_divida",       fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", "210", "211", "213", "219", "229", "234", "235", "241", "242", "251", "286", "287", "288", "289") ~ "6_transferencias",       fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019", "020", "021", "022", "025", "026", "027", "028", "029", "030", "031", "032", "033", "036", "037", "038", "039", "041", "042", "043", "044", "045", "046", "047", "050", "051", "052", "053", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068", "069", "070", "071", "072", "073", "074", "075", "076", "077", "078", "079", "080", "081", "082", "083", "084", "085", "086", "087", "088", "089", "090", "091", "092", "093", "095", "096", "097", "098", "099", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "124", "127", "128", "129", "131", "135", "136", "137", "138", "139", "140", "177", "178", "180", "181", "183", "447", "449")  ~ "7_fundos_orgaos_programa",       fonte_recursos_codigo %in% c("034", "121") &  detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "7_fundos_orgaos_programa",       fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",       fonte_recursos_codigo %in% c("490") ~ "9_nao_classificados",       TRUE ~ "escape"     ))
+tabela_04 <- dados_tabela_04 %>%
+  mutate( linhas =
+            case_when(
+              fonte_recursos_codigo %in% ("000") ~ "0_nao_vinculados",
+              fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",
+              fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", "035", "040", "048", "049", "094", "122", "123", "126", "155", "156", "179", "184")  ~ "2_seguridade_exceto_previdencia",
+              fonte_recursos_codigo %in% c ("122", "123") & detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "2_seguridade_exceto_previdencia",
+              fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",
+              fonte_recursos_codigo %in% c("054") ~ "4_rgps",
+              fonte_recursos_codigo %in% c("400", "401", "443", "444", "448")  ~ "5_divida",
+              fonte_recursos_codigo %in% c ("034", "121", "122", "123") & detalhe_orgao_central_codigo_detalhe_oc == "000278" ~ "5_divida",
+              fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", "210", "211", "213", "219", "229", "234", "235", "241", "242", "251", "286", "287", "288", "289") ~ "6_transferencias",
+              fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019", "020", "021", "022", "025", "026", "027", "028", "029", "030", "031", "032", "033", "036", "037", "038", "039", "041", "042", "043", "044", "045", "046", "047", "050", "051", "052", "053", "057", "058", "059", "060", "061", "062", "063", "064", "065", "066", "067", "068", "069", "070", "071", "072", "073", "074", "075", "076", "077", "078", "079", "080", "081", "082", "083", "084", "085", "086", "087", "088", "089", "090", "091", "092", "093", "095", "096", "097", "098", "099", "100", "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", "124", "127", "128", "129", "131", "135", "136", "137", "138", "139", "140", "177", "178", "180", "181", "183", "447", "449")  ~ "7_fundos_orgaos_programa",
+              fonte_recursos_codigo %in% c("034", "121") &  detalhe_orgao_central_codigo_detalhe_oc != "000278" ~ "7_fundos_orgaos_programa",
+              fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
+              fonte_recursos_codigo %in% c("490") ~ "9_nao_classificados",
+              TRUE ~ "escape"     ))
 ```
 
 ```{r tabela_04_colunas}
 
-tabela_04 <- tabela_04 %>%   mutate (      colunas =        case_when(         conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621390000) ~ "receitas",         conta_contabil_numero %in% c (622920104, 631400000, 632200000) ~ "despesas",         conta_contabil_numero %in% c (63110000, 63120000, 631510000, 631520000, 631540000, 631530000) ~ "rp_exercicios_anteriores",         conta_contabil_numero %in% c (218914001, 218924001) ~ "demais_obrigacoes_2189X4001",         TRUE ~ "escape"                ))  
+tabela_04 <- tabela_04 %>%
+  mutate (
+    colunas =
+      case_when(
+        conta_contabil_numero %in% c (621200000, 621310000, 621320000, 621330000, 621340000,621390000) ~ "receitas",
+        conta_contabil_numero %in% c (622920104, 631400000, 632200000) ~ "despesas",
+        conta_contabil_numero %in% c (63110000, 63120000, 631510000, 631520000, 631540000, 631530000) ~ "rp_exercicios_anteriores",
+        conta_contabil_numero %in% c (218914001, 218924001) ~ "demais_obrigacoes_2189X4001",
+        TRUE ~ "escape"         
+        ))  
+
+# 2 isf financeiro
+# - ug 170600 2 isf financeiro
+# - cc 218923901 218923902 218923903 218924001 218914001 
+# - cc 631200000 631520000 531710000 631300000 632100000 632710000 632730000 218923901 218923902 631540000 531720100
+#
+
+etapa_01 <- as.numeric(tabela_04 %>% filter(c_con_classe_1_codigo == "2",  c_con_isf == "F") %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+etapa_02 <- as.numeric(tabela_04 %>% filter(ug_executora_codigo == "170600",  c_con_isf == "F") %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+etapa_03 <- as.numeric(tabela_04 %>% filter(conta_contabil_numero %in% c("218923901", "218923902", "218923903", "218924001", "218914001")) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+etapa_04 <- as.numeric(tabela_04 %>% filter(conta_contabil_numero %in% c("631200000", "631520000", "531710000", "631300000", "632100000", "632710000", "632730000", "218923901", "218923902", "631540000", "531720100")) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+etapa_05 <- as.numeric(tabela_04 %>% filter(conta_contabil_numero %in% c("822240101" )) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+etapa_06 <- as.numeric(tabela_04 %>% filter(conta_contabil_numero %in% c("822240101" )) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+etapa_07 <- as.numeric(tabela_04 %>% filter(conta_contabil_numero %in% c("894320000" )) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+etapa_08 <- as.numeric(tabela_04 %>% filter(conta_contabil_numero %in% c( "894310000")) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)))
+
+
+
+```
+
+```{r}
+# Categorizando as contas contábeis do RREO em colunas específicas
+
+tabela_04 <- tabela_04 %>%
+  mutate(
+    categoria_conta = case_when(
+      # Receitas
+      conta_contabil_numero %in% c("621200000", "621310000", "621320000", "621330000", "621340000", "621390000") ~ "receitas",
+      
+      # Despesas
+      conta_contabil_numero %in% c("622920104", "631400000", "632200000") ~ "despesas",
+      
+      # Disponibilidade de Caixa Bruta
+      (substring(conta_contabil_numero, 1, 3) == "111" & c_con_isf == "F" & %>% 
+       !(conta_contabil_numero %in% c("111110205"))) ~ "disponibilidade_caixa_bruta",
+      
+      # Deducao: Receitas a Classificar
+      conta_contabil_numero %in% c("111113001", "491110101", "491110102", "491110103", "491110108", 
+                                 "491010101", "491010102", "491010103", "491019701", "491019702", "491019703") ~ "receitas_a_classificar",
+      
+      # Restos a Pagar Liquidados e Nao Pagos (Exercícios Anteriores)
+      conta_contabil_numero %in% c("632100000", "631300000") ~ "rp_liquidados_nao_pagos_anteriores",
+      
+      # Restos a Pagar Liquidados e Nao Pagos (Do Exercício)
+      conta_contabil_numero %in% c("632710000", "632720000", "632700000") ~ "rp_liquidados_nao_pagos_exercicio",
+      
+      # Restos a Pagar Empenhados e Nao Liquidados (Exercícios Anteriores)
+      conta_contabil_numero %in% c("631100000", "631200000", "631510000", "631520000", "631530000", "631540000") ~ "rp_empenhados_nao_liquidados_anteriores",
+      
+      # Demais Obrigacoes I
+      (substring(conta_contabil_numero, 1, 1) == "2" & c_con_isf == "F" & 
+       !(conta_contabil_numero %in% c("218923901", "218923902", "218923903", "218924001", "218914001"))) ~ "demais_obrigacoes_i",
+      
+      # Demais Obrigacoes II (CODIV)
+      (substring(conta_contabil_numero, 1, 1) == "2" & c_con_isf == "F" & 
+       ug_executora_codigo == "170600") ~ "demais_obrigacoes_ii_codiv",
+      
+      # Demais Obrigações 2189X4001
+      conta_contabil_numero %in% c("218914001", "218924001") ~ "demais_obrigacoes_2189X4001",
+      
+      # Restos a Pagar Empenhados e não Liquidados (do Exercício)
+      conta_contabil_numero %in% c("531710100", "531720100") ~ "rp_empenhados_nao_liquidados_exercicio",
+      
+      # Empenhos Não Liquidados Cancelados
+      conta_contabil_numero == "631910000" ~ "empenhos_nao_liquidados_cancelados",
+      
+      # Conta: Recebimento/Liberação de RP Autorizado
+      conta_contabil_numero == "822240101" ~ "recebimento_rp_autorizado",
+      conta_contabil_numero == "822140101" ~ "liberacao_rp_autorizado",
+      
+      # Conta: Disponibilidade de Recursos por TED
+      conta_contabil_numero %in% c("894310000", "894320000") ~ "disponibilidade_recursos_ted",
+      
+      # Dedução: Limite de Saque
+      conta_contabil_numero %in% c("218924001", "218924002") ~ "deducao_limite_saque",
+      
+      # Dedução: da Disponibilidade Líquida
+      conta_contabil_numero == "111110205" ~ "deducao_disponibilidade_liquida",
+      
+      # Valor padrão para contas não categorizadas
+      TRUE ~ "outras_contas"
+    )
+  )
+
+
+# Exemplo de uso para contagem
+tabela_04_contagem <- tabela_04 %>%
+  group_by(categoria_conta) %>%
+  count() %>%
+  arrange(desc(n))
+
+# Exemplo de uso para sumarização
+tabela_04_sumario <- tabela_04 %>%
+  group_by(categoria_conta) %>%
+  summarise(
+    total_registros = n(),
+    contas_unicas = n_distinct(conta_contabil_numero)
+  )
 ```
 
 ```{r}
 
-datatable(tabela_04 %>% group_by(linhas, colunas) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)) %>% pivot_wider(names_from = "colunas", values_from = "saldo")%>% relocate(any_of(c("linhas", "receitas", "despesas", "demais_obrigacoes_2189X4001", "rp_exercicios_anteriores", "escape")))%>%    adorn_totals("row"),
+datatable(tabela_04 %>% group_by(linhas, categoria_conta) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)) %>% pivot_wider(names_from = "categoria_conta", values_from = "saldo")%>% relocate(any_of(c( "linhas", "receitas", 
+    "despesas", 
+    "disponibilidade_caixa_bruta",
+    "receitas_a_classificar",
+    "rp_liquidados_nao_pagos_anteriores",
+    "rp_liquidados_nao_pagos_exercicio",
+    "rp_exercicios_anteriores",
+    "demais_obrigacoes_i",
+    "demais_obrigacoes_ii_codiv",
+    "demais_obrigacoes_2189X4001",
+    "rp_empenhados_nao_liquidados_exercicio",
+    "empenhos_nao_liquidados_cancelados",
+    "recebimento_rp_autorizado",
+    "liberacao_rp_autorizado",
+    "disponibilidade_recursos_ted",
+    "deducao_limite_saque",
+    "deducao_disponibilidade_liquida",
+    "escape")))%>%    adorn_totals("row"),
             extensions = 'Buttons',
             options = list(
             dom = 'Bfrtip',
             buttons = list(
               'excel'
             )
-          ),  rownames = FALSE) %>%   formatRound (     2:6,     2,     mark = ".",     dec.mark = "," )%>%    DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')        
+          ),  rownames = FALSE) %>%   formatRound (     2:9,     2,     mark = ".",     dec.mark = "," )%>%    DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')        
+
+```
+
+```{r}
+
+
+df_tabela_04 <- tabela_04 %>% group_by(linhas, categoria_conta) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)) 
+
+
+```
+
+
+```{r}
+visualizar_datatable(df_tabela_04_wide)
+```
+
+```{r}
+# Categorização corrigida de contas RREO usando substr() em vez de startsWith()
+tabela_04 <- tabela_04 %>%
+  mutate(
+    categoria_conta = case_when(
+      # 1. Receitas
+      conta_contabil_numero %in% c("621200000", "621310000", "621320000", "621330000", "621340000", "621390000") ~ "Receitas",
+      
+      # 2. Despesas
+      conta_contabil_numero %in% c("622920104", "631400000", "632200000") ~ "Despesas",
+      
+      # 3. Disponibilidade de Caixa Bruta (111 F menos 111110205)
+      (substr(conta_contabil_numero, 1, 3) == "111" & c_con_isf == "F" & 
+       !(conta_contabil_numero %in% c("111110205"))) ~ "Disponibilidade_de_Caixa_Bruta",
+      
+      # 4. Dedução: Receitas a Classificar
+      conta_contabil_numero %in% c("111113001", "491110101", "491110102", "491110103", "491110108", 
+                                 "491010101", "491010102", "491010103", "491019701", "491019702", "491019703") ~ "Deducao_Receitas_a_Classificar",
+      
+      # 5. Restos a Pagar Liquidados e Não Pagos (Exercícios Anteriores)
+      conta_contabil_numero %in% c("632100000", "631300000") ~ "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores",
+      
+      # 6. Restos a Pagar Liquidados e Não Pagos (Do Exercício)
+      conta_contabil_numero %in% c("632710000", "632720000", "632700000") ~ "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio",
+      
+      # 7. Restos a Pagar Empenhados e Não Liquidados (Exercícios Anteriores)
+      conta_contabil_numero %in% c("631100000", "631200000", "631510000", "631520000", "631530000", "631540000") ~ "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores",
+      
+      # 8. Demais Obrigações I (2 F menos 21892 3901, 3902, 3903, 4001 e 21891 4001)
+      (substr(conta_contabil_numero, 1, 1) == "2" & c_con_isf == "F" & 
+       !(conta_contabil_numero %in% c("218923901", "218923902", "218923903", "218924001", "218914001"))) ~ "Demais_Obrigacoes_I",
+      
+      # 9. Demais Obrigações II (2 F da CODIV)
+      (substr(conta_contabil_numero, 1, 1) == "2" & c_con_isf == "F" & 
+       ug_executora_codigo == "170600") ~ "Demais_Obrigacoes_II_CODIV",
+      
+      # 10. Dedução: Demais Obrigações I
+      conta_contabil_numero %in% c("631200000", "631520000", "631530000", "631540000", "632100000", "632710000", 
+                                 "632720000", "531710200", "531720100", "218923901", "218923902", "218923903") ~ "Deducao_Demais_Obrigacoes_I",
+      
+      # 11. Restos a Pagar Empenhados e não Liquidados (do Exercício)
+      conta_contabil_numero %in% c("531710100", "531720100") ~ "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio",
+      
+      # 12. Empenhos Não Liquidados Cancelados (Por Insuficiência Financeira)
+      conta_contabil_numero == "631910000" ~ "Empenhos_Nao_Liquidados_Cancelados",
+      
+      # 13. Conta: 822240101 - Recebimento de RP Autorizado
+      conta_contabil_numero == "822240101" ~ "Conta_822240101_Recebimento_de_RP_Autorizado",
+      
+      # 14. Conta: 822140101 - Liberação de RP Autorizado
+      conta_contabil_numero == "822140101" ~ "Conta_822140101_Liberacao_de_RP_Autorizado",
+      
+      # 15. Conta: 894310000 - Disponibilidade de Recursos por TED a Liberar
+      conta_contabil_numero == "894310000" ~ "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar",
+      
+      # 16. Conta: 894320000 - Disponibilidade de Recursos por TED a Receber
+      conta_contabil_numero == "894320000" ~ "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber",
+      
+      # 17. Dedução: Limite de Saque I
+      conta_contabil_numero %in% c("218924001", "218924002") ~ "Deducao_Limite_de_Saque_I",
+      
+      # 18. Dedução: Limite de Saque II (Poder Executivo)
+      (conta_contabil_numero %in% c("218924001", "218924002") & 
+       !(orgao_c_cor_codigo %in% c("01000", "02000", "02001", "02002", "02003", "10000", "11000", "12000", "12800", 
+                                "12801", "12802", "12803", "12804", "12805", "13000", "14000", "14001", "15000", 
+                                "16000", "17000", "34000", "34001", "34802", "59000", "91100", "01901", "03000"))) ~ "Deducao_Limite_de_Saque_II_Poder_Executivo",
+      
+      # 19. Dedução: da Disponibilidade Líquida (111110205)
+      conta_contabil_numero == "111110205" ~ "Deducao_da_Disponibilidade_Liquida_111110205",
+      
+      # 20. Dedução: Demais Obrigações II
+      conta_contabil_numero %in% c("218924001", "218914001") ~ "Deducao_Demais_Obrigacoes_II",
+      
+      # Valor padrão para contas não categorizadas
+      TRUE ~ "Outras_Contas"
+    )
+  )
+
+# Versão alternativa: converter explicitamente para character antes
+tabela_04_alt <- tabela_04 %>%
+  # Converter a coluna para character primeiro
+  mutate(conta_contabil_numero_char = as.character(conta_contabil_numero)) %>%
+  mutate(
+    categoria_conta = case_when(
+      # 1. Receitas
+      conta_contabil_numero %in% c("621200000", "621310000", "621320000", "621330000", "621340000", "621390000") ~ "Receitas",
+      
+      # 2. Despesas
+      conta_contabil_numero %in% c("622920104", "631400000", "632200000") ~ "Despesas",
+      
+      # 3. Disponibilidade de Caixa Bruta (111 F menos 111110205)
+      (startsWith(conta_contabil_numero_char, "111") & c_con_isf == "F" & 
+       !(conta_contabil_numero %in% c("111110205"))) ~ "Disponibilidade_de_Caixa_Bruta",
+      
+      # [restante do código similar, usando conta_contabil_numero_char com startsWith()]
+      
+      # Valor padrão para contas não categorizadas
+      TRUE ~ "Outras_Contas"
+    )
+  )
+
+# Lista completa de categorias na ordem da imagem para uso com relocate
+categorias_rreo_ordenadas <- c(
+  "Receitas",
+  "Despesas",
+  "Disponibilidade_de_Caixa_Bruta",
+  "Deducao_Receitas_a_Classificar",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio",
+  "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores",
+  "Demais_Obrigacoes_I",
+  "Demais_Obrigacoes_II_CODIV",
+  "Deducao_Demais_Obrigacoes_I",
+  "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio",
+  "Empenhos_Nao_Liquidados_Cancelados",
+  "Conta_822240101_Recebimento_de_RP_Autorizado",
+  "Conta_822140101_Liberacao_de_RP_Autorizado",
+  "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar",
+  "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber",
+  "Deducao_Limite_de_Saque_I",
+  "Deducao_Limite_de_Saque_II_Poder_Executivo",
+  "Deducao_da_Disponibilidade_Liquida_111110205",
+  "Deducao_Demais_Obrigacoes_II",
+  "Outras_Contas"
+)
+```
+
+```{r}
+df_tabela_04 <- tabela_04 %>% group_by(linhas, categoria_conta) %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE)) 
+
+```
+
+```{r}
+# Código para completar df_tabela_04 com todas as combinações de linhas e categorias
+
+# Lista de todas as categorias possíveis com nomes atualizados
+todas_categorias <- c(
+  "Receitas", 
+  "Despesas", 
+  "Disponibilidade_de_Caixa_Bruta",
+  "Deducao_Receitas_a_Classificar",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio",
+  "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores",
+  "Demais_Obrigacoes_I",
+  "Demais_Obrigacoes_II_CODIV",
+  "Deducao_Demais_Obrigacoes_I",
+  "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio",
+  "Empenhos_Nao_Liquidados_Cancelados",
+  "Conta_822240101_Recebimento_de_RP_Autorizado",
+  "Conta_822140101_Liberacao_de_RP_Autorizado",
+  "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar",
+  "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber",
+  "Deducao_Limite_de_Saque_I",
+  "Deducao_Limite_de_Saque_II_Poder_Executivo",
+  "Deducao_da_Disponibilidade_Liquida_111110205",
+  "Deducao_Demais_Obrigacoes_II",
+  "Outras_Contas"
+)
+
+# Completar o dataframe df_tabela_04 com todas as combinações
+df_tabela_04_completo <- df_tabela_04 %>%
+  # Obter linhas únicas
+  {
+    linhas_unicas <- unique(.$linhas)
+    
+    # Criar todas as combinações possíveis
+    expand_grid(
+      linhas = linhas_unicas,
+      categoria_conta = todas_categorias
+    ) %>%
+    # Juntar com os dados originais
+    left_join(df_tabela_04, by = c("linhas", "categoria_conta")) %>%
+    # Substituir NA por zero
+    mutate(saldo = coalesce(saldo, 0))
+  }
+
+# Verificar se todas as combinações estão presentes
+verificar_completude <- function(df) {
+  # Obter contagens
+  total_linhas <- length(unique(df$linhas))
+  total_categorias <- length(todas_categorias)
+  total_esperado <- total_linhas * total_categorias
+  total_real <- nrow(df)
+  
+  # Verificar
+  if (total_real == total_esperado) {
+    cat("O dataframe está completo com", total_real, "linhas (", 
+        total_linhas, "linhas x", total_categorias, "categorias)\n")
+  } else {
+    cat("ATENÇÃO: O dataframe tem", total_real, "linhas, mas deveria ter", 
+        total_esperado, "(", total_linhas, "linhas x", total_categorias, "categorias)\n")
+    
+    # Verificar quais combinações estão faltando
+    todas_combinacoes <- expand_grid(
+      linhas = unique(df$linhas),
+      categoria_conta = todas_categorias
+    )
+    
+    faltantes <- anti_join(todas_combinacoes, df, by = c("linhas", "categoria_conta"))
+    if (nrow(faltantes) > 0) {
+      cat("Combinações faltantes:\n")
+      print(faltantes)
+    }
+  }
+}
+
+# Pivotar para formato wide
+df_tabela_04_wide <- df_tabela_04_completo %>%
+  pivot_wider(
+    id_cols = linhas,
+    names_from = categoria_conta,
+    values_from = saldo,
+    values_fill = 0  # Garantir que valores ausentes sejam preenchidos com zero
+  ) %>%
+  # Garantir que todas as colunas estejam presentes e na ordem correta
+  select(linhas, all_of(todas_categorias))
+
+# Para uso em full join com outro dataframe
+realizar_full_join <- function(df_tabela_04_wide, outro_df) {
+  resultado <- full_join(
+    df_tabela_04_wide,
+    outro_df,
+    by = "linhas"
+  ) %>%
+    # Substituir NAs por zeros nas colunas numéricas
+    mutate(across(where(is.numeric), ~coalesce(., 0)))
+  
+  return(resultado)
+}
+
+# Exemplo para criar um dataframe vazio com todas as categorias
+# (útil para fazer full join com dataframes que não têm todas as colunas)
+criar_df_template <- function(linhas_desejadas) {
+  # Criar dataframe base com as linhas desejadas
+  df_template <- data.frame(
+    linhas = linhas_desejadas,
+    stringsAsFactors = FALSE
+  )
+  
+  # Adicionar colunas zeradas para todas as categorias
+  for (cat in todas_categorias) {
+    df_template[[cat]] <- 0
+  }
+  
+  return(df_template)
+}
+
+# Adorn_totals preservando todas as colunas
+adicionar_totais <- function(df) {
+  # Verificar se tem a coluna linhas
+  if (!"linhas" %in% names(df)) {
+    stop("O dataframe precisa ter uma coluna chamada 'linhas'")
+  }
+  
+  # Copiar o dataframe
+  df_com_total <- df
+  
+  # Criar a linha de total
+  total_row <- df %>%
+    summarise(across(where(is.numeric), sum, na.rm = TRUE)) %>%
+    mutate(linhas = "Total")
+  
+  # Adicionar a linha de total
+  df_com_total <- bind_rows(df_com_total, total_row)
+  
+  return(df_com_total)
+}
+
+# Visualizar resultado completo
+visualizar_datatable <- function(df) {
+  # Adicionar totais
+  df_com_total <- adicionar_totais(df)
+  
+  # Criar datatable
+  datatable(
+    df_com_total,
+    extensions = 'Buttons',
+    options = list(
+      dom = 'Bfrtip',
+      buttons = list('excel'),
+      scrollX = TRUE
+    ),
+    rownames = FALSE
+  ) %>%
+  formatRound(
+    columns = 2:ncol(df_com_total),
+    digits = 2,
+    mark = ".",
+    dec.mark = ","
+  ) %>%
+  formatStyle(
+    columns = colnames(df_com_total),
+    fontSize = '75%'
+  ) %>%
+  # Destacar a linha de total
+  formatStyle(
+    0,
+    target = 'row',
+    fontWeight = styleEqual("Total", 'bold'),
+    backgroundColor = styleEqual("Total", '#f2f2f2')
+  )
+}
+
+# Execução completa e verificação
+# verificar_completude(df_tabela_04_completo)
+# visualizar_datatable(df_tabela_04_wide)
+```
+
+```{r}
+# Método alternativo de categorização: criando categorias individuais sequencialmente
+# Este método torna mais fácil depurar e identificar problemas
+
+# Primeiro, garantir que a coluna de contas seja texto e inicializar a categoria
+tabela_04 <- tabela_04 %>% 
+  mutate(
+    # Garantir que as contas sejam tratadas como texto
+    conta_contabil_numero = as.character(conta_contabil_numero),
+    # Inicializar todas as categorias como "Outras_Contas"
+    categoria_conta = "Outras_Contas"
+  )
+
+# Agora, aplicar cada filtro separadamente
+# 1. Receitas
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("621200000", "621310000", "621320000", "621330000", "621340000", "621390000"),
+    "Receitas", 
+    categoria_conta
+  ))
+
+# 2. Despesas
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("622920104", "631400000", "632200000"),
+    "Despesas", 
+    categoria_conta
+  ))
+
+# 3. Disponibilidade de Caixa Bruta
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    substr(conta_contabil_numero, 1, 3) == "111" & 
+    c_con_isf == "F" & 
+    !(conta_contabil_numero %in% c("111110205")),
+    "Disponibilidade_de_Caixa_Bruta", 
+    categoria_conta
+  ))
+
+# 4. Dedução: Receitas a Classificar
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("111113001", "491110101", "491110102", "491110103", "491110108", 
+                               "491010101", "491010102", "491010103", "491019701", "491019702", "491019703"),
+    "Deducao_Receitas_a_Classificar", 
+    categoria_conta
+  ))
+
+# 5. Restos a Pagar Liquidados e Não Pagos (Exercícios Anteriores)
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("632100000", "631300000"),
+    "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores", 
+    categoria_conta
+  ))
+
+# 6. Restos a Pagar Liquidados e Não Pagos (Do Exercício)
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("632710000", "632720000", "632700000"),
+    "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio", 
+    categoria_conta
+  ))
+
+# 7. Restos a Pagar Empenhados e Não Liquidados (Exercícios Anteriores)
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("631100000", "631200000", "631510000", "631520000", "631530000", "631540000"),
+    "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores", 
+    categoria_conta
+  ))
+
+# 8. Demais Obrigações I
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    substr(conta_contabil_numero, 1, 1) == "2" & 
+    c_con_isf == "F" & 
+    !(conta_contabil_numero %in% c("218923901", "218923902", "218923903", "218924001", "218914001")),
+    "Demais_Obrigacoes_I", 
+    categoria_conta
+  ))
+
+# 9. Demais Obrigações II (CODIV)
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    substr(conta_contabil_numero, 1, 1) == "2" & 
+    c_con_isf == "F" & 
+    ug_executora_codigo == "170600",
+    "Demais_Obrigacoes_II_CODIV", 
+    categoria_conta
+  ))
+
+# 10. Dedução: Demais Obrigações I
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("631200000", "631520000", "631530000", "631540000", "632100000", "632710000", 
+                               "632720000", "531710200", "531720100", "218923901", "218923902", "218923903"),
+    "Deducao_Demais_Obrigacoes_I", 
+    categoria_conta
+  ))
+
+# 11. Restos a Pagar Empenhados e não Liquidados (do Exercício)
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("531710100", "531720100"),
+    "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio", 
+    categoria_conta
+  ))
+
+# 12. Empenhos Não Liquidados Cancelados
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "631910000",
+    "Empenhos_Nao_Liquidados_Cancelados", 
+    categoria_conta
+  ))
+
+# 13. Conta: 822240101 - Recebimento de RP Autorizado
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "822240101",
+    "Conta_822240101_Recebimento_de_RP_Autorizado", 
+    categoria_conta
+  ))
+
+# 14. Conta: 822140101 - Liberação de RP Autorizado
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "822140101",
+    "Conta_822140101_Liberacao_de_RP_Autorizado", 
+    categoria_conta
+  ))
+
+# 15. Conta: 894310000 - Disponibilidade de Recursos por TED a Liberar
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "894310000",
+    "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar", 
+    categoria_conta
+  ))
+
+# 16. Conta: 894320000 - Disponibilidade de Recursos por TED a Receber
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "894320000",
+    "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber", 
+    categoria_conta
+  ))
+
+# 17. Dedução: Limite de Saque I
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("218924001", "218924002"),
+    "Deducao_Limite_de_Saque_I", 
+    categoria_conta
+  ))
+
+# 18. Dedução: Limite de Saque II (Poder Executivo)
+# Primeiro, criar uma lista dos órgãos do Poder Executivo
+orgaos_nao_executivo <- c(
+  "01000", "02000", "02001", "02002", "02003", "10000", "11000", "12000", "12800", 
+  "12801", "12802", "12803", "12804", "12805", "13000", "14000", "14001", "15000", 
+  "16000", "17000", "34000", "34001", "34802", "59000", "91100", "01901", "03000"
+)
+
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("218924001", "218924002") & 
+    !(orgao_c_cor_codigo %in% orgaos_nao_executivo),
+    "Deducao_Limite_de_Saque_II_Poder_Executivo", 
+    categoria_conta
+  ))
+
+# 19. Dedução: da Disponibilidade Líquida (111110205)
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "111110205",
+    "Deducao_da_Disponibilidade_Liquida_111110205", 
+    categoria_conta
+  ))
+
+# 20. Dedução: Demais Obrigações II
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("218924001", "218914001"),
+    "Deducao_Demais_Obrigacoes_II", 
+    categoria_conta
+  ))
+
+# Lista completa de categorias na ordem da imagem
+categorias_rreo_ordenadas <- c(
+  "Receitas",
+  "Despesas",
+  "Disponibilidade_de_Caixa_Bruta",
+  "Deducao_Receitas_a_Classificar",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio",
+  "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores",
+  "Demais_Obrigacoes_I",
+  "Demais_Obrigacoes_II_CODIV",
+  "Deducao_Demais_Obrigacoes_I",
+  "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio",
+  "Empenhos_Nao_Liquidados_Cancelados",
+  "Conta_822240101_Recebimento_de_RP_Autorizado",
+  "Conta_822140101_Liberacao_de_RP_Autorizado",
+  "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar",
+  "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber",
+  "Deducao_Limite_de_Saque_I",
+  "Deducao_Limite_de_Saque_II_Poder_Executivo",
+  "Deducao_da_Disponibilidade_Liquida_111110205",
+  "Deducao_Demais_Obrigacoes_II",
+  "Outras_Contas"
+)
+
+# Funções para verificar a distribuição das categorias
+verificar_distribuicao_categorias <- function(df) {
+  df %>%
+    count(categoria_conta) %>%
+    arrange(desc(n))
+}
+
+verificar_outras_contas <- function(df) {
+  df %>%
+    filter(categoria_conta == "Outras_Contas") %>%
+    count(conta_contabil_numero) %>%
+    arrange(desc(n))
+}
+
+# Código para processar e visualizar os resultados
+processar_tabela_04 <- function(tabela_04) {
+  # Agrupar por linhas e categoria_conta
+  df_agrupado <- tabela_04 %>%
+    group_by(linhas, categoria_conta) %>%
+    summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = "drop")
+  
+  # Completar todas as combinações
+  df_completo <- df_agrupado %>%
+    {
+      linhas_unicas <- unique(.$linhas)
+      expand_grid(
+        linhas = linhas_unicas,
+        categoria_conta = categorias_rreo_ordenadas
+      ) %>%
+      left_join(df_agrupado, by = c("linhas", "categoria_conta")) %>%
+      mutate(saldo = coalesce(saldo, 0))
+    }
+  
+  # Pivotar para formato wide
+  df_wide <- df_completo %>%
+    pivot_wider(
+      id_cols = linhas,
+      names_from = categoria_conta,
+      values_from = saldo,
+      values_fill = 0
+    ) %>%
+    # Reorganizar colunas
+    relocate(any_of(c("linhas", categorias_rreo_ordenadas)))
+  
+  # Adicionar linha de totais
+  totais <- df_wide %>%
+    summarise(across(where(is.numeric), ~sum(., na.rm = TRUE))) %>%
+    mutate(linhas = "Total")
+  
+  df_com_totais <- bind_rows(df_wide, totais)
+  
+  # Criar datatable formatado
+  datatable(
+    df_com_totais,
+    extensions = 'Buttons',
+    options = list(
+      dom = 'Bfrtip',
+      buttons = list('excel'),
+      scrollX = TRUE
+    ),  
+    rownames = FALSE
+  ) %>%
+  formatRound(
+    columns = 2:ncol(df_com_totais),
+    digits = 2,
+    mark = ".",
+    dec.mark = ","
+  ) %>%
+  formatStyle(
+    columns = colnames(df_com_totais),
+    fontSize = '75%'
+  ) %>%
+  formatStyle(
+    0,
+    target = 'row',
+    fontWeight = styleEqual("Total", 'bold'),
+    backgroundColor = styleEqual("Total", '#f2f2f2')
+  )
+}
+```
+
+```{r}
+# Ver quantas contas foram atribuídas a cada categoria
+verificar_distribuicao_categorias(tabela_04)
+
+# Ver quais contas não foram categorizadas corretamente
+verificar_outras_contas(tabela_04)
+```
+
+```{r}
+# Filtros RREO precisamente traduzidos do SQL do MicroStrategy
+# Este código implementa cada filtro seguindo exatamente a lógica SQL fornecida
+
+# Garantir que todos os tipos de dados estejam corretos
+tabela_04 <- tabela_04 %>% 
+  mutate(
+    # Converter conta_contabil_numero para character para evitar problemas com grepl
+    conta_contabil_numero = as.character(conta_contabil_numero),
+    # Inicializar categoria_conta
+    categoria_conta = "Outras_Contas"
+  )
+
+# 1. Receitas (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (621200000, 621310000, 621320000, 621330000, 621340000, 621390000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("621200000", "621310000", "621320000", "621330000", "621340000", "621390000"),
+    "Receitas", 
+    categoria_conta
+  ))
+
+# 2. Despesas (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (622920104, 631400000, 632200000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("622920104", "631400000", "632200000"),
+    "Despesas", 
+    categoria_conta
+  ))
+
+# 3. Disponibilidade de Caixa Bruta 
+# (baseado no SQL: to_char("ID_CONTA_CONTABIL") like '111%' and "IN_ISF_LANC" = 'F' and (not "ID_CONTA_CONTABIL_DESTINO" in (111110205)))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    grepl("^111", conta_contabil_numero) & 
+    c_con_isf == "F" & 
+    !(conta_contabil_numero %in% c("111110205")),
+    "Disponibilidade_de_Caixa_Bruta", 
+    categoria_conta
+  ))
+
+# 4. Dedução: Receitas a Classificar
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (111113001, 491110101, 491110102, 491110103, 491110108, 491010101, 491010102, 491010103, 491019701, 491019702, 491019703))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("111113001", "491110101", "491110102", "491110103", "491110108", 
+                               "491010101", "491010102", "491010103", "491019701", "491019702", "491019703"),
+    "Deducao_Receitas_a_Classificar", 
+    categoria_conta
+  ))
+
+# 5. Restos a Pagar Liquidados e Não Pagos (Exercícios Anteriores)
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (632100000, 631300000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("632100000", "631300000"),
+    "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores", 
+    categoria_conta
+  ))
+
+# 6. Restos a Pagar Liquidados e Não Pagos (Do Exercício)
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (632710000, 632720000, 632700000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("632710000", "632720000", "632700000"),
+    "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio", 
+    categoria_conta
+  ))
+
+# 7. Restos a Pagar Empenhados e Não Liquidados (Exercícios Anteriores)
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (631100000, 631200000, 631510000, 631520000, 631530000, 631540000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("631100000", "631200000", "631510000", "631520000", "631530000", "631540000"),
+    "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores", 
+    categoria_conta
+  ))
+
+# 8. Demais Obrigações I
+# (baseado no SQL: to_char("ID_CONTA_CONTABIL") like '2%' and "IN_ISF_LANC" = 'F' and (not "ID_CONTA_CONTABIL_DESTINO" in (218924001, 218914001, 218923901, 218923902, 218923903)))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    grepl("^2", conta_contabil_numero) & 
+    c_con_isf == "F" & 
+    !(conta_contabil_numero %in% c("218924001", "218914001", "218923901", "218923902", "218923903")),
+    "Demais_Obrigacoes_I", 
+    categoria_conta
+  ))
+
+# 9. Demais Obrigações II (CODIV)
+# (baseado no SQL: to_char("ID_CONTA_CONTABIL") like '2%' and "IN_ISF_LANC" = 'F' and "ID_UG" in (170600))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    grepl("^2", conta_contabil_numero) & 
+    c_con_isf == "F" & 
+    ug_executora_codigo == "170600",
+    "Demais_Obrigacoes_II_CODIV", 
+    categoria_conta
+  ))
+
+# 10. Dedução: Demais Obrigações I
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (631200000, 631520000, 631300000, 631540000, 632100000, 632710000, 632720000, 531710200, 531720100, 218923901, 218923902, 218923903))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("631200000", "631520000", "631300000", "631540000", "632100000", "632710000", 
+                               "632720000", "531710200", "531720100", "218923901", "218923902", "218923903"),
+    "Deducao_Demais_Obrigacoes_I", 
+    categoria_conta
+  ))
+
+# 11. Restos a Pagar Empenhados e não Liquidados (do Exercício)
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (531710100, 531720100))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("531710100", "531720100"),
+    "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio", 
+    categoria_conta
+  ))
+
+# 12. Empenhos Não Liquidados Cancelados
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (631910000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "631910000",
+    "Empenhos_Nao_Liquidados_Cancelados", 
+    categoria_conta
+  ))
+
+# 13. Conta: 822240101 - Recebimento de RP Autorizado
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (822240101))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "822240101",
+    "Conta_822240101_Recebimento_de_RP_Autorizado", 
+    categoria_conta
+  ))
+
+# 14. Conta: 822140101 - Liberação de RP Autorizado
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (822140101))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "822140101",
+    "Conta_822140101_Liberacao_de_RP_Autorizado", 
+    categoria_conta
+  ))
+
+# 15. Conta: 894310000 - Disponibilidade de Recursos por TED a Liberar
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (894310000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "894310000",
+    "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar", 
+    categoria_conta
+  ))
+
+# 16. Conta: 894320000 - Disponibilidade de Recursos por TED a Receber
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (894320000))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "894320000",
+    "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber", 
+    categoria_conta
+  ))
+
+# 17. Dedução: Limite de Saque I
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (218924001, 218924002))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("218924001", "218924002"),
+    "Deducao_Limite_de_Saque_I", 
+    categoria_conta
+  ))
+
+# 18. Dedução: Limite de Saque II (Poder Executivo)
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (218924001, 218924002) and (not "ID_ORGAO_CCOR" in (1000, 2000, 2001, 2002, 2003...)))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("218924001", "218924002") &
+    !(orgao_c_cor_codigo %in% c("01000", "02000", "02001", "02002", "02003", "10000", "11000", "12000", "12800", 
+                            "12801", "12802", "12803", "12804", "12805", "13000", "14000", "14001", "15000", 
+                            "16000", "17000", "34000", "34001", "34802", "59000", "91100", "01901", "03000")),
+    "Deducao_Limite_de_Saque_II_Poder_Executivo", 
+    categoria_conta
+  ))
+
+# 19. Dedução: da Disponibilidade Líquida (111110205)
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (111110205))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero == "111110205",
+    "Deducao_da_Disponibilidade_Liquida_111110205", 
+    categoria_conta
+  ))
+
+# 20. Dedução: Demais Obrigações II
+# (baseado no SQL: ID_CONTA_CONTABIL_DESTINO in (218924001, 218914001))
+tabela_04 <- tabela_04 %>%
+  mutate(categoria_conta = ifelse(
+    conta_contabil_numero %in% c("218924001", "218914001"),
+    "Deducao_Demais_Obrigacoes_II", 
+    categoria_conta
+  ))
+
+# Lista completa de categorias na ordem
+categorias_rreo_ordenadas <- c(
+  "Receitas",
+  "Despesas",
+  "Disponibilidade_de_Caixa_Bruta",
+  "Deducao_Receitas_a_Classificar",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio",
+  "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores",
+  "Demais_Obrigacoes_I",
+  "Demais_Obrigacoes_II_CODIV",
+  "Deducao_Demais_Obrigacoes_I",
+  "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio",
+  "Empenhos_Nao_Liquidados_Cancelados",
+  "Conta_822240101_Recebimento_de_RP_Autorizado",
+  "Conta_822140101_Liberacao_de_RP_Autorizado",
+  "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar",
+  "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber",
+  "Deducao_Limite_de_Saque_I",
+  "Deducao_Limite_de_Saque_II_Poder_Executivo",
+  "Deducao_da_Disponibilidade_Liquida_111110205",
+  "Deducao_Demais_Obrigacoes_II",
+  "Outras_Contas"
+)
+
+# Verificação e processamento
+# Função para verificar a distribuição das categorias
+verificar_distribuicao_categorias <- function(df) {
+  df %>%
+    count(categoria_conta) %>%
+    arrange(desc(n))
+}
+
+# Função para processar os dados e gerar a tabela final
+processar_tabela_04 <- function(tabela_04) {
+  # Agrupar por linhas e categoria_conta
+  df_agrupado <- tabela_04 %>%
+    group_by(linhas, categoria_conta) %>%
+    summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = "drop")
+  
+  # Verificar quais categorias estão presentes
+  categorias_presentes <- unique(df_agrupado$categoria_conta)
+  categorias_ausentes <- setdiff(categorias_rreo_ordenadas, categorias_presentes)
+  if (length(categorias_ausentes) > 0) {
+    cat("Categorias ausentes nos dados:", paste(categorias_ausentes, collapse = ", "), "\n")
+  }
+  
+  # Completar todas as combinações
+  df_completo <- df_agrupado %>%
+    {
+      linhas_unicas <- unique(.$linhas)
+      expand_grid(
+        linhas = linhas_unicas,
+        categoria_conta = categorias_rreo_ordenadas
+      ) %>%
+      left_join(df_agrupado, by = c("linhas", "categoria_conta")) %>%
+      mutate(saldo = coalesce(saldo, 0))
+    }
+  
+  # Pivotar para formato wide
+  df_wide <- df_completo %>%
+    pivot_wider(
+      id_cols = linhas,
+      names_from = categoria_conta,
+      values_from = saldo,
+      values_fill = 0
+    ) %>%
+    # Reorganizar colunas
+    relocate(any_of(c("linhas", categorias_rreo_ordenadas)))
+  
+  # Adicionar linha de totais
+  totais <- df_wide %>%
+    summarise(across(where(is.numeric), ~sum(., na.rm = TRUE))) %>%
+    mutate(linhas = "Total")
+  
+  df_com_totais <- bind_rows(df_wide, totais)
+  
+  # Criar datatable formatado
+  datatable(
+    df_com_totais,
+    extensions = 'Buttons',
+    options = list(
+      dom = 'Bfrtip',
+      buttons = list('excel'),
+      scrollX = TRUE
+    ),  
+    rownames = FALSE
+  ) %>%
+  formatRound(
+    columns = 2:ncol(df_com_totais),
+    digits = 2,
+    mark = ".",
+    dec.mark = ","
+  ) %>%
+  formatStyle(
+    columns = colnames(df_com_totais),
+    fontSize = '75%'
+  ) %>%
+  formatStyle(
+    0,
+    target = 'row',
+    fontWeight = styleEqual("Total", 'bold'),
+    backgroundColor = styleEqual("Total", '#f2f2f2')
+  )
+}
+
+# Para executar a verificação:
+# verificar_distribuicao_categorias(tabela_04)
+
+# Para processar e visualizar a tabela final:
+# processar_tabela_04(tabela_04)
+```
+
+```{r}
+tabela_04_conta_contabil <- read_excel("tabela_04_conta_contabil_isf_orgao_ug.xlsx") %>% clean_names()
+
+# tabela_04_conta_contabil <- read_excel("tabela_04_conta_contabil.xlsx") %>% clean_names()
+```
+
+```{r}
+
+# PARTE 1: CATEGORIZAÇÃO DA TABELA SIMPLIFICADA (APENAS CONTAS CONTÁBEIS)
+
+# Converter coluna para character
+tabela_04_conta_contabil <- tabela_04_conta_contabil %>%
+  mutate(conta_contabil_numero = as.character(conta_contabil_numero))
+
+# Aplicar categorização com case_when
+tabela_04_conta_contabil <- tabela_04_conta_contabil %>%
+  mutate(categoria_conta = case_when(
+    # 1. Receitas
+    conta_contabil_numero %in% c("621200000", "621310000", "621320000", "621330000", "621340000", "621390000") ~ "Receitas",
+    
+    # 2. Despesas
+    conta_contabil_numero %in% c("622920104", "631400000", "632200000") ~ "Despesas",
+    
+    # 3. Dedução: Receitas a Classificar
+    conta_contabil_numero %in% c("111113001", "491110101", "491110102", "491110103", "491110108", 
+                               "491010101", "491010102", "491010103", "491019701", "491019702", "491019703") ~ "Deducao_Receitas_a_Classificar",
+    
+    # 4. Restos a Pagar Liquidados e Não Pagos (Exercícios Anteriores)
+    conta_contabil_numero %in% c("632100000", "631300000") ~ "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores",
+    
+    # 5. Restos a Pagar Liquidados e Não Pagos (Do Exercício)
+    conta_contabil_numero %in% c("632710000", "632720000", "632700000") ~ "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio",
+    
+    # 6. Restos a Pagar Empenhados e Não Liquidados (Exercícios Anteriores)
+    conta_contabil_numero %in% c("631100000", "631200000", "631510000", "631520000", "631530000", "631540000") ~ "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores",
+    
+    # 7. Restos a Pagar Empenhados e não Liquidados (do Exercício)
+    conta_contabil_numero %in% c("531710100", "531720100") ~ "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio",
+    
+    # 8. Empenhos Não Liquidados Cancelados
+    conta_contabil_numero == "631910000" ~ "Empenhos_Nao_Liquidados_Cancelados",
+    
+    # 9. Conta: 822240101 - Recebimento de RP Autorizado
+    conta_contabil_numero == "822240101" ~ "Conta_822240101_Recebimento_de_RP_Autorizado",
+    
+    # 10. Conta: 822140101 - Liberação de RP Autorizado
+    conta_contabil_numero == "822140101" ~ "Conta_822140101_Liberacao_de_RP_Autorizado",
+    
+    # 11. Conta: 894310000 - Disponibilidade de Recursos por TED a Liberar
+    conta_contabil_numero == "894310000" ~ "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar",
+    
+    # 12. Conta: 894320000 - Disponibilidade de Recursos por TED a Receber
+    conta_contabil_numero == "894320000" ~ "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber",
+    
+    # 13. Dedução: Limite de Saque I
+    conta_contabil_numero %in% c("218924001", "218924002") ~ "Deducao_Limite_de_Saque_I",
+    
+    # 14. Dedução: da Disponibilidade Líquida (111110205)
+    conta_contabil_numero == "111110205" ~ "Deducao_da_Disponibilidade_Liquida_111110205",
+    
+    # 15. Dedução: Demais Obrigações II
+    conta_contabil_numero %in% c("218924001", "218914001") ~ "Deducao_Demais_Obrigacoes_II",
+    
+    # Contas para Dedução: Demais Obrigações I
+    conta_contabil_numero %in% c("631200000", "631520000", "631530000", "631540000", "632100000", "632710000", 
+                               "632720000", "531710200", "531720100", "218923901", "218923902", "218923903") ~ "Deducao_Demais_Obrigacoes_I",
+    
+  # Disponibilidade de Caixa Bruta
+    grepl("^111", conta_contabil_numero) & 
+      c_con_isf == "F" & 
+      !(conta_contabil_numero %in% c("111110205")) ~ "Disponibilidade_de_Caixa_Bruta",
+    
+    # Demais Obrigações I
+    grepl("^2", conta_contabil_numero) & 
+      c_con_isf == "F" & 
+      !(conta_contabil_numero %in% c("218923901", "218923902", "218923903", "218924001", "218914001")) ~ "Demais_Obrigacoes_I",
+    
+    # Demais Obrigações II (CODIV)
+    grepl("^2", conta_contabil_numero) & 
+      c_con_isf == "F" & 
+      ug_executora_codigo == "170600" ~ "Demais_Obrigacoes_II_CODIV",
+    
+   
+    TRUE ~ "Outras_Contas"
+  ))
+
+
+
+
+# PARTE 3: JUNTANDO AS DUAS TABELAS CATEGORIZADAS
+
+# Lista de todas as categorias na ordem desejada
+categorias_rreo_ordenadas <- c(
+  "Receitas",
+  "Despesas",
+  "Disponibilidade_de_Caixa_Bruta",
+  "Deducao_Receitas_a_Classificar",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Exercicios_Anteriores",
+  "Restos_a_Pagar_Liquidados_e_Nao_Pagos_Do_Exercicio",
+  "Restos_a_Pagar_Empenhados_e_Nao_Liquidados_Exercicios_Anteriores",
+  "Demais_Obrigacoes_I",
+  "Demais_Obrigacoes_II_CODIV",
+  "Deducao_Demais_Obrigacoes_I",
+  "Restos_a_Pagar_Empenhados_e_nao_Liquidados_do_Exercicio",
+  "Empenhos_Nao_Liquidados_Cancelados",
+  "Conta_822240101_Recebimento_de_RP_Autorizado",
+  "Conta_822140101_Liberacao_de_RP_Autorizado",
+  "Conta_894310000_Disponibilidade_de_Recursos_por_TED_a_Liberar",
+  "Conta_894320000_Disponibilidade_de_Recursos_por_TED_a_Receber",
+  "Deducao_Limite_de_Saque_I",
+  "Deducao_Limite_de_Saque_II_Poder_Executivo",
+  "Deducao_da_Disponibilidade_Liquida_111110205",
+  "Deducao_Demais_Obrigacoes_II",
+  "Outras_Contas"
+)
+
+
+
+
+```
+
+```{r}
+tabela_04_conta_contabil_isf_orgao_ug %>% filter(startsWith(conta_contabil_numero, "2") )  %>% summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE))
 ```

@@ -35,9 +35,9 @@ library(scales)
 # funcao para pivotar a tabela a partir dos itens de informacao
 
 tabela_pivotada <- function(df, grupo){
-  itens <- df$item_informacao %>% unique() %>% na.omit()
+  itens <- df$item_informacao_nome %>% unique() %>% na.omit()
   
-  df <- df  %>% group_by(!!!syms(grupo))  %>% pivot_wider(names_from = item_informacao, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
+  df <- df  %>% group_by(!!!syms(grupo))  %>% pivot_wider(names_from = item_informacao_nome, values_from = saldo_r_item_informacao) %>% summarise_at(itens, sum, na.rm = TRUE)
   
   return(df)
   

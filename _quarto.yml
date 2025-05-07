@@ -1,0 +1,31 @@
+project:
+  type: book
+
+book:
+  title: "Projeto Automatizar Relatórios"
+  chapters:
+    - index.qmd
+    # - projeto.qmd
+    # - introducao.qmd
+    - metodologia.qmd
+    - dados.qmd
+    - tratamento_dados.qmd
+    # - elaboracao_anexos.qmd
+    - elaboracao_completa.qmd
+    # - elaboracao_sh.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: cosmo
+  # pdf:
+  #   documentclass: scrreprt
+  # docx:
+  #   toc: true
+  #   number-sections: true
+  #   highlight-style: github
+    
+
+editor: visual
+

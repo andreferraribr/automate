@@ -1,0 +1,4 @@
+- source: project
+  quarto-pub:
+    - id: aaefa6bc-550d-441b-a5dd-b23af99792cb
+      url: 'https://andreferrari.quarto.pub/auto_tg'
