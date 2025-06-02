@@ -109,6 +109,180 @@ dados_despesa <- dados_despesa %>%
       )
         
       )
+# Criando o atributo anexo_08 usando case_when com códigos dos atributos
+dados_despesa <- dados_despesa %>%
+  mutate(
+    anexo_08 = case_when(
+      # 03 - EDUCAÇÃO BÁSICA
+      # Baseado nos critérios das imagens com códigos específicos
+      (fonte_recursos_codigo %notin% c("008", "035", "133", "134", "213", "242") &
+       iduso_codigo == 8 &
+       elemento_despesa_codigo %notin% c("01", "03", "59") &
+       subfuncao_governo_codigo == "368") ~ "03 - EDUCAÇÃO BÁSICA",
+      
+      # 04 - ENSINO SUPERIOR
+      # Baseado nos códigos de subfunção de ensino superior
+      (fonte_recursos_codigo %notin% c("008", "035", "133", "134", "213", "242") &
+       iduso_codigo == 8 &
+       elemento_despesa_codigo %notin% c("01", "03", "59") &
+       subfuncao_governo_codigo %in% c("364", "365", "366")) ~ "04 - ENSINO SUPERIOR",
+      
+      # 05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR
+      # Baseado nos códigos de ensino profissional
+      (fonte_recursos_codigo %notin% c("008", "035", "133", "134") &
+       iduso_codigo == 8 &
+       elemento_despesa_codigo %notin% c("01", "03", "59") &
+       subfuncao_governo_codigo == "363") ~ "05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR",
+      
+      # 06 - OUTRAS
+      # Para outras despesas educacionais
+      (fonte_recursos_codigo %notin% c("008", "035", "133", "134") &
+       iduso_codigo == 8 &
+       elemento_despesa_codigo %notin% c("01", "03", "59") &
+       !subfuncao_governo_codigo %notin% c("368", "363", "364", "365", "366")) ~ "06 - OUTRAS",
+      
+      # 08 - COMPLEMENTAÇÃO DA UNIÃO - VAAT
+      # Baseado nos códigos de complementação da união
+      fonte_recursos_codigo %in% c("118", "119") ~ "08 - COMPLEMENTAÇÃO DA UNIÃO - VAAT",
+      
+      # 09 - COMPLEMENTAÇÃO DA UNIÃO - VAAT
+      # Outro código específico para VAAT
+      fonte_recursos_codigo == "120" ~ "09 - COMPLEMENTAÇÃO DA UNIÃO - VAAT",
+      
+      # 11 - DESPESAS CUSTEADAS COM A CONTRIBUIÇÃO SOCIAL DO SALÁRIO-EDUCAÇÃO
+      # Baseado nos códigos de contribuição do salário-educação
+      (fonte_recursos_codigo %in% c("212") &
+       iduso_codigo == 8 &
+       elemento_despesa_codigo %in% c("01", "03", "59")) ~ "11 - DESPESAS CUSTEADAS COM A CONTRIBUIÇÃO SOCIAL DO SALÁRIO-EDUCAÇÃO",
+      
+      # 12 - DESPESAS COM O FUNDO CONSTITUCIONAL DO DISTRITO FEDERAL - FCDF
+      # Baseado no código do FCDF
+      (fonte_recursos_codigo == "154" &
+       iduso_codigo == 8 &
+       elemento_despesa_codigo %in% c("01", "03", "59")) ~ "12 - DESPESAS COM O FUNDO CONSTITUCIONAL DO DISTRITO FEDERAL - FCDF",
+      
+      # 13 - DESPESAS CUSTEADAS COM RECEITAS DE ROYALTIES DE EXPLORAÇÃO DO PRÉ-SAL
+      # Baseado nos códigos de royalties
+      (fonte_recursos_codigo %in% c("242") &
+       iduso_codigo == 8 &
+       elemento_despesa_codigo %in% c("01", "03", "59")) ~ "13 - DESPESAS CUSTEADAS COM RECEITAS DE ROYALTIES DE EXPLORAÇÃO DO PRÉ-SAL",
+      
+      # 14 - DEMAIS DESPESAS COM EDUCAÇÃO
+      # Para demais despesas educacionais
+      (funcao_governo_codigo == "12" |
+       lei_calmon_s_n == "SIM" |
+       subfuncao_governo_codigo %in% c("361", "362", "363", "364", "365", "366", "367", "368")) ~ "14 - DEMAIS DESPESAS COM EDUCAÇÃO",
+      
+      # Default case
+      TRUE ~ "Não classificado"
+    )
+  )
+
+# Verificar a distribuição das classificações
+dados_despesa %>% 
+  count(anexo_08, sort = TRUE) %>%
+  mutate(percentual = round(n/sum(n)*100, 2))
+
+dados_despesa <- dados_despesa %>%
+  mutate(
+    rli = case_when(
+      # 01. Fundo de Participação dos Estados - FPE (21,5% de (1.3 + 1.5))
+      acao_governo_codigo %in% c("0044") ~ "01. Fundo de Participação dos Estados - FPE",
+      
+      # 02. Fundo de Participação dos Municípios - FPM (23,5% de (1.3 + 1.5))
+      acao_governo_codigo %in% c("0045") ~ "02. Fundo de Participação dos Municípios - FPM",
+      
+      # 03. IPI-Exportação Repassado aos Estados e Distrito Federal (10% de 1.5)
+      acao_governo_codigo %in% c("0046") ~ "03. IPI-Exportação Repassado aos Estados e Distrito Federal",
+      
+      # 04. Parcelas do FPE, FPM e IPI-Exportação Destinadas ao FUNDEB
+      acao_governo_codigo %in% c("0C33") ~ "04. Parcelas do FPE, FPM e IPI-Exportação Destinadas ao FUNDEB",
+      
+      # 05. IOF-Ouro Repassado aos Estados, Distrito Federal e Municípios (1.7)
+      acao_governo_codigo %in% c("00H6") ~ "05. IOF-Ouro Repassado aos Estados, Distrito Federal e Municípios",
+      
+      # 06. ITR Repassado aos Municípios (50% de 1.4)
+      acao_governo_codigo %in% c("006M") ~ "06. ITR Repassado aos Municípios",
+      
+      # Verificações adicionais por função/subfunção para maior precisão
+      # Transferências Intergovernamentais
+      funcao_governo_codigo == "25" & 
+        subfuncao_governo_codigo %in% c("845", "846", "847") ~ "07. Outras Transferências Intergovernamentais",
+      
+      # Transferências a Estados e Distrito Federal
+      funcao_governo_codigo == "25" & 
+        subfuncao_governo_codigo == "845" ~ "08. Transferências a Estados e Distrito Federal",
+      
+      # Transferências a Municípios
+      funcao_governo_codigo == "25" & 
+        subfuncao_governo_codigo == "846" ~ "09. Transferências a Municípios",
+      
+      # Transferências Multigovernamentais
+      funcao_governo_codigo == "25" & 
+        subfuncao_governo_codigo == "847" ~ "10. Transferências Multigovernamentais",
+      
+      # Complementação da União ao FUNDEB
+      str_detect(tolower(acao_governo_nome), "fundeb") |
+        str_detect(tolower(programa_governo_nome), "fundeb") ~ "11. Complementação da União ao FUNDEB",
+      
+      # Salário-Educação
+      str_detect(tolower(acao_governo_nome), "salario.educacao") |
+        str_detect(tolower(programa_governo_nome), "salario.educacao") ~ "12. Salário-Educação",
+      
+      # CIDE-Combustíveis para Estados e Municípios
+      str_detect(tolower(acao_governo_nome), "cide") ~ "13. CIDE-Combustíveis para Estados e Municípios",
+      
+      # Royalties e Participações Especiais
+      str_detect(tolower(acao_governo_nome), "royalt|participacao.especial") |
+        str_detect(tolower(programa_governo_nome), "royalt|participacao.especial") ~ "14. Royalties e Participações Especiais",
+      
+      # Transferências do SUS
+      funcao_governo_codigo == "10" & 
+        modalidade_aplicacao_codigo %in% c("30", "40", "32") ~ "15. Transferências do SUS",
+      
+      # Transferências da Assistência Social
+      funcao_governo_codigo == "08" & 
+        modalidade_aplicacao_codigo %in% c("30", "40", "32") ~ "16. Transferências da Assistência Social",
+      
+      # Outras Transferências Voluntárias
+      modalidade_aplicacao_codigo %in% c("30", "40") ~ "17. Outras Transferências Voluntárias",
+      
+      # Transferências Obrigatórias
+      modalidade_aplicacao_codigo %in% c("31", "32") ~ "18. Transferências Obrigatórias",
+      
+      # Convênios com Estados e Municípios
+      modalidade_aplicacao_codigo == "40" ~ "19. Convênios com Estados e Municípios",
+      
+      # Despesas de Pessoal e Encargos Sociais
+      categoria_economica_despesa_codigo == 1 ~ "20. Despesas de Pessoal e Encargos Sociais",
+      
+      # Juros e Encargos da Dívida
+      categoria_economica_despesa_codigo == 2 ~ "21. Juros e Encargos da Dívida",
+      
+      # Outras Despesas Correntes
+      categoria_economica_despesa_codigo == 3 & 
+        !modalidade_aplicacao_codigo %in% c("30", "31", "32", "40") ~ "22. Outras Despesas Correntes",
+      
+      # Investimentos
+      categoria_economica_despesa_codigo == 4 & 
+        grupo_despesa_codigo_grupo == 4 ~ "23. Investimentos",
+      
+      # Inversões Financeiras
+      categoria_economica_despesa_codigo == 4 & 
+        grupo_despesa_codigo_grupo == 5 ~ "24. Inversões Financeiras",
+      
+      # Amortização da Dívida
+      categoria_economica_despesa_codigo == 4 & 
+        grupo_despesa_codigo_grupo == 6 ~ "25. Amortização da Dívida",
+      
+      # Reserva de Contingência
+      str_detect(tolower(acao_governo_nome), "reserva.contingencia") |
+        str_detect(tolower(programa_governo_nome), "reserva.contingencia") ~ "26. Reserva de Contingência",
+      
+      # Casos não contemplados
+      TRUE ~ "99. Outras Despesas"
+    )
+  )
 
 # importar dados da receita
 
@@ -124,6 +298,235 @@ dados_receita <- dados_receita %>%
            ifelse(natureza_receita_codigo_completo %in% c(81110201,21110201,21210201), "sim", "nao")
     
   )
+
+
+
+# Add 'rli' column to dados_receita based on Natureza da Receita from Anexo 8 - MDE 1 and additional rules
+dados_receita <- dados_receita %>%
+  mutate(rli = case_when(
+    # Imposto sobre Importação - II
+    startsWith(natureza_receita_codigo_completo, "111101") & 
+      !natureza_receita_codigo_completo %in% c("11110102", "11110103", "11110107", "11110104", "11110108") ~ "II",
+    natureza_receita_codigo_completo == "11110102" ~ "II-MULTAS",
+    natureza_receita_codigo_completo == "11110103" ~ "II-DIVIDA",
+    natureza_receita_codigo_completo %in% c("11110107", "11110104", "11110108") ~ "II-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "111101") ~ "II-DEDUCOES",
+
+    # Imposto sobre Exportação - IE
+    natureza_receita_codigo_completo == "11110201" ~ "IE",
+    natureza_receita_codigo_completo == "11110202" ~ "IE-MULTAS",
+    natureza_receita_codigo_completo == "11110203" ~ "IE-DIVIDA",
+    natureza_receita_codigo_completo %in% c("11110207", "11110208") ~ "IE-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "111102") ~ "IE-DEDUCOES",
+
+    # Imposto sobre Rendas - IR
+    startsWith(natureza_receita_codigo_completo, "1113") & 
+      !startsWith(natureza_receita_codigo_completo, "111303") ~ "IR",
+    startsWith(natureza_receita_codigo_completo, "111303") & 
+      !natureza_receita_codigo_completo %in% c("11130313", "11130323", "11130314", "11130324") ~ "IR-MULTAS",
+    natureza_receita_codigo_completo %in% c("11130313", "11130323") ~ "IR-DIVIDA",
+    natureza_receita_codigo_completo %in% c("11130314", "11130324") ~ "IR-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "1113") ~ "IR-DEDUCOES",
+
+    # Imposto Territorial Rural - ITR
+    startsWith(natureza_receita_codigo_completo, "1120") & 
+      !natureza_receita_codigo_completo %in% c("11200102", "11200422", "11200103", "11200423", "11200104", "11200424") ~ "ITR",
+    natureza_receita_codigo_completo %in% c("11200102", "11200422") ~ "ITR-MULTAS",
+    natureza_receita_codigo_completo %in% c("11200103", "11200423") ~ "ITR-DIVIDA",
+    natureza_receita_codigo_completo %in% c("11200104", "11200424") ~ "ITR-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "1120") ~ "ITR-DEDUCOES",
+
+    # Imposto sobre Produtos Industrializados - IPI
+    startsWith(natureza_receita_codigo_completo, "1140") & 
+      !natureza_receita_codigo_completo %in% c("11401102", "1140152", "11401103", "1140153", "11401104", "1140154") ~ "IPI",
+    natureza_receita_codigo_completo %in% c("11401102", "1140152") ~ "IPI-MULTAS",
+    natureza_receita_codigo_completo %in% c("11401103", "1140153") ~ "IPI-DIVIDA",
+    natureza_receita_codigo_completo %in% c("11401104", "1140154") ~ "IPI-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "1140") ~ "IPI-DEDUCOES",
+
+    # Imposto sobre Operações Financeiras - IOF
+    startsWith(natureza_receita_codigo_completo, "111502") & 
+      !natureza_receita_codigo_completo %in% c("11150202", "11150203", "11150204", "11150207") ~ "IOF",
+    natureza_receita_codigo_completo == "11150202" ~ "IOF-MULTAS",
+    natureza_receita_codigo_completo == "11150203" ~ "IOF-DIVIDA",
+    natureza_receita_codigo_completo %in% c("11150204", "11150207") ~ "IOF-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "111502") ~ "IOF-DEDUCOES",
+
+    # Imposto sobre Operações Financeiras com Ouro - IOF-Ouro
+    startsWith(natureza_receita_codigo_completo, "111501") & 
+      !natureza_receita_codigo_completo %in% c("11150102", "11150103", "11150104") ~ "IOF-OURO",
+    natureza_receita_codigo_completo == "11150102" ~ "IOF-OURO-MULTAS",
+    natureza_receita_codigo_completo == "11150103" ~ "IOF-OURO-DIVIDA",
+    natureza_receita_codigo_completo == "11150104" ~ "IOF-OURO-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "111501") ~ "IOF-OURO-DEDUCOES",
+
+    # Outros Impostos
+    (startsWith(natureza_receita_codigo_completo, "111901") | startsWith(natureza_receita_codigo_completo, "111999") | 
+      startsWith(natureza_receita_codigo_completo, "1117") | startsWith(natureza_receita_codigo_completo, "1116")) & 
+      !natureza_receita_codigo_completo %in% c("11190112", "11199902", "11190113", "11199903", "11190114", "11199904") ~ "OUTROS-IMPOSTOS",
+    natureza_receita_codigo_completo %in% c("11190112", "11199902") ~ "OUTROS-IMPOSTOS-MULTAS",
+    natureza_receita_codigo_completo %in% c("11190113", "11199903") ~ "OUTROS-IMPOSTOS-DIVIDA",
+    natureza_receita_codigo_completo %in% c("11190114", "11199904") ~ "OUTROS-IMPOSTOS-MULTAS-DIVIDA",
+    startsWith(natureza_receita_codigo_completo, "111901") | startsWith(natureza_receita_codigo_completo, "111999") | 
+      startsWith(natureza_receita_codigo_completo, "1117") | startsWith(natureza_receita_codigo_completo, "1116") ~ "OUTROS-IMPOSTOS-DEDUCOES",
+
+    # Conferência Receita (broader category for codes starting with 111, but after specific taxes)
+    startsWith(natureza_receita_codigo_completo, "111") ~ "CONFERENCIA-RECEITA",
+
+    # Default for other revenue codes
+    TRUE ~ "OUTROS"
+  ))
+
+
+
+# Adicionando o atributo "rli" com base na natureza da receita
+# Organizado sequencialmente para relatórios fiscais (RREO e RGF)
+dados_receita <- dados_receita %>%
+  mutate(
+    rli = case_when(
+      # 01. Imposto sobre Importação - II (Principal)
+      natureza_receita_codigo_completo %in% c("11110101") ~ "01. Imposto sobre Importação - II",
+      
+      # 02. Multas, Juros de Mora e Outros Encargos do II
+      natureza_receita_codigo_completo %in% c("11110102") ~ "02. Multas, Juros de Mora e Outros Encargos do II",
+      
+      # 03. Dívida Ativa do II
+      natureza_receita_codigo_completo %in% c("11110103") ~ "03. Dívida Ativa do II",
+      
+      # 04. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do II
+      natureza_receita_codigo_completo %in% c("11110107", "11110104", "11110108") ~ "04. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do II",
+      
+      # 05. (-) Deduções da Receita do II
+      natureza_receita_codigo_completo %in% c("71110112", "71110111", "71110101", "71110102", "71110103", "71110104", "71110108") ~ "05. (-) Deduções da Receita do II",
+      
+      # 06. Imposto sobre Exportação - IE (Principal)
+      natureza_receita_codigo_completo %in% c("11110201") ~ "06. Imposto sobre Exportação - IE",
+      
+      # 07. Multas, Juros de Mora e Outros Encargos do IE
+      natureza_receita_codigo_completo %in% c("11110202") ~ "07. Multas, Juros de Mora e Outros Encargos do IE",
+      
+      # 08. Dívida Ativa do IE
+      natureza_receita_codigo_completo %in% c("11110203") ~ "08. Dívida Ativa do IE",
+      
+      # 09. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IE
+      natureza_receita_codigo_completo %in% c("11110207", "11110208", "11110204") ~ "09. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IE",
+      
+      # 10. (-) Deduções da Receita do IE
+      natureza_receita_codigo_completo %in% c("71110201", "71110202", "71110203", "71110204", "71110207", "71110208") ~ "10. (-) Deduções da Receita do IE",
+      
+      # 11. Imposto sobre Rendas - IR (Principal)
+      natureza_receita_codigo_completo %in% c("11130101", "11130111", "11130211", "11130301", "11130311", "11130321") ~ "11. Imposto sobre Rendas - IR",
+      
+      # 12. Multas, Juros de Mora e Outros Encargos do IR
+      natureza_receita_codigo_completo %in% c("11130102", "11130112", "11130212", "11130302", "11130312", "11130322") ~ "12. Multas, Juros de Mora e Outros Encargos do IR",
+      
+      # 13. Dívida Ativa do IR
+      natureza_receita_codigo_completo %in% c("11130103", "11130113", "11130213", "11130303", "11130313", "11130323", "11130333", "11130343", "11130203") ~ "13. Dívida Ativa do IR",
+      
+      # 14. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IR
+      natureza_receita_codigo_completo %in% c("11130104", "11130114", "11130214", "11130304", "11130314", "11130324", "11130334", "11130344", "11130107", "11130117", "11130207", "11130208") ~ "14. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IR",
+      
+      # 15. (-) Deduções da Receita do IR
+      natureza_receita_codigo_completo %in% c("71130111", "71130112", "71130201", "71130202", "71130211", "71130212", "71130311", "71130312", "71130331", "71130332", "71130341", "71130342", "71130343") ~ "15. (-) Deduções da Receita do IR",
+      
+      # 16. Imposto Territorial Rural - ITR (Principal)
+      natureza_receita_codigo_completo %in% c("11120101", "11120111", "11120121", "11120411", "11120421") ~ "16. Imposto Territorial Rural - ITR",
+      
+      # 17. Multas, Juros de Mora e Outros Encargos do ITR
+      natureza_receita_codigo_completo %in% c("11120102", "11120112", "11120122", "11120432") ~ "17. Multas, Juros de Mora e Outros Encargos do ITR",
+      
+      # 18. Dívida Ativa do ITR
+      natureza_receita_codigo_completo %in% c("11120113", "11120123", "11120423", "11120433") ~ "18. Dívida Ativa do ITR",
+      
+      # 19. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do ITR
+      natureza_receita_codigo_completo %in% c("11120114", "11120124", "11120127", "11120128", "11120434", "11120118") ~ "19. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do ITR",
+      
+      # 20. (-) Deduções da Receita do ITR
+      natureza_receita_codigo_completo %in% c("71120101", "71120102", "71120111", "71120118") ~ "20. (-) Deduções da Receita do ITR",
+      
+      # 21. Imposto sobre Produtos Industrializados - IPI (Principal)
+      natureza_receita_codigo_completo %in% c("11140111", "11140121", "11140131", "11140141", "11140151") ~ "21. Imposto sobre Produtos Industrializados - IPI",
+      
+      # 22. Multas, Juros de Mora e Outros Encargos do IPI
+      natureza_receita_codigo_completo %in% c("11140112", "11140122", "11140132", "11140142", "11140152") ~ "22. Multas, Juros de Mora e Outros Encargos do IPI",
+      
+      # 23. Dívida Ativa do IPI
+      natureza_receita_codigo_completo %in% c("11140113", "11140123", "11140133", "11140143", "11140153") ~ "23. Dívida Ativa do IPI",
+      
+      # 24. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IPI
+      natureza_receita_codigo_completo %in% c("11140114", "11140124", "11140134", "11140144", "11140154", "11140157", "11140158") ~ "24. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IPI",
+      
+      # 25. (-) Deduções da Receita do IPI
+      natureza_receita_codigo_completo %in% c("71140111", "71140121", "71140122", "71140141", "71140142", "71140151", "71140152") ~ "25. (-) Deduções da Receita do IPI",
+      
+      # 26. Imposto sobre Operações Financeiras - IOF (Principal)
+      natureza_receita_codigo_completo %in% c("11150201") ~ "26. Imposto sobre Operações Financeiras - IOF",
+      
+      # 27. Multas, Juros de Mora e Outros Encargos do IOF
+      natureza_receita_codigo_completo %in% c("11150202", "11150122") ~ "27. Multas, Juros de Mora e Outros Encargos do IOF",
+      
+      # 28. Dívida Ativa do IOF
+      natureza_receita_codigo_completo %in% c("11150203") ~ "28. Dívida Ativa do IOF",
+      
+      # 29. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IOF
+      natureza_receita_codigo_completo %in% c("11150124", "11150127", "11150128", "11150207") ~ "29. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IOF",
+      
+      # 30. (-) Deduções da Receita do IOF
+      natureza_receita_codigo_completo %in% c("11150121", "11150123", "11150208") ~ "30. (-) Deduções da Receita do IOF",
+      
+      # 31. Imposto sobre Operações Financeiras com Ouro - IOF-Ouro (Principal)
+      natureza_receita_codigo_completo %in% c("11150101") ~ "31. Imposto sobre Operações Financeiras com Ouro - IOF-Ouro",
+      
+      # 32. Multas, Juros de Mora e Outros Encargos do IOF-Ouro
+      natureza_receita_codigo_completo %in% c("11150102") ~ "32. Multas, Juros de Mora e Outros Encargos do IOF-Ouro",
+      
+      # 33. Dívida Ativa do IOF-Ouro
+      natureza_receita_codigo_completo %in% c("11150113") ~ "33. Dívida Ativa do IOF-Ouro",
+      
+      # 34. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IOF-Ouro
+      natureza_receita_codigo_completo %in% c("11150114") ~ "34. Multa, Juros de Mora, Atualização Monetária e Outros Encargos da Dívida Ativa do IOF-Ouro",
+      
+      # 35. (-) Deduções da Receita do IOF-Ouro
+      natureza_receita_codigo_completo %in% c("71150101", "71150102", "71150113", "71150114") ~ "35. (-) Deduções da Receita do IOF-Ouro",
+      
+      # 36. Outros Impostos - Principal
+      natureza_receita_codigo_completo %in% c("11190111") ~ "36. Outros Impostos - Principal",
+      
+      # 37. Outros Impostos - Multas e Juros
+      natureza_receita_codigo_completo %in% c("11190112", "11199902") ~ "37. Outros Impostos - Multas e Juros",
+      
+      # 38. Outros Impostos - Dívida Ativa
+      natureza_receita_codigo_completo %in% c("11190113", "11199903") ~ "38. Outros Impostos - Dívida Ativa",
+      
+      # 39. Outros Impostos - Multas e Juros da Dívida Ativa
+      natureza_receita_codigo_completo %in% c("11190114", "11199904") ~ "39. Outros Impostos - Multas e Juros da Dívida Ativa",
+      
+      # 40. (-) Deduções de Outros Impostos
+      natureza_receita_codigo_completo %in% c("71190111", "71190112", "71190113", "71190114", "71199902", "71199903", "71199904") ~ "40. (-) Deduções de Outros Impostos",
+      
+      # Casos não contemplados
+      TRUE ~ "99. Outras Receitas"
+    )
+  )
+# Verificar o resultado
+dados_receita %>%
+  count(rli, sort = TRUE) %>%
+  print(n = Inf)
+
+# Verify the new column by summarizing the counts of 'rli' values
+rli_summary <- dados_receita %>%
+  group_by(rli) %>%
+  summarise(count = n())
+
+# Print the summary
+print("Summary of 'rli' column:")
+print(rli_summary)
+
+datatable(dados_receita  %>% group_by(rli,item_informacao_nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao,na.rm = TRUE)) %>% pivot_wider(names_from = item_informacao_nome, values_from = saldo_r_item_informacao)) %>%  formatRound(c("RECEITA ORCAMENTARIA (BRUTA)" ,  "RECEITA ORCAMENTARIA (LIQUIDA)", "PREVISAO INICIAL DA RECEITA"   , "PREVISAO ATUALIZADA DA RECEITA"
+, "DEDUCOES DA RECEITA"                                       ), 2, mark = ".", dec.mark = "," )
+
+# Optionally, save the updated data frame to a CSV file
+write.csv(dados_receita, "dados_receita_with_rli_updated.csv", row.names = FALSE)
 
 # importar dados do anexo 7 e criar as variáveis tipo_modalidade e poder
 
