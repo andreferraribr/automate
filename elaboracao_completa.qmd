@@ -23,7 +23,7 @@ execute:
 
 sh_receita_natureza <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome", "natureza_receita_codigo_completo", "natureza_receita_nome", "item_informacao_nome")
 
-dt_formatada(tabela_pivotada(dados_receita%>%filter(mes_lancamento == "DEZ/2024") %>% 
+dt_formatada(tabela_pivotada(dados_receita%>%filter(mes_lancamento == "ABR/2025") %>% 
   filter(nre1_categoria_economica_codigo %notin% c(7, 8)), sh_receita_natureza), sh_receita_natureza )
 
 ```
@@ -34,7 +34,7 @@ dt_formatada(tabela_pivotada(dados_receita%>%filter(mes_lancamento == "DEZ/2024"
 sh_receita_categoria_origem <- c("refinanciamento", "tipo_modalidade", "nre1_categoria_economica_codigo", "nre1_categoria_economica_nome", "nre2_origem_receita_codigo_origem",
      "nre2_origem_receita_nome")
 
-dt_formatada(tabela_pivotada(dados_receita %>% filter(mes_lancamento == "DEZ/2024"), sh_receita_categoria_origem),sh_receita_categoria_origem)
+dt_formatada(tabela_pivotada(dados_receita %>% filter(mes_lancamento == "ABR/2025"), sh_receita_categoria_origem),sh_receita_categoria_origem)
 
 
 
@@ -48,7 +48,7 @@ dt_formatada(tabela_pivotada(dados_receita %>% filter(mes_lancamento == "DEZ/202
 agrupado_despesa_categoria_grupo <- c("categoria_economica_despesa_codigo", "categoria_economica_despesa_nome", "grupo_despesa_codigo_grupo", "grupo_despesa_nome")
 
 dt_formatada(tabela_pivotada(dados_despesa %>%
- filter(mes_lancamento == "DEZ/2024", refinanciamento == "nao"),agrupado_despesa_categoria_grupo ),agrupado_despesa_categoria_grupo)
+ filter(mes_lancamento == "ABR/2025", refinanciamento == "nao"),agrupado_despesa_categoria_grupo ),agrupado_despesa_categoria_grupo)
 
 
 ```
@@ -58,7 +58,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>%
 ```{r despesa_categoria_grupo_refinanciamento}
 
 dt_formatada(tabela_pivotada(dados_despesa %>%
- filter(mes_lancamento == "DEZ/2024", refinanciamento == "sim"),agrupado_despesa_categoria_grupo ),agrupado_despesa_categoria_grupo)
+ filter(mes_lancamento == "ABR/2025", refinanciamento == "sim"),agrupado_despesa_categoria_grupo ),agrupado_despesa_categoria_grupo)
 ```
 
 ### Despesa por UF e Programa
@@ -66,7 +66,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>%
 ```{r despesa_uf_progama}
 agrupado_despesa_uf_programa <- c("uge_uf_sigla", "uge_uf_nome", "programa_governo_codigo", "programa_governo_nome")
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_programa), agrupado_despesa_uf_programa)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "ABR/2025", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_programa), agrupado_despesa_uf_programa)
 
 
 ```
@@ -76,7 +76,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 ```{r despesa_uf_acao}
 agrupado_despesa_uf_acao <- c("uge_uf_sigla", "uge_uf_nome", "acao_governo_codigo", "acao_governo_nome")
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_acao), agrupado_despesa_uf_acao)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "ABR/2025", item_informacao_nome == "DESPESAS LIQUIDADAS"), agrupado_despesa_uf_acao), agrupado_despesa_uf_acao)
 ```
 
 ### Despesa com irrigação
@@ -86,10 +86,10 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 
 agrupado_despesa_uf <- c("uge_uf_sigla", "uge_uf_nome")
 
-# dt_formatada(tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf ), agrupado_despesa_uf)
+# dt_formatada(tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "ABR/2025"), agrupado_despesa_uf ), agrupado_despesa_uf)
 
 
-tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "DEZ/2024"), agrupado_despesa_uf )
+tabela_pivotada(dados_despesa %>% filter(acao_governo_codigo == "60" , item_informacao_nome == "DESPESAS LIQUIDADAS" , mes_lancamento == "ABR/2025"), agrupado_despesa_uf )
 
 ```
 
@@ -111,7 +111,7 @@ datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao_n
 agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo <- c( "tipo_modalidade"  ,"refinanciamento","categoria_economica_despesa_codigo", "categoria_economica_despesa_nome", "grupo_despesa_codigo_grupo", "grupo_despesa_nome")
 
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024"), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "ABR/2025"), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)
 
 
 
@@ -124,11 +124,11 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 
 agrupado_despesa_tipo_modalidade_funcao <-  c( "tipo_modalidade", "funcao_governo_codigo", "funcao_governo_nome")
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", refinanciamento == "nao"), agrupado_despesa_tipo_modalidade_funcao), agrupado_despesa_tipo_modalidade_funcao)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "ABR/2025", refinanciamento == "nao"), agrupado_despesa_tipo_modalidade_funcao), agrupado_despesa_tipo_modalidade_funcao)
 
 agrupado_despesa_tipo_modalidade_funcao_subfuncao <-  c( "tipo_modalidade", "funcao_governo_codigo", "funcao_governo_nome", "subfuncao_governo_codigo", "subfuncao_governo_nome" )
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", refinanciamento == "nao"), agrupado_despesa_tipo_modalidade_funcao_subfuncao), agrupado_despesa_tipo_modalidade_funcao_subfuncao)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "ABR/2025", refinanciamento == "nao"), agrupado_despesa_tipo_modalidade_funcao_subfuncao), agrupado_despesa_tipo_modalidade_funcao_subfuncao)
 
 ```
 
@@ -170,7 +170,7 @@ dt_formatada(tabela_pivotada(dados_rp_anexo_12 %>%  filter( iduso_codigo == 6, f
 
 
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/2024", esfera_orcamentaria_codigo == 2), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "ABR/2025", esfera_orcamentaria_codigo == 2), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)
 
 
 
@@ -183,7 +183,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == "DEZ/202
 
 agrupado_receita_origem <- c("nre2_origem_receita_codigo_origem", "nre2_origem_receita_nome")
 
-dt_formatada(tabela_pivotada(dados_receita %>% filter(mes_lancamento == "DEZ/2024", esfera_orcamentaria_codigo == 2)%>% mutate(nre2_origem_receita_nome = str_remove(nre2_origem_receita_nome, "-INTRA")), agrupado_receita_origem), agrupado_receita_origem)
+dt_formatada(tabela_pivotada(dados_receita %>% filter(mes_lancamento == "ABR/2025", esfera_orcamentaria_codigo == 2)%>% mutate(nre2_origem_receita_nome = str_remove(nre2_origem_receita_nome, "-INTRA")), agrupado_receita_origem), agrupado_receita_origem)
 
 
 

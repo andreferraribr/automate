@@ -109,79 +109,7 @@ dados_despesa <- dados_despesa %>%
       )
         
       )
-# Criando o atributo anexo_08 usando case_when com códigos dos atributos
-dados_despesa <- dados_despesa %>%
-  mutate(
-    anexo_08 = case_when(
-      # 03 - EDUCAÇÃO BÁSICA
-      # Baseado nos critérios das imagens com códigos específicos
-      (fonte_recursos_codigo %notin% c("008", "035", "133", "134", "213", "242") &
-       iduso_codigo == 8 &
-       elemento_despesa_codigo %notin% c("01", "03", "59") &
-       subfuncao_governo_codigo == "368") ~ "03 - EDUCAÇÃO BÁSICA",
-      
-      # 04 - ENSINO SUPERIOR
-      # Baseado nos códigos de subfunção de ensino superior
-      (fonte_recursos_codigo %notin% c("008", "035", "133", "134", "213", "242") &
-       iduso_codigo == 8 &
-       elemento_despesa_codigo %notin% c("01", "03", "59") &
-       subfuncao_governo_codigo %in% c("364", "365", "366")) ~ "04 - ENSINO SUPERIOR",
-      
-      # 05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR
-      # Baseado nos códigos de ensino profissional
-      (fonte_recursos_codigo %notin% c("008", "035", "133", "134") &
-       iduso_codigo == 8 &
-       elemento_despesa_codigo %notin% c("01", "03", "59") &
-       subfuncao_governo_codigo == "363") ~ "05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR",
-      
-      # 06 - OUTRAS
-      # Para outras despesas educacionais
-      (fonte_recursos_codigo %notin% c("008", "035", "133", "134") &
-       iduso_codigo == 8 &
-       elemento_despesa_codigo %notin% c("01", "03", "59") &
-       !subfuncao_governo_codigo %notin% c("368", "363", "364", "365", "366")) ~ "06 - OUTRAS",
-      
-      # 08 - COMPLEMENTAÇÃO DA UNIÃO - VAAT
-      # Baseado nos códigos de complementação da união
-      fonte_recursos_codigo %in% c("118", "119") ~ "08 - COMPLEMENTAÇÃO DA UNIÃO - VAAT",
-      
-      # 09 - COMPLEMENTAÇÃO DA UNIÃO - VAAT
-      # Outro código específico para VAAT
-      fonte_recursos_codigo == "120" ~ "09 - COMPLEMENTAÇÃO DA UNIÃO - VAAT",
-      
-      # 11 - DESPESAS CUSTEADAS COM A CONTRIBUIÇÃO SOCIAL DO SALÁRIO-EDUCAÇÃO
-      # Baseado nos códigos de contribuição do salário-educação
-      (fonte_recursos_codigo %in% c("212") &
-       iduso_codigo == 8 &
-       elemento_despesa_codigo %in% c("01", "03", "59")) ~ "11 - DESPESAS CUSTEADAS COM A CONTRIBUIÇÃO SOCIAL DO SALÁRIO-EDUCAÇÃO",
-      
-      # 12 - DESPESAS COM O FUNDO CONSTITUCIONAL DO DISTRITO FEDERAL - FCDF
-      # Baseado no código do FCDF
-      (fonte_recursos_codigo == "154" &
-       iduso_codigo == 8 &
-       elemento_despesa_codigo %in% c("01", "03", "59")) ~ "12 - DESPESAS COM O FUNDO CONSTITUCIONAL DO DISTRITO FEDERAL - FCDF",
-      
-      # 13 - DESPESAS CUSTEADAS COM RECEITAS DE ROYALTIES DE EXPLORAÇÃO DO PRÉ-SAL
-      # Baseado nos códigos de royalties
-      (fonte_recursos_codigo %in% c("242") &
-       iduso_codigo == 8 &
-       elemento_despesa_codigo %in% c("01", "03", "59")) ~ "13 - DESPESAS CUSTEADAS COM RECEITAS DE ROYALTIES DE EXPLORAÇÃO DO PRÉ-SAL",
-      
-      # 14 - DEMAIS DESPESAS COM EDUCAÇÃO
-      # Para demais despesas educacionais
-      (funcao_governo_codigo == "12" |
-       lei_calmon_s_n == "SIM" |
-       subfuncao_governo_codigo %in% c("361", "362", "363", "364", "365", "366", "367", "368")) ~ "14 - DEMAIS DESPESAS COM EDUCAÇÃO",
-      
-      # Default case
-      TRUE ~ "Não classificado"
-    )
-  )
 
-# Verificar a distribuição das classificações
-dados_despesa %>% 
-  count(anexo_08, sort = TRUE) %>%
-  mutate(percentual = round(n/sum(n)*100, 2))
 
 dados_despesa <- dados_despesa %>%
   mutate(
@@ -286,7 +214,12 @@ dados_despesa <- dados_despesa %>%
 
 # importar dados da receita
 
-dados_receita <- read_excel("dados_2024_receita.xlsx") %>% clean_names()
+arq_receita<- list.files( pattern='receita_parte')
+
+
+dados_receita <- map_df(arq_receita,read_excel) %>% clean_names()
+
+#dados_receita <- read_excel("dados_2024_receita.xlsx") %>% clean_names()
 
 
 # criar as variaveis tipo de modalidade e refinanciamento
@@ -559,4 +492,339 @@ dados_tabela_04 <- read_excel("dados_2024_conta_contabil_tabela_04.xlsx") %>% cl
 filtros_metodologia  <- read_excel("filtros.xlsx", sheet = "metodologia") 
 
 atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
+```
+
+\
+
+```{r}
+criterios_rli <- list(
+  `II` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111101') & !natureza_receita_codigo_completo %in% c('11110102', '11110103', '11110107', '11110104', '11110108')"
+  ),
+  `II-MULTAS` = list(
+    criterio = "natureza_receita_codigo_completo == '11110102'"
+  ),
+  `II-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo == '11110103'"
+  ),
+  `II-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11110107', '11110104', '11110108')"
+  ),
+  `II-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111101')"
+  ),
+  `IE` = list(
+    criterio = "natureza_receita_codigo_completo == '11110201'"
+  ),
+  `IE-MULTAS` = list(
+    criterio = "natureza_receita_codigo_completo == '11110202'"
+  ),
+  `IE-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo == '11110203'"
+  ),
+  `IE-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11110207', '11110208')"
+  ),
+  `IE-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111102')"
+  ),
+  `IR` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '1113') & !startsWith(natureza_receita_codigo_completo, '111303')"
+  ),
+  `IR-MULTAS` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111303') & !natureza_receita_codigo_completo %in% c('11130313', '11130323', '11130314', '11130324')"
+  ),
+  `IR-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11130313', '11130323')"
+  ),
+  `IR-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11130314', '11130324')"
+  ),
+  `IR-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '1113')"
+  ),
+  `ITR` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '1120') & !natureza_receita_codigo_completo %in% c('11200102', '11200422', '11200103', '11200423', '11200104', '11200424')"
+  ),
+  `ITR-MULTAS` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11200102', '11200422')"
+  ),
+  `ITR-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11200103', '11200423')"
+  ),
+  `ITR-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11200104', '11200424')"
+  ),
+  `ITR-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '1120')"
+  ),
+  `IPI` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '1140') & !natureza_receita_codigo_completo %in% c('11401102', '1140152', '11401103', '1140153', '11401104', '1140154')"
+  ),
+  `IPI-MULTAS` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11401102', '1140152')"
+  ),
+  `IPI-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11401103', '1140153')"
+  ),
+  `IPI-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11401104', '1140154')"
+  ),
+  `IPI-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '1140')"
+  ),
+  `IOF` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111502') & !natureza_receita_codigo_completo %in% c('11150202', '11150203', '11150204', '11150207')"
+  ),
+  `IOF-MULTAS` = list(
+    criterio = "natureza_receita_codigo_completo == '11150202'"
+  ),
+  `IOF-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo == '11150203'"
+  ),
+  `IOF-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11150204', '11150207')"
+  ),
+  `IOF-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111502')"
+  ),
+  `IOF-OURO` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111501') & !natureza_receita_codigo_completo %in% c('11150102', '11150103', '11150104')"
+  ),
+  `IOF-OURO-MULTAS` = list(
+    criterio = "natureza_receita_codigo_completo == '11150102'"
+  ),
+  `IOF-OURO-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo == '11150103'"
+  ),
+  `IOF-OURO-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo == '11150104'"
+  ),
+  `IOF-OURO-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111501')"
+  ),
+  `OUTROS-IMPOSTOS` = list(
+    criterio = "(startsWith(natureza_receita_codigo_completo, '111901') | startsWith(natureza_receita_codigo_completo, '111999') | startsWith(natureza_receita_codigo_completo, '1117') | startsWith(natureza_receita_codigo_completo, '1116')) & !natureza_receita_codigo_completo %in% c('11190112', '11199902', '11190113', '11199903', '11190114', '11199904')"
+  ),
+  `OUTROS-IMPOSTOS-MULTAS` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11190112', '11199902')"
+  ),
+  `OUTROS-IMPOSTOS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11190113', '11199903')"
+  ),
+  `OUTROS-IMPOSTOS-MULTAS-DIVIDA` = list(
+    criterio = "natureza_receita_codigo_completo %in% c('11190114', '11199904')"
+  ),
+  `OUTROS-IMPOSTOS-DEDUCOES` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111901') | startsWith(natureza_receita_codigo_completo, '111999') | startsWith(natureza_receita_codigo_completo, '1117') | startsWith(natureza_receita_codigo_completo, '1116')"
+  ),
+  `CONFERENCIA-RECEITA` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '111')"
+  )
+)
+
+rli <- agrupar_e_combinar_dados(dados_receita, criterios_rli, "ABR/2025REOA08rli")
+
+dados <- rli %>% 
+  filter(mes_lancamento == "ABR/2025") %>%
+  group_by(categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+
+datatable(dados) %>%
+  formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+resultado <- agrupar_e_combinar_dados(
+  df = dados_receita,
+  criterios = rli,
+  codigo = "ABR/2025A08rli"
+)
+```
+
+```{r}
+library(dplyr)
+library(purrr)
+library(forcats)
+library(stringr)
+
+# Função para desmembrar o código
+desmembrar_codigo <- function(codigo) {
+  # Validar o formato do código: MMM/AAAXXX[A|T]##[A-Za-z0-9]{0,10}
+  if (!str_detect(codigo, "^[A-Z]{3}/\\d{4}[A-Za-z0-9]{3}[AT]\\d{2}[A-Za-z0-9]{0,10}$")) {
+    stop("Código inválido. Deve seguir o formato: MMM/AAAXXX[A|T]##[A-Za-z0-9]{0,10} (mes_lancamento: 3 letras/mês e 4 dígitos/ano, demonstrativo: exatamente 3 caracteres alfanuméricos, anexo: A ou T + 2 dígitos, parte: até 10 caracteres alfanuméricos)")
+  }
+  
+  # Extrair os componentes
+  mes_lancamento <- str_sub(codigo, 1, 8)  # Ex.: "ABR/2025"
+  demonstrativo <- str_sub(codigo, 9, 11)  # Ex.: "RGF" ou "REO"
+  anexo <- str_sub(codigo, 12, 14)         # Ex.: "A08"
+  parte <- str_sub(codigo, 15, -1)         # Ex.: "despesa" ou "" se não houver
+  
+  # Validar mes_lancamento (formato MMM/AAAA)
+  if (!str_detect(mes_lancamento, "^[A-Z]{3}/\\d{4}$")) {
+    stop("Formato de mes_lancamento inválido. Deve ser MMM/AAAA (ex.: ABR/2025)")
+  }
+  
+  # Mapear meses para validação
+  meses_validos <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+  mes_letras <- str_sub(mes_lancamento, 1, 3)
+  if (!(mes_letras %in% meses_validos)) {
+    stop("Mês inválido em mes_lancamento: ", mes_letras)
+  }
+  
+  # Validar demonstrativo (exatamente 3 caracteres alfanuméricos)
+  if (!str_detect(demonstrativo, "^[A-Za-z0-9]{3}$")) {
+    stop("Formato de demonstrativo inválido. Deve ter exatamente 3 caracteres alfanuméricos (ex.: RGF, REO)")
+  }
+  
+  # Validar anexo (deve começar com A ou T e ter 2 dígitos)
+  if (!str_detect(anexo, "^[AT]\\d{2}$")) {
+    stop("Formato de anexo inválido. Deve ser A ou T seguido por 2 dígitos (ex.: A08)")
+  }
+  
+  # Definir parte como NA se vazio
+  parte <- ifelse(parte == "", NA_character_, parte)
+  
+  # Retornar os parâmetros
+  list(
+    mes_lancamento = mes_lancamento,
+    demonstrativo = demonstrativo,
+    anexo = anexo,
+    parte = parte
+  )
+}
+
+# Definir a lista de critérios
+criterios_educacao <- list(
+  `08 - COMPLEMENTAÇÃO DA UNIÃO - VAAT` = list(
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212') & plano_orcamentario_codigo_po == '0001'"
+  ),
+  `09 - COMPLEMENTAÇÃO DA UNIÃO - VAAT` = list(
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212') & plano_orcamentario_codigo_po == '0002'"
+  ),
+  `01 - COMPLEMENTAÇÃO DA UNIÃO AO FUNDEB` = list(
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36')"
+  ),
+  `03 - EDUCAÇÃO BÁSICA` = list(
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134', '213', '242') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '368'"
+  ),
+  `04 - ENSINO SUPERIOR` = list(
+    criterio = "fonte_recursos_codigo %notin% c(157, 175, 193, 109, 134, 181) & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo %in% c('364')"
+  ),
+  `05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR` = list(
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '363'"
+  ),
+  `06 - OUTRAS` = list(
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & !subfuncao_governo_codigo %in% c('368', '363', '364', '365', '366') & acao_governo_codigo %notin% c ('00SB', '0E36')"
+  ),
+  `11 - DESPESAS CUSTEADAS COM A CONTRIBUIÇÃO SOCIAL DO SALÁRIO-EDUCAÇÃO` = list(
+    criterio = "fonte_recursos_codigo %in% c('133', '134', '213', '008', '035', '212') & iduso_codigo == 8 & acao_governo_codigo %notin% c('00SB', '0E36')"
+  ),
+  `12 - DESPESAS COM O FUNDO CONSTITUCIONAL DO DISTRITO FEDERAL - FCDF` = list(
+    criterio = "acao_governo_codigo %in% c('0312') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212')"
+  ),
+  `13 - DESPESAS CUSTEADAS COM RECEITAS DE ROYALTIES DE EXPLORAÇÃO DO PRÉ-SAL` = list(
+    criterio = "fonte_recursos_codigo %in% c('242') & iduso_codigo == 8 & elemento_despesa_codigo %in% c('01', '03', '59')"
+  ),
+  `14 - DEMAIS DESPESAS COM EDUCAÇÃO` = list(
+    criterio = "iduso_codigo == 8 & fonte_recursos_codigo %in% c( '008', '035', '133', '134', '213', '050', '000' ) & elemento_despesa_codigo %in% c('01', '03', '59') & acao_governo_codigo %notin% c ('00SB', '0312', '0E36') "
+  )
+)
+
+# Função para agrupar, combinar e adicionar colunas com base no código
+agrupar_e_combinar_dados <- function(df, criterios, codigo) {
+  # Definir o operador notin
+  `%notin%` <- Negate(`%in%`)
+  
+  # Desmembrar o código
+  params <- desmembrar_codigo(codigo)
+  
+  # Filtrar o data frame de entrada com base em mes_lancamento, se a coluna existir
+  if ("mes_lancamento" %in% colnames(df)) {
+    df <- df %>% filter(mes_lancamento == params$mes_lancamento)
+  } else {
+    warning("Coluna 'mes_lancamento' não encontrada no data frame. Ignorando filtro por mes.")
+  }
+  
+  # Função para processar cada categoria
+  processar_categoria <- function(categoria, crit) {
+    # Avaliar a string da condição usando eval(parse())
+    condicao_expr <- eval(parse(text = crit$criterio), envir = df)
+    
+    df %>%
+      filter(condicao_expr) %>%
+      group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
+      summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+      mutate(
+        categoria = categoria,
+        mes_lancamento = params$mes_lancamento,
+        demonstrativo = params$demonstrativo,
+        anexo = params$anexo,
+        parte = params$parte
+      ) %>%
+      # Reordenar item_informacao_nome com base em item_informacao_codigo
+      mutate(item_informacao_nome = fct_reorder(item_informacao_nome, item_informacao_codigo))
+  }
+  
+  # Aplicar os critérios e combinar os resultados
+  resultado <- map_df(names(criterios), ~ processar_categoria(.x, criterios[[.x]]))
+  
+  # Nomear o data frame com o código
+  assign(codigo, resultado, envir = .GlobalEnv)
+  
+  return(resultado)
+}
+```
+
+```{r}
+
+
+anexo_08 <- agrupar_e_combinar_dados(dados_despesa, criterios_educacao, "FEV/2025REOA08despesas")
+
+dados <- anexo_08 %>% 
+  filter(mes_lancamento == "FEV/2025") %>%
+  group_by(categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+
+datatable(dados) %>%
+  formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
+
+
+```
+
+```{r}
+dados <- `ABR/2025A08r11` %>% 
+  filter(mes_lancamento == "ABR/2025") %>%
+  group_by(categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+
+datatable(dados) %>%
+  formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+resultado <- agrupar_e_combinar_dados(
+  df = dados_despesa,
+  criterios = criterios_educacao,
+  codigo = "ABR/2025REOA08despesa"
+)
+
+
+resultado <- agrupar_e_combinar_dados(
+  df = dados_receita,
+  criterios = criterios_rli,
+  codigo = "ABR/2025REOA08rli"
+)
+
+```
+
+```{r}
+ rli <- agrupar_e_combinar_dados(dados_receita, criterios_rli, "ABR/2025REOA08rli")
 ```
