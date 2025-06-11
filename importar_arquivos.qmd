@@ -561,3 +561,808 @@ rli_mensal <- full_join(dados_receita%>% filter(item_informacao_codigo == "5", s
 
 rli_mensal <- rli_mensal %>% mutate(rli = (receita - transferencia)*.18)
 ```
+
+```{r}
+criterios_saude <- list(
+  
+  # ===============================================================================
+  # ANEXO 12 - SAÚDE 1 - 2025 - ESTRUTURA COMPLETA
+  # ===============================================================================
+  
+  # ATENÇÃO BÁSICA - 301
+  `ASPS - ATENÇÃO BÁSICA - 301` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6)"
+  ),
+  
+  `EXCETO ASPS - ATENÇÃO BÁSICA - 301` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 301 - Despesas Correntes
+  `ASPS - 301 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `EXCETO ASPS - 301 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 301 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 301 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 301 - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 301 - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 301 - Despesas de Capital
+  `ASPS - 301 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `EXCETO ASPS - 301 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 301 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 301 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 301 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302
+  `ASPS - ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6)"
+  ),
+  
+  # 302 - Despesas Correntes
+  `ASPS - 302 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `ASPS - 302 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 302 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 302 - Despesas de Capital
+  `ASPS - 302 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `ASPS - 302 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 302 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # Adicionando os EXCETO que faltavam para 302
+  `EXCETO ASPS - ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %notin% c(6)"
+  ),
+  
+  `EXCETO ASPS - 302 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `EXCETO ASPS - 302 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 302 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 302 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `EXCETO ASPS - 302 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 302 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # SUPORTE PROFILÁTICO E TERAPÊUTICO - 303
+  `ASPS - SUPORTE PROFILÁTICO E TERAPÊUTICO - 303` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6)"
+  ),
+  
+  `EXCETO ASPS - SUPORTE PROFILÁTICO E TERAPÊUTICO - 303` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 303 - Despesas Correntes
+  `ASPS - 303 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `EXCETO ASPS - 303 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 303 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 303 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 303 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 303 - Despesas de Capital
+  `ASPS - 303 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `EXCETO ASPS - 303 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 303 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 303 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 303 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # VIGILÂNCIA SANITÁRIA - 304
+  `ASPS - VIGILÂNCIA SANITÁRIA - 304` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6)"
+  ),
+  
+  `EXCETO ASPS - VIGILÂNCIA SANITÁRIA - 304` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 304 - Despesas Correntes
+  `ASPS - 304 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `EXCETO ASPS - 304 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 304 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 304 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 304 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 304 - Despesas de Capital
+  `ASPS - 304 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `EXCETO ASPS - 304 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 304 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 304 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # Adicionando a linha que faltava para 304
+  `EXCETO ASPS - 304 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 304 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 304 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # VIGILÂNCIA EPIDEMIOLÓGICA - 305
+  `ASPS - VIGILÂNCIA EPIDEMIOLÓGICA - 305` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6)"
+  ),
+  
+  `EXCETO ASPS - VIGILÂNCIA EPIDEMIOLÓGICA - 305` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 305 - Despesas Correntes
+  `ASPS - 305 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `EXCETO ASPS - 305 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 305 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 305 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 305 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 305 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 305 - Despesas de Capital
+  `ASPS - 305 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `EXCETO ASPS - 305 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 305 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 305 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 305 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 305 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # ALIMENTAÇÃO E NUTRIÇÃO - 306
+  `ASPS - ALIMENTAÇÃO E NUTRIÇÃO - 306` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6)"
+  ),
+  
+  `EXCETO ASPS - ALIMENTAÇÃO E NUTRIÇÃO - 306` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 306 - Despesas Correntes
+  `ASPS - 306 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `EXCETO ASPS - 306 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 306 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 306 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 306 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 306 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 306 - Despesas de Capital
+  `ASPS - 306 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `EXCETO ASPS - 306 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - 306 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 306 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - 306 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - 306 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # OUTRAS SUBFUNÇÕES
+  `ASPS - OUTRAS SUBFUNÇÕES` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6)"
+  ),
+  
+  `EXCETO ASPS - OUTRAS SUBFUNÇÕES` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # OUTRAS - Despesas Correntes
+  `ASPS - OUTRAS - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `EXCETO ASPS - OUTRAS - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - OUTRAS - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - OUTRAS - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - OUTRAS - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - OUTRAS - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # OUTRAS - Despesas de Capital
+  `ASPS - OUTRAS - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `EXCETO ASPS - OUTRAS - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `ASPS - OUTRAS - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - OUTRAS - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `ASPS - OUTRAS - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `EXCETO ASPS - OUTRAS - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # RESERVA DE CONTINGÊNCIA - 999
+  `ASPS - RESERVA DE CONTINGÊNCIA - 999` = list(
+    criterio = "subfuncao_governo_codigo %in% c('999') & iduso_codigo %in% c(6)"
+  ),
+  
+  `EXCETO ASPS - RESERVA DE CONTINGÊNCIA - 999` = list(
+    criterio = "subfuncao_governo_codigo %in% c('999') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # OUTRAS LINHAS
+  `Ações Não Computadas (Inativos e Pensionistas + Ñ Acesso Universal + Outras Ações)` = list(
+    criterio = "fonte_recursos_codigo %notin% c('46', '47', '38', '42', '49', '999946') & fonte_recursos_codigo %in% c('490') & grupo_despesa_codigo_grupo %notin% c(2, 6) & acao_governo_codigo %notin% c('0181', '2004', '20YS') & modalidade_aplicacao_codigo %in% c('35', '45', '73', '75', '76', '95', '96') & iduso_codigo %notin% c(6)"
+  ),
+  
+  `Conferência (Iduso 6)` = list(
+    criterio = "iduso_codigo %in% c(6)"
+  ),
+  
+  `Conferência (ASPS e demais despesas)` = list(
+    criterio = "iduso_codigo %in% c(6) | iduso_codigo %notin% c(6)"
+  ),
+  
+  `Conferência 2 (Iduso 6 sem 42)` = list(
+    criterio = "iduso_codigo %in% c(6) & fonte_recursos_codigo %notin% c('42', '008', '035')"
+  ),
+  
+  `Conferência 3 (Fonte 42 para Iduso 6)` = list(
+    criterio = "iduso_codigo %in% c(6) & fonte_recursos_codigo %in% c('42', '035', '008')"
+  ),
+  
+  `Conferência 4 (Fonte 42 exceto Iduso 6)` = list(
+    criterio = "fonte_recursos_codigo %in% c('008', '042', '035', '242') & iduso_codigo %notin% c(6)"
+  )
+  
+)
+```
+
+```{r}
+criterios_saude <- list(
+  
+  # ===============================================================================
+  # ANEXO 12 - SAÚDE 1 - 2025 - ESTRUTURA COMPLETA COM NÚMEROS DE ORDEM
+  # ===============================================================================
+  
+  # ATENÇÃO BÁSICA - 301
+  `01  ASPS - ATENÇÃO BÁSICA - 301` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6)"
+  ),
+  
+  `02  EXCETO ASPS - ATENÇÃO BÁSICA - 301` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 301 - Despesas Correntes
+  `03  ___ASPS - 301 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `04  ___EXCETO ASPS - 301 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `05  ______ASPS - 301 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `06  ______EXCETO ASPS - 301 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `07  ______ASPS - 301 - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `08  ______EXCETO ASPS - 301 - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 301 - Despesas de Capital
+  `09  ___ASPS - 301 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `10  ___EXCETO ASPS - 301 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `11  ______ASPS - 301 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `12  ______ASPS - 301 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `13  ______EXCETO ASPS - 301 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('301') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302
+  `14  ASPS - ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6)"
+  ),
+  
+  # 302 - Despesas Correntes
+  `15  ___ASPS - 302 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `16  ______ASPS - 302 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `17  ______ASPS - 302 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 302 - Despesas de Capital
+  `18  ___ASPS - 302 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `19  ______ASPS - 302 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `20  ______ASPS - 302 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('302') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # SUPORTE PROFILÁTICO E TERAPÊUTICO - 303
+  `21  ASPS - SUPORTE PROFILÁTICO E TERAPÊUTICO - 303` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6)"
+  ),
+  
+  `22  EXCETO ASPS - SUPORTE PROFILÁTICO E TERAPÊUTICO - 303` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 303 - Despesas Correntes
+  `23  ___ASPS - 303 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `24  ___EXCETO ASPS - 303 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `25  ______ASPS - 303 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `26  ______ASPS - 303 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `27  ______EXCETO ASPS - 303 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 303 - Despesas de Capital
+  `28  ___ASPS - 303 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `29  ___EXCETO ASPS - 303 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `30  ______ASPS - 303 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `31  ______ASPS - 303 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `32  ______EXCETO ASPS - 303 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('303') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # VIGILÂNCIA SANITÁRIA - 304
+  `33  ASPS - VIGILÂNCIA SANITÁRIA - 304` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6)"
+  ),
+  
+  `34  EXCETO ASPS - VIGILÂNCIA SANITÁRIA - 304` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # 304 - Despesas Correntes
+  `35  ___ASPS - 304 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `36  ___EXCETO ASPS - 304 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `37  ______ASPS - 304 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `38  ______ASPS - 304 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `39  ______EXCETO ASPS - 304 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 304 - Despesas de Capital
+  `40  ___ASPS - 304 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `41  ___EXCETO ASPS - 304 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `42  ______ASPS - 304 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `43  ______EXCETO ASPS - 304 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('304') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # VIGILÂNCIA EPIDEMIOLÓGICA - 305
+  `44  ASPS - VIGILÂNCIA EPIDEMIOLÓGICA - 305` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6)"
+  ),
+  
+  # 305 - Despesas Correntes
+  `45  ___ASPS - 305 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `46  ______ASPS - 305 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `47  ______ASPS - 305 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # 305 - Despesas de Capital
+  `48  ___ASPS - 305 - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `49  ______ASPS - 305 - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `50  ______ASPS - 305 - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('305') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # ALIMENTAÇÃO E NUTRIÇÃO - 306
+  `51  ASPS - ALIMENTAÇÃO E NUTRIÇÃO - 306` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6)"
+  ),
+  
+  # 306 - Despesas Correntes
+  `52  ___ASPS - 306 - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `53  ______ASPS - 306 - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `54  ______ASPS - 306 - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %in% c('306') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # OUTRAS SUBFUNÇÕES
+  `55  ASPS - OUTRAS SUBFUNÇÕES` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6)"
+  ),
+  
+  `56  EXCETO ASPS - OUTRAS SUBFUNÇÕES` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # OUTRAS - Despesas Correntes
+  `57  ___ASPS - OUTRAS - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3)"
+  ),
+  
+  `58  ___EXCETO ASPS - OUTRAS - Despesas Correntes` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `59  ______ASPS - OUTRAS - Despesas Correntes - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `60  ______ASPS - OUTRAS - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `61  ______EXCETO ASPS - OUTRAS - Despesas Correntes - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(1, 2, 3) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # OUTRAS - Despesas de Capital
+  `62  ___ASPS - OUTRAS - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6)"
+  ),
+  
+  `63  ___EXCETO ASPS - OUTRAS - Despesas de Capital` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6)"
+  ),
+  
+  `64  ______ASPS - OUTRAS - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `65  ______EXCETO ASPS - OUTRAS - Despesas de Capital - Transferências` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `66  ______ASPS - OUTRAS - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & iduso_codigo %in% c(6) & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  `67  ______EXCETO ASPS - OUTRAS - Despesas de Capital - Demais Despesas` = list(
+    criterio = "subfuncao_governo_codigo %notin% c('306', '305', '304', '303', '302', '301', '999') & grupo_despesa_codigo_grupo %in% c(4, 5, 6) & iduso_codigo %notin% c(6) & modalidade_aplicacao_codigo %notin% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46')"
+  ),
+  
+  # RESERVA DE CONTINGÊNCIA - 999
+  `68  ASPS - RESERVA DE CONTINGÊNCIA - 999` = list(
+    criterio = "subfuncao_governo_codigo %in% c('999') & iduso_codigo %in% c(6)"
+  ),
+  
+  `69  EXCETO ASPS - RESERVA DE CONTINGÊNCIA - 999` = list(
+    criterio = "subfuncao_governo_codigo %in% c('999') & iduso_codigo %notin% c(6)"
+  ),
+  
+  # OUTRAS LINHAS
+  `70  Ações Não Computadas (Inativos e Pensionistas + Ñ Acesso Universal + Outras Ações)` = list(
+    criterio = "fonte_recursos_codigo %notin% c('46', '47', '38', '42', '49', '999946') & fonte_recursos_codigo %in% c('490') & grupo_despesa_codigo_grupo %notin% c(2, 6) & acao_governo_codigo %notin% c('0181', '2004', '20YS') & modalidade_aplicacao_codigo %in% c('35', '45', '73', '75', '76', '95', '96') & iduso_codigo %notin% c(6)"
+  ),
+  
+  `71  Conferência (Iduso 6)` = list(
+    criterio = "iduso_codigo %in% c(6)"
+  ),
+  
+  `72  Conferência (ASPS e demais despesas)` = list(
+    criterio = "iduso_codigo %in% c(6) | iduso_codigo %notin% c(6)"
+  ),
+  
+  `73  Conferência 2 (Iduso 6 sem 42)` = list(
+    criterio = "iduso_codigo %in% c(6) & fonte_recursos_codigo %notin% c('42', '008', '035')"
+  )
+  
+)
+```
+
+```{r}
+anexo_12 <- agrupar_e_combinar_dados(
+  df = dados_despesa %>% filter(uo_orgao_superior_codigo == "36000", unidade_orcamentaria_codigo != "74202"  ),
+  criterios = criterios_saude,
+  codigo = "ABR/2025REOA12saude"
+)
+
+anexo_12 <- anexo_12 %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_anexo_12 <- anexo_12 %>% 
+  filter(mes_lancamento == "ABR/2025") %>%
+  group_by(ordem, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+
+
+
+datatable(DT_anexo_12)%>% 
+  formatRound(columns = c( 3:8), 2, mark = ".", dec.mark = "," )
+
+DT_anexo_12 %>% filter(ordem %in% c('02', 22, 34, 56, 69)) %>% group_by(ordem, nome) %>% summarise(`DOTACAO ATUALIZADA` = sum(`DOTACAO ATUALIZADA`, na.rm = TRUE))
+
+DT_anexo_12 %>% filter(ordem %in% c('02', 22, 34, 56, 69))  %>% summarise(`DOTACAO ATUALIZADA` = sum(`DOTACAO ATUALIZADA`, na.rm = TRUE))
+
+DT_anexo_12 %>% filter(nome %in% c('ASPS - ATENÇÃO BÁSICA - 301','ASPS - ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302', 'ASPS - SUPORTE PROFILÁTICO E TERAPÊUTICO - 303', 'ASPS - VIGILÂNCIA SANITÁRIA - 304', 'ASPS - VIGILÂNCIA EPIDEMIOLÓGICA - 305', 'ASPS - ALIMENTAÇÃO E NUTRIÇÃO - 306', 'ASPS - OUTRAS SUBFUNÇÕES','ASPS - RESERVA DE CONTINGÊNCIA - 999' )) %>% group_by(ordem, nome) %>% summarise(`DOTACAO ATUALIZADA` = sum(`DOTACAO ATUALIZADA`, na.rm = TRUE))
+
+
+DT_anexo_12 %>% filter(str_detect (nome,  'ASPS - ATENÇÃO BÁSICA - 301|ASPS - ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302|ASPS - SUPORTE PROFILÁTICO E TERAPÊUTICO - 303|ASPS - VIGILÂNCIA SANITÁRIA - 304|ASPS - VIGILÂNCIA EPIDEMIOLÓGICA - 305|ASPS - ALIMENTAÇÃO E NUTRIÇÃO - 306|ASPS - OUTRAS SUBFUNÇÕES|ASPS - RESERVA DE CONTINGÊNCIA - 999' )) %>% group_by(ordem, nome) %>% summarise(`DOTACAO ATUALIZADA` = sum(`DOTACAO ATUALIZADA`, na.rm = TRUE))
+```
+
+```{}
+```
