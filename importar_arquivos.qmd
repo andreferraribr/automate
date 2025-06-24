@@ -13,7 +13,13 @@ execute:
   message: false
 ---
 
-```{r}
+```{r funcoes}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+
+
 library(readxl)
 library(tidyverse)
 library(janitor)
@@ -50,6 +56,7 @@ dt_formatada <- function(df, grupo){
   datatable(df%>% adorn_totals("row"), rownames = FALSE,
             extensions = 'Buttons',
             options = list(
+            lengthMenu = c(5, 10, 25, 50, 100),
             dom = 'Bfrtip',
             buttons = list(
               'excel'
@@ -69,18 +76,18 @@ desmembrar_codigo <- function(codigo) {
   }
   
   # Extrair os componentes
-  mes_lancamento <- str_sub(codigo, 1, 8)  # Ex.: "ABR/2025"
+  mes_lancamento <- str_sub(codigo, 1, 8)  # Ex.: "MAI/2025"
   demonstrativo <- str_sub(codigo, 9, 11)  # Ex.: "RGF" ou "REO"
   anexo <- str_sub(codigo, 12, 14)         # Ex.: "A08"
   parte <- str_sub(codigo, 15, -1)         # Ex.: "despesa" ou "" se não houver
   
   # Validar mes_lancamento (formato MMM/AAAA)
   if (!str_detect(mes_lancamento, "^[A-Z]{3}/\\d{4}$")) {
-    stop("Formato de mes_lancamento inválido. Deve ser MMM/AAAA (ex.: ABR/2025)")
+    stop("Formato de mes_lancamento inválido. Deve ser MMM/AAAA (ex.: MAI/2025)")
   }
   
   # Mapear meses para validação
-  meses_validos <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+  meses_validos <- c("JAN", "FEV", "MAR", "MAI", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
   mes_letras <- str_sub(mes_lancamento, 1, 3)
   if (!(mes_letras %in% meses_validos)) {
     stop("Mês inválido em mes_lancamento: ", mes_letras)
@@ -164,7 +171,8 @@ options(scipen = 999)
 
 options(DT.options = 
           list(
-            pageLength = 10,
+            pageLength = 20,
+            lengthMenu = c(5, 10, 25, 50, 100),
             language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')
             )
         )
@@ -175,10 +183,11 @@ options(DT.options =
 
 ```
 
-```{r}
+```{r dados_despesa }
+#| include: false
 # selecionar e ler todos os arquivos com dados da despesa
 
-arq_despesa <- list.files( pattern='04_despesa_parte')
+arq_despesa <- list.files( pattern='fechado_despesa_parte')
 
 
 dados_despesa <- map_df(arq_despesa,read_excel) %>% clean_names()
@@ -209,6 +218,13 @@ dados_despesa <- dados_despesa %>%
 
 
 
+
+
+```
+
+\
+
+```{r  demais_dados}
 # importar dados da receita
 
 arq_receita<- list.files( pattern='receita_parte')
@@ -265,18 +281,13 @@ atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
 dados_rp_anexo_08 <- read_excel("dados_2025_rp_anexo_08.xlsx") %>% clean_names()
 
 
-dados_rp_anexo_08%>%
-  filter(mes_lancamento == 'FEV/2025',  !elemento_despesa_codigo %in% c('01', '03') &
-         ((fonte_recursos_codigo %in% c('000', '012', '00' , '12') & 
-           (iduso_codigo == 8 | lei_calmon_s_n == 'SIM')) |
-          (ne_c_cor_ano_emissao >= 2020 & 
-           !fonte_recursos_codigo %in% c('133', '134', '213', '08', '13', '93') & 
-           iduso_codigo == 8)) )%>% group_by(item_informacao_nome) %>% summarise(saldo = sum(saldo_r_item_informacao, na.rm =  TRUE)/1000)
 ```
 
-\
-
-```{r}
+```{r rli_linhas}
+#| warning: false
+#| message: false
+#| error: true
+#| eval: false
 criterios_rli <- list(
   `II` = list(
     criterio = "startsWith(natureza_receita_codigo_completo, '111101') & !natureza_receita_codigo_completo %in% c('11110102', '11110103', '11110107', '11110104', '11110108')"
@@ -403,10 +414,10 @@ criterios_rli <- list(
   )
 )
 
-rli <- agrupar_e_combinar_dados(dados_receita, criterios_rli, "ABR/2025REOA08rli")
+rli <- agrupar_e_combinar_dados(dados_receita, criterios_rli, "MAI/2025REOA08rli")
 
 dados <- rli %>% 
-  filter(mes_lancamento == "ABR/2025") %>%
+  filter(mes_lancamento == "MAI/2025") %>%
   group_by(categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -416,7 +427,11 @@ datatable(dados) %>%
   formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
 ```
 
-```{r}
+```{r despesas_mde}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
 library(dplyr)
 library(purrr)
 library(forcats)
@@ -469,13 +484,15 @@ criterios_educacao <- list(
 # plano_orcamentario_codigo_po %in% c( '0003'), funcao_governo_codigo == '12'& subfuncao_governo_codigo == '847', programa_governo_codigo == 5111&  acao_governo_codigo == '00SB'& unidade_orcamentaria_codigo ==  '26298' 
 ```
 
-```{r}
+```{r dt_mde}
 
 
-anexo_08 <- agrupar_e_combinar_dados(dados_despesa, criterios_educacao, "ABR/2025REOA08despesas")
+anexo_08 <- agrupar_e_combinar_dados(dados_despesa, criterios_educacao, "MAI/2025REOA08despesas")
+
+anexo_08 <- anexo_08 %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 dados <- anexo_08 %>% 
-  filter(mes_lancamento == "ABR/2025") %>%
+  filter(mes_lancamento == "MAI/2025") %>%
   group_by(categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -485,49 +502,35 @@ datatable(dados) %>%
   formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
 
 
-```
+datatable (dados_rp_anexo_08%>%
+  filter(mes_lancamento == 'MAI/2025',  !elemento_despesa_codigo %in% c('01', '03') &
+         ((fonte_recursos_codigo %in% c('000', '012', '00' , '12') & 
+           (iduso_codigo == 8 | lei_calmon_s_n == 'SIM')) |
+          (ne_c_cor_ano_emissao >= 2020 & 
+           !fonte_recursos_codigo %in% c('133', '134', '213', '08', '13', '93') & 
+           iduso_codigo == 8)) )%>% group_by(item_informacao_nome) %>% summarise(saldo = sum(saldo_r_item_informacao, na.rm =  TRUE)))
 
-```{r}
-# dados <- resultado %>% 
-#   filter(mes_lancamento == "ABR/2025") %>%
-#   group_by(categoria, item_informacao_nome) %>% 
-#   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-#   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-#   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
-# 
-# datatable(dados) 
-```
-
-```{r}
-anexo_08_mde <- agrupar_e_combinar_dados(
-  df = dados_despesa,
-  criterios = criterios_educacao,
-  codigo = "ABR/2025REOA08despesa"
-)
-
-
-complementacao_fundeb <- anexo_08_mde %>% filter(startsWith(categoria, '01'), item_informacao_codigo == 25, mes_lancamento == 'ABR/2025') %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE)*0.3)
-
-
-dados_receita %>% filter(startsWith(natureza_receita_codigo_completo , '711')| startsWith(natureza_receita_codigo_completo , '111'), mes_lancamento == 'ABR/2025', item_informacao_codigo == 3) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)/1000)
-
-anexo_08_mde %>% filter(!startsWith(categoria, '01'), item_informacao_codigo == 25, mes_lancamento == 'ABR/2025') %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE)/1000)
-
-
-resultado <- agrupar_e_combinar_dados(
-  df = dados_receita,
-  criterios = criterios_rli,
-  codigo = "ABR/2025REOA08rli"
-)
+despesa_mde_rp <- dados_rp_anexo_08%>%
+  filter(mes_lancamento == 'MAI/2025',  !elemento_despesa_codigo %in% c('01', '03') &
+         ((fonte_recursos_codigo %in% c('000', '012', '00' , '12') & 
+           (iduso_codigo == 8 | lei_calmon_s_n == 'SIM')) |
+          (ne_c_cor_ano_emissao >= 2020 & 
+           !fonte_recursos_codigo %in% c('133', '134', '213', '08', '13', '93') & 
+           iduso_codigo == 8)) )%>%  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm =  TRUE))
 
 ```
 
-```{r}
+```{r minimo_mde }
+#| warning: false
+#| message: false
+#| error: true
 
-datatable( dados_receita %>% filter(item_informacao_codigo == "5", startsWith( natureza_receita_codigo_completo,"111")) %>% group_by(mes_lancamento) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))
+dados_receita %>% filter(startsWith(natureza_receita_codigo_completo , '711')| startsWith(natureza_receita_codigo_completo , '111'), mes_lancamento == 'MAI/2025', item_informacao_codigo == 3) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao))
+
+datatable( dados_receita %>% filter(item_informacao_codigo == "5",startsWith(natureza_receita_codigo_completo , '711')| startsWith( natureza_receita_codigo_completo,"111")|startsWith(natureza_receita_codigo_completo , '711')) %>% group_by(mes_lancamento) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))
 
 
-rli_transf <- dados_despesa %>% filter( item_informacao_codigo == "56", mes_lancamento == "ABR/2025" ) %>% mutate(transferencia = case_when(
+rli_transf <- dados_despesa %>% filter( item_informacao_codigo == "56", mes_lancamento == "MAI/2025" ) %>% mutate(transferencia = case_when(
   acao_governo_codigo == "0044" ~ "FPE",
   acao_governo_codigo == "0045" ~ "FPM",
   acao_governo_codigo == "0046" ~ "IPI_repasse",
@@ -540,9 +543,8 @@ rli_transf <- dados_despesa %>% filter( item_informacao_codigo == "56", mes_lanc
 
 
 datatable(rli_transf) 
-```
 
-```{r}
+
 rli_transf <- dados_despesa %>% filter( item_informacao_codigo == "56" ) %>% mutate(transf = case_when(
   acao_governo_codigo == "0044" ~ "FPE",
   acao_governo_codigo == "0045" ~ "FPM",
@@ -557,12 +559,30 @@ rli_transf <- dados_despesa %>% filter( item_informacao_codigo == "56" ) %>% mut
 
 datatable(rli_transf) %>% 
   formatRound(columns = c( "transferencia"), 2, mark = ".", dec.mark = "," )
-rli_mensal <- full_join(dados_receita%>% filter(item_informacao_codigo == "5", startsWith( natureza_receita_codigo_completo,"111")) %>% group_by(mes_lancamento) %>% summarise(receita = sum(saldo_r_item_informacao)) , rli_transf %>% filter(transf != "demais")%>% group_by(mes_lancamento) %>% summarise(transferencia = sum(transferencia)))
+rli_mensal <- full_join(dados_receita%>% filter(item_informacao_codigo == "5",startsWith(natureza_receita_codigo_completo , '711')| startsWith( natureza_receita_codigo_completo,"111")) %>% group_by(mes_lancamento) %>% summarise(receita = sum(saldo_r_item_informacao)) , rli_transf %>% filter(transf != "demais")%>% group_by(mes_lancamento) %>% summarise(transferencia = sum(transferencia)))
 
-rli_mensal <- rli_mensal %>% mutate(rli = (receita - transferencia)*.18)
+rli_mensal <- rli_mensal  %>% mutate(rli = (receita - transferencia)*.18)
+
+rli_maio <- rli_mensal %>% filter(mes_lancamento == "MAI/2025")  %>% summarise(minimo = sum(rli))
+
+
+despesa_mde <- anexo_08 %>% filter(item_informacao_codigo == 25, ordem %in% c("02", "03", "04", "05", "06")) %>% summarise(saldo_r_item_informacao= sum(saldo_r_item_informacao))
+
+
+
+complementacao_fundeb <- dados_despesa %>% filter(item_informacao_codigo == 25, mes_lancamento == "MAI/2025", fonte_recursos_codigo %in% c('000', '008' ,'014', '130'), acao_governo_codigo %in% c ('0E36', '00SB' ) )  %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)*0.3)
+
+
+((complementacao_fundeb$saldo_r_item_informacao + despesa_mde$saldo_r_item_informacao)/rli_maio$minimo*100)
+
 ```
 
-```{r}
+```{r saude_despesas}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+
 criterios_saude <- list(
   
   # ===============================================================================
@@ -886,17 +906,20 @@ criterios_saude <- list(
 )
 ```
 
-```{r}
+```{r anexo_12}
+#| warning: false
+#| message: false
+#| error: true
 anexo_12 <- agrupar_e_combinar_dados(
   df = dados_despesa %>% filter(uo_orgao_superior_codigo == "36000", unidade_orcamentaria_codigo != "74202"  ),
   criterios = criterios_saude,
-  codigo = "ABR/2025REOA12saude"
+  codigo = "MAI/2025REOA12saude"
 )
 
 anexo_12 <- anexo_12 %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_anexo_12 <- anexo_12 %>% 
-  filter(mes_lancamento == "ABR/2025") %>%
+  filter(mes_lancamento == "MAI/2025") %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -917,7 +940,13 @@ DT_anexo_12 %>% filter(nome %in% c('ASPS - ATENÇÃO BÁSICA - 301','ASPS - ASSI
 DT_anexo_12 %>% filter(str_detect (nome,  'ASPS - ATENÇÃO BÁSICA - 301|ASPS - ASSISTÊNCIA HOSPITALAR E AMBULATORIAL - 302|ASPS - SUPORTE PROFILÁTICO E TERAPÊUTICO - 303|ASPS - VIGILÂNCIA SANITÁRIA - 304|ASPS - VIGILÂNCIA EPIDEMIOLÓGICA - 305|ASPS - ALIMENTAÇÃO E NUTRIÇÃO - 306|ASPS - OUTRAS SUBFUNÇÕES|ASPS - RESERVA DE CONTINGÊNCIA - 999' )) %>% group_by(ordem, nome) %>% summarise(`DOTACAO ATUALIZADA` = sum(`DOTACAO ATUALIZADA`, na.rm = TRUE))
 ```
 
-```{r}
+```{r tabela_01}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+#| include: false
+
 
 # ===============================================================================
 # OBSERVAÇÕES IMPORTANTES SOBRE TABELA 1A COLUNAS
@@ -961,17 +990,22 @@ criterios_receitas_tabela1a <- list(
   
   # RECEITAS REALIZADAS no mês
   `02  RECEITAS REALIZADAS no mês` = list(
-    criterio = "item_informacao_nome %in% c('RECEITA ORCAMENTARIA (LIQUIDA)') & fonte_recursos_codigo %in% c('000', '023') & fonte_detalhamento_codigo %in% c('980001', '739010') & mes_lancamento == format(Sys.Date(), '%b/%Y')"
+    criterio = "item_informacao_nome %in% c('RECEITA ORCAMENTARIA (LIQUIDA)') & fonte_recursos_codigo %in% c('000', '023') & endsWith(fonte_recursos_detalhada_codigo,  c('980001', '739010')) & mes_lancamento == format(Sys.Date(), '%b/%Y')"
   ),
   
   # RECEITAS REALIZADAS até o mês
   `03  RECEITAS REALIZADAS até o mês` = list(
-    criterio = "item_informacao_nome %in% c('RECEITA ORCAMENTARIA (LIQUIDA)') & fonte_detalhamento_codigo %in% c('980001', '739010') & fonte_recursos_codigo %in% c('000', '023') & mes_lancamento <= format(Sys.Date(), '%b/%Y')"
+    criterio = "item_informacao_nome %in% c('RECEITA ORCAMENTARIA (LIQUIDA)') & endsWith(fonte_recursos_detalhada_codigo,  c('980001', '739010')) & fonte_recursos_codigo %in% c('000', '023') & mes_lancamento <= format(Sys.Date(), '%b/%Y')"
   )
 )
 ```
 
 ```{r}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+#| include: false
 
 # ===============================================================================
 # OBSERVAÇÕES IMPORTANTES SOBRE SEGURIDADE SOCIAL
@@ -1048,7 +1082,12 @@ criterios_receitas_seguridade <- list(
 
 ```
 
-```{r}
+```{r rpps_fcdf_receitas_despesas}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+
 # ===============================================================================
 # CRITÉRIOS ANEXO 4 - RPPS - LINHAS - FCDF - 2023
 # ===============================================================================
@@ -1188,7 +1227,12 @@ criterios_despesas_fcdf <- list(
 # - 10: SAÚDE
 ```
 
-```{r}
+```{r rpps_receitas_despesas}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+
 # ===============================================================================
 # CRITÉRIOS ANEXO 4 - RPPS - LINHAS - 2023
 # ===============================================================================
@@ -1226,7 +1270,7 @@ criterios_receitas_rpps <- list(
   
   # DRU - FCDF
   `06  DRU - FCDF` = list(
-    criterio = "fonte_recursos_codigo %in% c('000', '00') & fonte_detalhamento_codigo %in% c('980001') & natureza_receita_codigo_completo %like% '%12151%'"
+    criterio = "fonte_recursos_codigo %in% c('000', '00') & endsWith(fonte_recursos_detalhada_codigo,  c('980001')) & natureza_receita_codigo_completo %in% '%12151%'"
   ),
   
   # MILITARES - RECEITAS - Segurados
@@ -1323,7 +1367,7 @@ criterios_despesas_rpps <- list(
   
   # DRU - MILITARES
   `15  DRU - MILITARES` = list(
-    criterio = "fonte_recursos_codigo %in% c('00', '000') & fonte_detalhamento_codigo %in% c('980001') & natureza_receita_codigo_completo %in% c('1210511', '1210512', '1210513', '1210514') & natureza_receita_codigo_completo %like% '%121911%'"
+    criterio = "fonte_recursos_codigo %in% c('00', '000') & endsWith(fonte_recursos_detalhada_codigo,  c('980001')) & natureza_receita_codigo_completo %in% c('1210511', '1210512', '1210513', '1210514') & natureza_receita_codigo_completo %like% '%121911%'"
   ),
   
   # Critérios Gerais de Despesas e Verificação
@@ -1375,7 +1419,12 @@ criterios_despesas_rpps <- list(
 
 ```
 
-```{r}
+```{r rgps_receitas_despesas}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+
 # ===============================================================================
 # CRITÉRIOS ANEXO 4 - RREO - RGPS (LINHAS) - 2023
 # ===============================================================================
@@ -1481,37 +1530,40 @@ criterios_despesas_rgps <- list(
 ```
 
 ```{r}
+#| warning: false
+#| message: false
+#| error: true
+# teste <- agrupar_e_combinar_dados(
+#   df = dados_despesa ,
+#   criterios = criterios_despesas_rpps,
+#   codigo = "MAI/2025REOA12saude"
+# )
+# 
+# teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+# 
+# DT_teste <- teste %>% 
+#   filter(mes_lancamento == "MAI/2025") %>%
+#   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+#   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+#   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+#   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
+# datatable(DT_teste)%>%
+#   formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
+
+
+
+
 teste <- agrupar_e_combinar_dados(
-  df = dados_despesa ,
-  criterios = criterios_despesas_rgps,
-  codigo = "ABR/2025REOA12saude"
-)
-
-teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
-
-DT_teste <- teste %>% 
-  filter(mes_lancamento == "ABR/2025") %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
-
-datatable(DT_teste)%>%
-  formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
-
-
-
-
-teste <- agrupar_e_combinar_dados(
-  df = dados_receita ,
+  df = dados_receita %>% filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917) | natureza_receita_codigo_completo == 79900211 ) ,
   criterios = criterios_receitas_rgps,
-  codigo = "ABR/2025REOA12saude"
+  codigo = "MAI/2025REOA12saude"
 )
 
 teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_teste <- teste %>% 
-  filter(mes_lancamento == "ABR/2025") %>%
+  filter(mes_lancamento == "MAI/2025") %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1523,13 +1575,13 @@ datatable(DT_teste)%>%
 ```
 
 ```{r rcl}
-# ===============================================================================
-# ANEXO 3 - RCL (RECEITA CORRENTE LÍQUIDA) - RREO
-# LISTAS BASEADAS EXCLUSIVAMENTE NOS PRINTS FORNECIDOS
-# ===============================================================================
+#| include: false
+
 
 # ===============================================================================
-# LISTA PARA FILTRAR DADOS_RECEITA - ANEXO 3 RCL
+# ANEXO 3 - RCL (RECEITA CORRENTE LÍQUIDA) - RREO
+# LISTA PARA FILTRAR DADOS_RECEITA
+# BASEADA NOS PRINTS FORNECIDOS
 # ===============================================================================
 
 criterios_receitas_anexo3_rcl <- list(
@@ -1581,95 +1633,87 @@ criterios_receitas_anexo3_rcl <- list(
     criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem %in% c(9)"
   ),
   
-  # === TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS ===
-  
-  # CONTRIBUIÇÕES EMPREGADORES E TRABALHADORES PARA SEGURIDADE SOCIAL
-  `10  Contrib. Empregadores e Trab. para Seg. Social` = list(
-    criterio = "nre1_categoria_economica_codigo == 1 & fonte_recursos_codigo %in% c('054')"
+  # CONTRIBUIÇÕES PARA PIS/PASEP
+  `10  Contribuições para PIS/PASEP` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & 
+      fonte_recursos_codigo %notin% c('055', '056') & 
+      (!grepl('^1210091', natureza_receita_codigo_completo) | !grepl('^1212', natureza_receita_codigo_completo)) & 
+      ((fonte_recursos_codigo %in% c('040', '041') | grepl('^1210091', natureza_receita_codigo_completo)) | grepl('^1212', natureza_receita_codigo_completo))"
   ),
   
-  # CONTRIBUIÇÃO DO SERVIDOR PARA PLANO E PREVIDÊNCIA
-  `11  Contrib. do Servidor para o Plano e Previdência` = list(
-    criterio = "nre1_categoria_economica_codigo == 1 & fonte_recursos_codigo %in% c('055', '056') & natureza_receita_codigo_completo %in% c('12150116')"
-  ),
-  
-  # CONTRIBUIÇÃO DOS MILITARES PARA CUSTEIO DAS PENSÕES
-  `12  Contrib. dos Militares para o Custeio das Pensões` = list(
-    criterio = "nre1_categoria_economica_codigo == 1 & natureza_receita_codigo_completo %in% c('1210051', '1210041', '12191')"
-  ),
-  
-  # COMPENSAÇÃO FINANCEIRA ENTRE REGIMES PREVIDÊNCIA
-  `13  Compensação Financ. entre Regimes Previdência` = list(
-    criterio = "nre1_categoria_economica_codigo == 1 & natureza_receita_codigo_completo %in% c('19900300', '19900310', '19900312', '19900313', '19900301', '19900302', '19900303', '19900304')"
-  ),
-  
- # CONTRIBUIÇÕES PARA PIS/PASEP
-  `14  Contribuições para PIS/PASEP` = list(
+  # DEDUÇÕES
+  `11  Deduções` = list(
     criterio = "nre1_categoria_economica_codigo == 1 & (
-      (grepl('^1210091', natureza_receita_codigo_completo) | grepl('^1212', natureza_receita_codigo_completo)) & fonte_recursos_codigo %notin% c('210', '211', '209') |
-      (!grepl('^1210091', natureza_receita_codigo_completo) | !grepl('^1212', natureza_receita_codigo_completo)) & fonte_recursos_codigo %in% c('195', '196')
+      grepl('^1212', natureza_receita_codigo_completo) |
+      grepl('^1210091', natureza_receita_codigo_completo) |
+      grepl('^1210051', natureza_receita_codigo_completo) |
+      grepl('^121911', natureza_receita_codigo_completo) |
+      grepl('^1990031', natureza_receita_codigo_completo) |
+      grepl('^1215041', natureza_receita_codigo_completo) |
+      fonte_recursos_codigo %in% c('054', '055', '056', '040', '041')
     )"
-  ),
- 
-`15  Deduções` = list(
-  criterio = "nre1_categoria_economica_codigo == 1 & (
-    grepl('^1212', natureza_receita_codigo_completo) |
-    grepl('^1210091', natureza_receita_codigo_completo) |
-    fonte_recursos_codigo %in% c('054', '055', '056') |
-    (!grepl('^1990031', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('054')) |
-    fonte_recursos_codigo %in% c('055', '056') |
-    grepl('^1210051', natureza_receita_codigo_completo) |
-    grepl('^121911', natureza_receita_codigo_completo) |
-    grepl('^1990031', natureza_receita_codigo_completo) |
-    grepl('^1215041', natureza_receita_codigo_completo) |
-    fonte_recursos_codigo %in% c('040', '041')
-  )"
-)
+  )
 )
 
 # ===============================================================================
 # OBSERVAÇÕES SOBRE OS DADOS EXTRAÍDOS DOS PRINTS
 # ===============================================================================
 # 
-# DADOS ESPECÍFICOS DOS PRINTS:
-# 
-# RECEITAS CORRENTES (baseado no Print 1 e 2):
+# RECEITAS CORRENTES:
 # - NRE2 Origem Receita: 1, 2, 3, 4, 5, 6, 7, 8, 9
-# - Listas correspondentes: 11, 12, 13, 14, 15, 16, 17, 18, 19
+# - Cada origem corresponde a uma categoria específica de receita corrente
 #
-# TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (baseado nos Prints 3, 4 e 5):
-# - NRE1 Categoria Econômica: 1 (RECEITAS CORRENTES)
-# - Fonte Recursos: 054, 055, 056, 040
-# - Natureza Receita códigos específicos:
-#   * 12150116 (CONTRIBUICAO DO SERVIDOR CIVIL ATIVO-JUROS)
-#   * 1210051, 1210041, 12191 (Militares)
-#   * 19900300, 19900310, etc. (Compensações Financeiras)
-#   * 1210091, 1212 (PIS/PASEP)
+# CONTRIBUIÇÕES PARA PIS/PASEP:
+# - Critério complexo baseado no filtro detalhado do relatório
+# - Fontes: 040, 041 (incluir) e 055, 056 (excluir)
+# - Naturezas: 1210091, 1212
+#
+# DEDUÇÕES:
+# - Baseado no SQL fornecido + dados dos prints
+# - Naturezas: 1212, 1210091, 1210051, 121911, 1990031, 1215041
+# - Fontes: 054, 055, 056, 040, 041
+#
+# ===============================================================================
+# EXEMPLO DE USO:
+# ===============================================================================
+# 
+# # Para aplicar os filtros:
+# receitas_filtradas <- dados_receita %>%
+#   filter(eval(parse(text = criterios_receitas_anexo3_rcl[["01  Impostos, Taxas e Contribuições de Melhoria"]]$criterio)))
 #
 # ===============================================================================
 ```
 
 ```{r}
+#| warning: false
+#| message: false
+#| error: true
 teste <- agrupar_e_combinar_dados(
   df = dados_receita,
   criterios = criterios_receitas_anexo3_rcl,
-  codigo = "ABR/2025REOA12saude"
+  codigo = "MAI/2025REOA12saude"
 )
 
 teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_teste <- teste %>% 
-  filter(mes_lancamento == "ABR/2025", item_informacao_codigo == 5) %>%
-  group_by(natu item_informacao_nome) %>% 
+  filter(mes_lancamento == "MAI/2025", item_informacao_codigo == 5) %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
-
-datatable(DT_teste %>% filter(categoria == "15 Deduções") %>% select("categoria", "RECEITA ORCAMENTARIA (LIQUIDA)"))%>%
-  formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
+# 
+# datatable(DT_teste  %>% select("categoria", "RECEITA ORCAMENTARIA (LIQUIDA)"))%>%
+#   formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
 ```
 
-```{r}
+```{r rcl_deducoes}
+#| warning: false
+#| message: false
+#| error: true
+#| include: false
+
+
 # ===============================================================================
 # ANEXO 3 - RCL (RECEITA CORRENTE LÍQUIDA) - RREO
 # LISTA PARA FILTRAR DADOS_DESPESA (DEDUÇÕES)
@@ -1732,18 +1776,42 @@ criterios_despesas_anexo3_rcl <- list(
 teste <- agrupar_e_combinar_dados(
   df = dados_despesa %>% unique() ,
   criterios = criterios_despesas_anexo3_rcl,
-  codigo = "ABR/2025REOA12saude"
+  codigo = "MAI/2025REOA12saude"
 )
 
 teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_teste <- teste %>% 
-  filter(mes_lancamento == "ABR/2025") %>%
+  filter(mes_lancamento == "MAI/2025") %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
+datatable(DT_teste )%>%
+  formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
 
+```{r}
+
+```
+
+```{r}
+teste <- agrupar_e_combinar_dados(
+  df = dados_receita %>% unique() ,
+  criterios = criterios_receitas_rpps,
+  codigo = "MAI/2025REOA12saude"
+)
+
+teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_teste <- teste %>% 
+  filter(mes_lancamento == "MAI/2025") %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
 datatable(DT_teste )%>%
   formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
 ```
