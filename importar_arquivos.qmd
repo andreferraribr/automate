@@ -904,6 +904,28 @@ criterios_saude <- list(
   )
   
 )
+
+```
+
+```{r iduso_6}
+
+
+despesas_saude <- dados_despesa %>% filter(mes_lancamento == "MAI/2025", iduso_codigo == 6, item_informacao_codigo == 25, subfuncao_governo_codigo %in% c(301, 302, 303, 304, 305, 306 )) %>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome, categoria_economica_despesa_codigo,categoria_economica_despesa_nome, modalidade_aplicacao_codigo)%>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)) 
+
+despesas_saude <-  despesas_saude %>% mutate(transferencia = ifelse(modalidade_aplicacao_codigo %in% c ('30', '31', '32', '35', '36', '40', '41', '42', '45', '46'), "_transferencia", "aplicacao_direta"))
+
+datatable(despesas_saude %>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome,categoria_economica_despesa_codigo, categoria_economica_despesa_nome, transferencia) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(which(sapply(despesas_saude, is.numeric)), 2, mark = ".", dec.mark = ",")
+
+
+sum(despesas_saude$saldo_r_item_informacao)
+
+
+
+despesas_saude_demais <- as.numeric( dados_despesa %>% filter(mes_lancamento == "MAI/2025", iduso_codigo == 6, item_informacao_codigo == 25, subfuncao_governo_codigo %notin% c(301, 302, 303, 304, 305, 306 )) %>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)))
+
+
+(sum(despesas_saude$saldo_r_item_informacao) + despesas_saude_demais)
 ```
 
 ```{r anexo_12}
