@@ -1098,58 +1098,83 @@ criterios_receitas_anexo3_rcl <- list(
     criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9"
   ),
   
-  # CONTRIBUIÇÕES PARA PIS/PASEP - CRITÉRIO ESPECÍFICO
-  `10  Contribuições para PIS/PASEP` = list(
+  # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
+  `10  Transferências Constitucionais e Legais` = list(
     criterio = "
-    grepl('^1212', natureza_receita_codigo_completo) |
-    grepl('^1210091', natureza_receita_codigo_completo) |
-    (nre1_categoria_economica_codigo == 1 & fonte_recursos_codigo %in% c('040', '041'))
-    ",
-    
-    observacao = "Critério focado APENAS nas contribuições PIS/PASEP e fontes específicas",
-    status = "✅ VALIDADO - Apenas PIS/PASEP"
+    nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7 & (
+      grepl('FPE|FPM|CONSTITUCIONAL|LEGAL', natureza_receita_nome, ignore.case = TRUE) |
+      grepl('^172[0-9]', natureza_receita_codigo_completo) |
+      grepl('^171[0-9]', natureza_receita_codigo_completo)
+    )
+    "
   ),
   
-  # DEDUÇÕES - CRITÉRIO SIMPLIFICADO COM CORREÇÃO ESPECÍFICA
+  # CONTRIB. EMPREGADORES E TRAB. PARA SEG. SOCIAL
+  `11  Contrib. Empregadores e Trab. para Seg. Social` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & fonte_recursos_codigo == '054' & 
+    !natureza_receita_codigo_completo %in% c(
+      '19900300', '19900310', '19900311', '19900312', '19900313', '19900314',
+      '19990300', '19990301', '19990302', '19990303', '19990304'
+    )
+    "
+  ),
+  
+  # CONTRIB. DO SERVIDOR PARA O PLANO DE PREVIDÊNCIA
+  `12  Contrib. do Servidor para o Plano de Previdência` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      fonte_recursos_codigo %in% c('055', '056') |
+      natureza_receita_codigo_completo == '12150116'
+    )
+    "
+  ),
+  
+  # CONTRIB. DOS MILITARES PARA O CUSTEIO DAS PENSÕES
+  `13  Contrib. dos Militares para o Custeio das Pensões` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      grepl('^1210051', natureza_receita_codigo_completo) |
+      grepl('^1215041', natureza_receita_codigo_completo) |
+      grepl('^121911', natureza_receita_codigo_completo)
+    )
+    "
+  ),
+  
+  # COMPENSAÇÃO FINANC. ENTRE REGIMES PREVIDÊNCIA
+  `14  Compensação Financ. entre Regimes Previdência` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & natureza_receita_codigo_completo %in% c(
+      '19900300', '19900310', '19900311', '19900312', '19900313', '19900314',
+      '19990300', '19990301', '19990302', '19990303', '19990304'
+    )
+    "
+  ),
+  
+  # CONTRIBUIÇÕES PARA PIS/PASEP
+  `15  Contribuições para PIS/PASEP` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      (grepl('^1210091|^1212', natureza_receita_codigo_completo) & 
+       !fonte_recursos_codigo %in% c('055', '056', '054')) |
+      (!grepl('^1210091|^1212', natureza_receita_codigo_completo) & 
+       fonte_recursos_codigo %in% c('040', '041'))
+    )
+    "
+  ),
   
   # DEDUÇÕES
-# Estruturas hierárquicas múltiplas baseadas na classificação orçamentária:
-# - PIS/PASEP: 1.2.1.2 (Receitas Correntes > Contribuições > Contribuições Sociais > PIS/PASEP)
-#   Fontes: 031 (FUNDAF-PGFN), 032 (FUNDAF-RFB), 040 (Seguro-Desemprego), 041 (Desenvolvimento Econômico)
-# - RGPS: 1.2.1.4 (Receitas Correntes > Contribuições > Contribuições Sociais > RGPS)
-#   Fontes: 054 (Benefícios do RGPS) - maior volume de deduções
-# - RPPS: 1.2.1.5 (Receitas Correntes > Contribuições > Contribuições Sociais > RPPS)
-#   Fontes: 023 (Pensões Militares), 032 (FUNDAF-RFB), 055 (RPPS FCDF), 056 (RPPS União)
-# - Outras Contribuições: 1.2.1.9 (Receitas Correntes > Contribuições > Contribuições Sociais > Outras)
-#   Fontes: 054 (Benefícios do RGPS)
-# - Multas Administrativas: 1.9.1.1 (Outras Correntes > Multas > Administrativas)
-#   Fontes: 054 (Benefícios do RGPS)
-# - Restituições: 1.9.2.2 (Outras Correntes > Indenizações/Restituições > Restituições)
-#   Fontes: 040 (Seguro-Desemprego), 054 (Benefícios do RGPS), 056 (RPPS União)
-# - Ressarcimentos: 1.9.2.3 (Outras Correntes > Indenizações/Restituições > Ressarcimentos)
-#   Fontes: 054 (Benefícios do RGPS)
-# - Demais Receitas: 1.9.9.9 (Outras Correntes > Demais Receitas > Outras Diversas)
-#   Fontes: 054 (Benefícios do RGPS)
-# Total: 77 registros únicos fonte-natureza | R$ 327,74 bilhões em deduções
-
-
-  `11  Deduções` = list(
+  `16  Deduções` = list(
     criterio = "
-  (grepl('^1212', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('031', '032', '040', '041')) |
-  (grepl('^1214', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
-  (grepl('^1215', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('023', '032', '055', '056')) |
-  (grepl('^1219', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
-  (grepl('^1911', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
-  (grepl('^1922', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('040', '054', '056')) |
-  (grepl('^1923', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
-  (grepl('^1999', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054')
-    ",
-    
-    correcao_aplicada = "Adicionada condição específica: fonte 032 + natureza 12150116",
-    
-    observacao = "Critério anterior mantido + correção pontual para capturar CONTRIBUIÇÃO DO SERVIDOR CIVIL ATIVO-JUROS",
-    item_informacao = "Item Informação será aplicado diretamente no código principal",
-    status = "✅ CORRIGIDO - Adicionada condição específica para fonte 032 + natureza 12150116"
+    (grepl('^1212', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('031', '032', '040', '041')) |
+    (grepl('^1214', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1215', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('023', '032', '055', '056')) |
+    (grepl('^1219', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1911', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1922', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('040', '054', '056')) |
+    (grepl('^1923', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1999', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054')
+    "
   )
 )
 ```
@@ -1350,23 +1375,23 @@ aplicar_criterio_estruturado <- function(dados, categoria, origem, especie = NUL
 #| warning: false
 #| message: false
 #| error: true
-teste <- agrupar_e_combinar_dados(
+receitas_anexo3_rcl <- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE"),
   criterios = criterios_receitas_anexo3_rcl,
   codigo = "MAI/2025REOA12saude"
 )
 
-teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+receitas_anexo3_rcl <- receitas_anexo3_rcl %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_teste <- teste %>% 
+DT_receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
   filter(mes_lancamento == "MAI/2025") %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 
-datatable(DT_teste )%>%
-  formatRound(which(sapply(DT_teste, is.numeric)), 2, mark = ".", dec.mark = ",")
+datatable(DT_receitas_anexo3_rcl )%>%
+  formatRound(which(sapply(DT_receitas_anexo3_rcl, is.numeric)), 2, mark = ".", dec.mark = ",")
 ```
 
 ```{r rcl_deducoes}
@@ -1401,26 +1426,29 @@ criterios_despesas_anexo3_rcl <- list(
 ```
 
 ```{r}
-teste <- agrupar_e_combinar_dados(
+despesas_anexo3_rcl <- agrupar_e_combinar_dados(
   df = dados_despesa %>% unique() ,
   criterios = criterios_despesas_anexo3_rcl,
   codigo = "MAI/2025REOA12saude"
 )
 
-teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+despesas_anexo3_rcl <-despesas_anexo3_rcl %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_teste <- teste %>% 
+DT_despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
   filter(mes_lancamento == "MAI/2025") %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 # 
-datatable(DT_teste )%>%
-  formatRound(which(sapply(DT_teste, is.numeric)), 2, mark = ".", dec.mark = ",")
-```
+datatable(DT_despesas_anexo3_rcl )%>%
+  formatRound(which(sapply(DT_despesas_anexo3_rcl, is.numeric)), 2, mark = ".", dec.mark = ",")
 
-```{r}
+
+DT_despesas_anexo3_rcl %>% filter(ordem == "02") %>% summarise(saldo = sum(`DESPESAS LIQUIDADAS`)) 
+
+
+DT_receitas_anexo3_rcl %>% filter(ordem == "11") %>% summarise(saldo = sum(`RECEITA ORCAMENTARIA (LIQUIDA)`))
 
 ```
 
@@ -1442,42 +1470,4 @@ DT_teste <- teste %>%
 # 
 datatable(DT_teste )%>%
   formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
-```
-
-```{r}
-datatable(dados_receita %>% filter(
-    
-(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2 & nre3_especie_receita_codigo_especie == 1 & nre4_desdobramento_codigo_desdobramento_1 == 2 & fonte_recursos_codigo %in% c('031', '032', '040', '041')) |
-  (nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2 & nre3_especie_receita_codigo_especie == 1 & nre4_desdobramento_codigo_desdobramento_1 == 4 & fonte_recursos_codigo == '054') |
-  (nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2 & nre3_especie_receita_codigo_especie == 1 & nre4_desdobramento_codigo_desdobramento_1 == 5 & fonte_recursos_codigo %in% c('023', '032', '055', '056')) |
-  (nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2 & nre3_especie_receita_codigo_especie == 1 & nre4_desdobramento_codigo_desdobramento_1 == 9 & fonte_recursos_codigo == '054') |
-  (nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9 & nre3_especie_receita_codigo_especie == 1 & nre4_desdobramento_codigo_desdobramento_1 == 1 & fonte_recursos_codigo == '054') |
-  (nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9 & nre3_especie_receita_codigo_especie == 2 & nre4_desdobramento_codigo_desdobramento_1 == 2 & fonte_recursos_codigo %in% c('040', '054', '056')) |
-  (nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9 & nre3_especie_receita_codigo_especie == 2 & nre4_desdobramento_codigo_desdobramento_1 == 3 & fonte_recursos_codigo == '054') |
-  (nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9 & nre3_especie_receita_codigo_especie == 9 & nre4_desdobramento_codigo_desdobramento_1 == 9 & fonte_recursos_codigo == '054'),
-      item_informacao_codigo == 5
-) %>% 
-  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
-  formatRound('saldo_r_item_informacao', 2, mark = ".", dec.mark = ",")
-
-
-```
-
-```{r}
-deducao_r <-  dados_receita %>% filter(
-    
-(fonte_recursos_codigo == '023' & natureza_receita_codigo_completo %in% c('12150411', '12150412')) |
-  (fonte_recursos_codigo == '031' & natureza_receita_codigo_completo %in% c('12120108', '12120208', '12124908')) |
-  (fonte_recursos_codigo == '032' & natureza_receita_codigo_completo %in% c('12120106', '12120206', '12124906', '12150116')) |
-  (fonte_recursos_codigo == '040' & natureza_receita_codigo_completo %in% c('12120101', '12120103', '12120105', '12120107', '12120201', '12120203', '12120205', '12120207', '12124901', '12124903', '12124905', '12124907', '19220701', '19220702')) |
-  (fonte_recursos_codigo == '041' & natureza_receita_codigo_completo %in% c('12120101', '12120103', '12120105', '12120107', '12120201', '12120203', '12120205', '12120207', '12124901', '12124903', '12124905', '12124907')) |
-  (fonte_recursos_codigo == '054' & natureza_receita_codigo_completo %in% c('12140111', '12140112', '12140113', '12140114', '12140121', '12140122', '12140123', '12140124', '12140201', '12140202', '12140203', '12140204', '12144901', '12144902', '12144903', '12144904', '12199911', '19110103', '19111101', '19111102', '19220301', '19220302', '19220303', '19220631', '19220632', '19230401', '19230402', '19990301', '19990302', '19990303', '19999914')) |
-  (fonte_recursos_codigo == '055' & natureza_receita_codigo_completo %in% c('12150111', '12150121')) |
-  (fonte_recursos_codigo == '056' & natureza_receita_codigo_completo %in% c('12150111', '12150113', '12150115', '12150121', '12150131', '12150141', '12150151', '12150161', '19220631')),
-      item_informacao_codigo == 5
-) %>% group_by(fonte_recursos_codigo, natureza_receita_codigo_completo)
-  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao))
-  
-  write.csv(deducao_r, "deducao_r.csv")
-
 ```
