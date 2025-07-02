@@ -1471,3 +1471,686 @@ DT_teste <- teste %>%
 datatable(DT_teste )%>%
   formatRound(which(sapply(dados, is.numeric)), 2, mark = ".", dec.mark = ",")
 ```
+
+```{r}
+# ======================================
+# CRITÉRIOS DA TABELA 1 - RECEITAS
+# ======================================
+
+criterios_tabela1_receitas <- list(
+  
+  # === RECEITAS CORRENTES ===
+  
+  # Receita Tributária
+  `01  Receita Tributária` = list(
+    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 1) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 1)"
+  ),
+  
+  # Receita de Contribuições
+  `02  Receita de Contribuições` = list(
+    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 2)"
+  ),
+  
+  # Receita Patrimonial
+  `03  Receita Patrimonial` = list(
+    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 3) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 3)"
+  ),
+  
+  # Receita Agropecuária
+  `04  Receita Agropecuária` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 4"
+  ),
+  
+  # Receita Industrial
+  `05  Receita Industrial` = list(
+    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 5) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 5)"
+  ),
+  
+  # Receita de Serviços
+  `06  Receita de Serviços` = list(
+    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 6) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 6)"
+  ),
+  
+  # Transferências Correntes
+  `07  Transferências Correntes` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7"
+  ),
+  
+  # Receitas Correntes a Classificar
+  `08  Receitas Correntes a Classificar` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 8"
+  ),
+  
+  # Outras Receitas Correntes
+  `09  Outras Receitas Correntes` = list(
+    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 9)"
+  ),
+  
+  # === RECEITAS DE CAPITAL ===
+  
+  # Operações de Crédito
+  `10  Operações de Crédito` = list(
+    criterio = "(nre1_categoria_economica_codigo == 2 & nre2_origem_receita_codigo_origem == 1) | (nre1_categoria_economica_codigo == 8 & nre2_origem_receita_codigo_origem == 1)"
+  ),
+  
+  # Alienação de Bens
+  `11  Alienação de Bens` = list(
+    criterio = "(nre1_categoria_economica_codigo == 2 & nre2_origem_receita_codigo_origem == 2) | (nre1_categoria_economica_codigo == 8 & nre2_origem_receita_codigo_origem == 2)"
+  ),
+  
+  # Transferências de Capital
+  `12  Transferências de Capital` = list(
+    criterio = "nre1_categoria_economica_codigo == 2 & nre2_origem_receita_codigo_origem == 4"
+  ),
+  
+  # Outras Receitas de Capital
+  `13  Outras Receitas de Capital` = list(
+    criterio = "(nre1_categoria_economica_codigo == 2 & nre2_origem_receita_codigo_origem == 5) | (nre1_categoria_economica_codigo == 8 & nre2_origem_receita_codigo_origem == 5)"
+  ),
+  
+  # SUBTOTAL (I) - Receitas Correntes + Receitas de Capital - Intra-orçamentárias
+  `14  SUBTOTAL (I)` = list(
+    criterio = "nre1_categoria_economica_codigo %in% c(1, 2, 7, 8)"
+  )
+)
+
+# ======================================
+# CRITÉRIOS DA TABELA 1 - DESPESAS
+# ======================================
+
+criterios_tabela1_despesas <- list(
+  
+  # === DESPESAS CORRENTES ===
+  
+  # Pessoal e Encargos Sociais
+  `01  Pessoal e Encargos Sociais` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1'"
+  ),
+  
+  # Juros e Encargos da Dívida
+  `02  Juros e Encargos da Dívida` = list(
+    criterio = "grupo_despesa_codigo_grupo == '2'"
+  ),
+  
+  # Outras Despesas Correntes
+  `03  Outras Despesas Correntes` = list(
+    criterio = "grupo_despesa_codigo_grupo == '3'"
+  ),
+  
+  # Benefícios Previdenciários
+  `04  Benefícios Previdenciários` = list(
+    criterio = "grupo_despesa_codigo_grupo == '3' & unidade_orcamentaria_codigo %in% c('55902', '40904', '33904', '25917')"
+  ),
+  
+  # Transferências
+  `05  Transferências` = list(
+    criterio = "grupo_despesa_codigo_grupo == '3' & modalidade_aplicacao_codigo %in% c('30', '31', '35', '36', '40', '41', '42', '45')"
+  ),
+  
+  # Demais Despesas Correntes
+  `06  Demais Despesas Correntes` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == '3' & 
+    !unidade_orcamentaria_codigo %in% c('55902', '40904', '33904', '25917') &
+    !modalidade_aplicacao_codigo %in% c('30', '31', '35', '36', '40', '41', '42', '45')
+    "
+  ),
+  
+  # === DESPESAS DE CAPITAL ===
+  
+  # Investimentos
+  `07  Investimentos` = list(
+    criterio = "grupo_despesa_codigo_grupo == '4'"
+  ),
+  
+  # Inversões Financeiras
+  `08  Inversões Financeiras` = list(
+    criterio = "grupo_despesa_codigo_grupo == '5'"
+  ),
+  
+  # Amortização da Dívida
+  `09  Amortização da Dívida` = list(
+    criterio = "grupo_despesa_codigo_grupo == '6'"
+  ),
+  
+  # RESERVA DE CONTINGÊNCIA
+  `10  RESERVA DE CONTINGÊNCIA` = list(
+    criterio = "grupo_despesa_codigo_grupo == '9'"
+  ),
+  
+  # SUBTOTAL (III) - Total das Despesas
+  `11  SUBTOTAL (III)` = list(
+    criterio = "grupo_despesa_codigo_grupo %in% c('1', '2', '3', '4', '5', '6', '9')"
+  )
+)
+```
+
+```{r tabela1_despesas}
+tabela1_despesas <- agrupar_e_combinar_dados(
+  df = dados_despesa %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
+  criterios = criterios_tabela1_despesas,
+  codigo = "MAI/2025REOA12saude"
+)
+
+tabela1_despesas <-tabela1_despesas %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_tabela1_despesas <- tabela1_despesas %>% 
+  filter(mes_lancamento == "MAI/2025") %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
+datatable(DT_tabela1_despesas )%>%
+  formatRound(which(sapply(DT_tabela1_despesas, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
+
+```{r tabela_01_receitas}
+tabela1_receitas <- agrupar_e_combinar_dados(
+  df = dados_receita %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
+  criterios = criterios_tabela1_receitas,
+  codigo = "MAI/2025REOA12saude"
+)
+
+tabela1_receitas <-tabela1_receitas %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_tabela1_receitas <- tabela1_receitas %>% 
+  filter(mes_lancamento == "MAI/2025") %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
+datatable(DT_tabela1_receitas )%>%
+  formatRound(which(sapply(DT_tabela1_receitas, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
+
+```{r tabela_01A}
+# ======================================
+# CRITÉRIOS DA TABELA 1A - COLUNAS 2023
+# ======================================
+
+
+
+# ======================================
+# CRITÉRIOS DA TABELA 1A - COLUNAS 2023
+# ======================================
+
+criterios_tabela1a_colunas <- list(
+  
+  # === PREVISÃO ATUALIZADA (a) ===
+  
+  # Previsão Atualizada da Receita
+  `PREVISAO_ATUALIZADA` = list(
+    criterio = "
+    natureza_receita_codigo_completo %in% c('12100111', '12100121', '12100131', '12100211', '12102121', '12102131', 
+                                            '12106511', '12106611', '12106711', '12107211', '12107411', '12107611',
+                                            '12108111', '12109131', '12101011', '12101311', '12101411', '12101611',
+                                            '12106131', '12106211', '12106411', '12106511', '12106611', '12106711',
+                                            '12110051', '12110061', '12106211', '12100511', '12106311', '12106711',
+                                            '12104211', '12104311', '12101051') &
+    fonte_recursos_codigo == '000' &
+    esfera_orcamentaria_codigo == '1'
+    "
+  ),
+  
+  # === RECEITAS REALIZADAS NO MÊS ===
+  
+  # Receita Orçamentária Arrecadada no Mês
+  `RECEITA_REALIZADA_MES` = list(
+    criterio = "
+    fonte_recursos_codigo == '000' &
+    (endsWith(fonte_recursos_detalhada_codigo, '98001') | endsWith(fonte_recursos_detalhada_codigo, '73910'))
+    "
+  ),
+  
+  # === RECEITAS REALIZADAS ATÉ O MÊS ===
+  
+  # Receita Orçamentária Arrecadada Acumulada
+  `RECEITA_REALIZADA_ACUMULADA` = list(
+    criterio = "
+    fonte_recursos_codigo == '000' &
+    (endsWith(fonte_recursos_detalhada_codigo, '98001') | endsWith(fonte_recursos_detalhada_codigo, '73910'))
+    "
+  )
+)
+```
+
+```{r}
+tabela_01A_receitas <- agrupar_e_combinar_dados(
+  df = dados_receita %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
+  criterios = criterios_tabela1a_colunas,
+  codigo = "MAI/2025REOA12saude"
+)
+
+tabela_01A_receitas <-tabela_01A_receitas %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_tabela_01A_receitas <- tabela_01A_receitas %>% 
+  filter(mes_lancamento == "MAI/2025") %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
+datatable(DT_tabela_01A_receitas )%>%
+  formatRound(which(sapply(DT_tabela_01A_receitas, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+criterios_tabela_1b_seguridade <- list(
+  
+  # SAÚDE
+  `01  Saúde` = list(
+    criterio = "iduso_codigo %in% c('6') & funcao_governo_codigo %notin% c('08')"
+  ),
+  
+  # RGPS - UNIDADE ORÇAMENTÁRIA  
+  `02  RGPS - Receitas da Previdência Social` = list(
+    criterio = "unidade_orcamentaria_codigo %in% c('33904', '40404', '35902', '29917')"
+  ),
+  
+  # ASSISTÊNCIA SOCIAL
+  `03  Assistência Social` = list(
+    criterio = "funcao_governo_codigo %in% c('08') & acao_governo_codigo %notin% c('0581', '0544', '0563', '0658', '0585', '0653', '0636')"
+  ),
+  
+  # ABONO SALARIAL
+  `04  Abono Salarial` = list(
+    criterio = "acao_governo_codigo %in% c('0581')"
+  ),
+  
+  # SEGURO DESEMPREGO
+  `05  Seguro Desemprego` = list(
+    criterio = "acao_governo_codigo %in% c('00H4', '0583', '0585',  '0686', '0653')"
+  )
+)
+```
+
+```{r}
+tabela_1b_seguridade <- agrupar_e_combinar_dados(
+  df = dados_despesa %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
+  criterios = criterios_tabela_1b_seguridade,
+  codigo = "MAI/2025REOA12saude"
+)
+
+tabela_1b_seguridade <-tabela_1b_seguridade %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_tabela_1b_seguridade <- tabela_1b_seguridade %>% 
+  filter(mes_lancamento == "MAI/2025") %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
+datatable(DT_tabela_1b_seguridade )%>%
+  formatRound(which(sapply(DT_tabela_1b_seguridade, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
+
+```{r criterios_tabela_02}
+# RECRIAR A LISTA DE CRITÉRIOS TABELA 02
+
+criterios_tabela_02 <- list(
+  
+  # APLICAÇÃO DIRETA (Elemento 00 OU Pessoal Civil OU Pessoal Militar)
+  `01  Aplicação Direta` = list(
+    criterio = " # Elementos que se aplicam a todos os órgãos
+  (elemento_despesa_codigo %in% c('11', '16', '00', '12', '17')) |
+  
+  # Elementos 01 e 03 - fora do Min. Defesa
+  (elemento_despesa_codigo %in% c('01', '03') & 
+   orgao_uge_orgao_maximo_codigo != '52000') |
+  
+  # Elementos 01 e 03 - Min. Defesa (todas as ações)
+  (elemento_despesa_codigo %in% c('01', '03') & 
+   orgao_uge_orgao_maximo_codigo == '52000') |
+  
+  # Elementos 07 e 13 - fora do Min. Defesa
+  (elemento_despesa_codigo %in% c('07', '13') & 
+   orgao_uge_orgao_maximo_codigo != '52000') |
+  
+  # Elemento 13 - Min. Defesa (todas as ações)
+  (elemento_despesa_codigo == '13' & 
+   orgao_uge_orgao_maximo_codigo == '52000') |
+  
+  # Outros elementos - fora do Min. Defesa
+  (elemento_despesa_codigo %notin% c('00', '01', '03', '07', '11', '12', '13', '16', '17', '41') & 
+   orgao_uge_orgao_maximo_codigo != '52000') |
+  
+  # Outros elementos (exceto 00,01,03) - Min. Defesa com ação 0181
+  (elemento_despesa_codigo %notin% c('00', '01', '03') & 
+   orgao_uge_orgao_maximo_codigo == '52000' & 
+   acao_governo_codigo == '0181')"
+  ),
+  
+  # A DETALHAR
+  `02  A Detalhar` = list(
+    criterio = "elemento_despesa_codigo %in% c('00')"
+  ),
+  
+  # PESSOAL CIVIL (Subtotal - agrega todos os elementos civis)
+  `03  Pessoal Civil` = list(
+    criterio = "# Elementos 11 e 16: aplicam-se a todos os órgãos (sem restrições)
+(elemento_despesa_codigo %in% c('11', '16')) |
+
+# Elementos 01 e 03: lógica específica por órgão
+(elemento_despesa_codigo %in% c('01', '03') & 
+ (# Fora do Ministério da Defesa: todos permitidos
+  orgao_uge_orgao_maximo_codigo != '52000' | 
+  # Ministério da Defesa: apenas com ação governo 0181
+  (orgao_uge_orgao_maximo_codigo == '52000' & acao_governo_codigo == '0181'))) |
+
+# Elementos 07 e 13: apenas fora do Ministério da Defesa
+(elemento_despesa_codigo %in% c('07', '13') & 
+ orgao_uge_orgao_maximo_codigo != '52000') |
+
+# Outros elementos não listados: apenas fora do Ministério da Defesa
+(elemento_despesa_codigo %notin% c('00', '01', '03', '07', '11', '12', '13', '16', '17', '41') & 
+ orgao_uge_orgao_maximo_codigo != '52000') |
+
+# Elementos diversos no Ministério da Defesa: apenas com ação governo 0181
+# (exclui elementos 00, 01, 03 que já foram tratados acima)
+(elemento_despesa_codigo %notin% c('00', '01', '03') & 
+ orgao_uge_orgao_maximo_codigo == '52000' & 
+ acao_governo_codigo == '0181') "
+  ),
+  
+  # PESSOAL CIVIL - VENCIMENTOS E VANTAGENS FIXAS
+  `04  Pessoal Civil - Vencimentos e Vantagens Fixas` = list(
+    criterio = "elemento_despesa_codigo %in% c('11')"
+  ),
+  
+  # PESSOAL CIVIL - OUTRAS DESPESAS VARIÁVEIS
+  `05  Pessoal Civil - Outras Despesas Variáveis` = list(
+    criterio = "elemento_despesa_codigo %in% c('16')"
+  ),
+  
+  # PESSOAL CIVIL - APOSENTADORIA
+  `06  Pessoal Civil - Aposentadoria` = list(
+    criterio = "elemento_despesa_codigo %in% c('01') & (orgao_uge_orgao_maximo_codigo %notin% c('52000') | (orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %in% c('0181')))"
+  ),
+  
+  # PESSOAL CIVIL - PENSÕES
+  `07  Pessoal Civil - Pensões` = list(
+    criterio = "elemento_despesa_codigo %in% c('03') & (orgao_uge_orgao_maximo_codigo %notin% c('52000') | (orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %in% c('0181')))"
+  ),
+  
+  # PESSOAL CIVIL - CONTRIBUIÇÕES A ENTIDADES FECHADAS DE PREVIDÊNCIA
+  `08  Pessoal Civil - Contribuições a Entidades Fechadas de Previdência` = list(
+    criterio = "elemento_despesa_codigo %in% c('07') & orgao_uge_orgao_maximo_codigo %notin% c('52000')"
+  ),
+  
+  # PESSOAL CIVIL - OBRIGAÇÕES PATRONAIS
+  `09  Pessoal Civil - Obrigações Patronais` = list(
+    criterio = "elemento_despesa_codigo %in% c('13') & orgao_uge_orgao_maximo_codigo %notin% c('52000')"
+  ),
+  
+  # PESSOAL CIVIL - OUTRAS APLICAÇÕES
+  `10  Pessoal Civil - Outras Aplicações` = list(
+    criterio = "(elemento_despesa_codigo %notin% c('00', '01', '03' ) & orgao_uge_orgao_maximo_codigo %in% c('52000')  & acao_governo_codigo %in% c('0181')) | (elemento_despesa_codigo %notin% c('00', '01', '03', '07', '11', '12', '13', '16', '17', '41') & orgao_uge_orgao_maximo_codigo %notin% c('52000'))"
+  ),
+  
+  # PESSOAL MILITAR (Subtotal - agrega todos os elementos militares, faltam outras aplicações)
+  `11  Pessoal Militar (faltam Outras Aplicações)` = list(
+    criterio = "(elemento_despesa_codigo %in% c('12', '17')) |
+                     ( elemento_despesa_codigo %in% c('01') & orgao_uge_orgao_maximo_codigo %in% c('52000') &
+                         acao_governo_codigo %notin% c('0181'))|
+                     ( elemento_despesa_codigo %in% c('03') & orgao_uge_orgao_maximo_codigo %in% c('52000') &
+                         acao_governo_codigo %notin% c('0181')) |
+                    ( elemento_despesa_codigo %in% c('13') & orgao_uge_orgao_maximo_codigo %in% c('52000') )"
+  ),
+  
+  # PESSOAL MILITAR - VENCIMENTOS E VANTAGENS FIXAS
+  `12  Pessoal Militar - Vencimentos e Vantagens Fixas` = list(
+    criterio = "elemento_despesa_codigo %in% c('12')"
+  ),
+  
+  # PESSOAL MILITAR - OUTRAS DESPESAS VARIÁVEIS
+  `13  Pessoal Militar - Outras Despesas Variáveis` = list(
+    criterio = "elemento_despesa_codigo %in% c('17')"
+  ),
+  
+  # PESSOAL MILITAR - REFORMAS
+  `14  Pessoal Militar - Reformas` = list(
+    criterio = "elemento_despesa_codigo %in% c('01') & orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %notin% c('0181')"
+  ),
+  
+  # PESSOAL MILITAR - PENSÕES
+  `15  Pessoal Militar - Pensões` = list(
+    criterio = "elemento_despesa_codigo %in% c('03') & orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %notin% c('0181')"
+  ),
+  
+  # PESSOAL MILITAR - OBRIGAÇÕES PATRONAIS
+  `16  Pessoal Militar - Obrigações Patronais` = list(
+    criterio = "elemento_despesa_codigo %in% c('13') & orgao_uge_orgao_maximo_codigo %in% c('52000')"
+  ),
+  
+  # PESSOAL MILITAR - OUTRAS APLICAÇÕES
+  `17  Outras Aplicações (+) - militar - dotação` = list(
+    criterio = "elemento_despesa_codigo %notin% c('00', '01', '03', '11', '12', '13', '16', '17', '41') & orgao_uge_orgao_maximo_codigo %in% c('52000')"
+  ),
+  
+    # PESSOAL MILITAR - OUTRAS APLICAÇÕES
+  `18  Outras Aplicações (-) - militar - dotação` = list(
+    criterio = "elemento_despesa_codigo %notin% c( '00', '01', '03', '11') & orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %in% c('0181')"
+  ),
+  
+  # TRANSFERÊNCIAS INTERGOVERNAMENTAIS
+  `19  Transferências Intergovernamentais` = list(
+    criterio = "elemento_despesa_codigo %in% c('41')"
+  ),
+  
+  # TRANSFERÊNCIAS A ESTADOS E AO DF
+  `20  Transferências a Estados e ao DF` = list(
+    criterio = "elemento_despesa_codigo %in% c('41')"
+  )
+)
+
+
+```
+
+```{r}
+# Função simples para aplicar critérios (VERSÃO ROBUSTA)
+aplicar_criterios <- function(df, criterios, item_informacao_filtro = NULL) {
+  # Definir operador notin
+  `%notin%` <- Negate(`%in%`)
+  
+  # Filtrar por item de informação se especificado
+  if (!is.null(item_informacao_filtro)) {
+    df <- df %>% filter(item_informacao_codigo %in% item_informacao_filtro)
+  }
+  
+  # Processar cada critério
+  resultado <- map_df(names(criterios), function(categoria) {
+    # Obter o critério - funciona para diferentes estruturas
+    criterio_texto <- if (is.list(criterios[[categoria]])) {
+      criterios[[categoria]]$criterio
+    } else {
+      criterios[[categoria]]
+    }
+    
+    # Avaliar o critério
+    condicao <- eval(parse(text = criterio_texto), envir = df)
+    
+    # Filtrar e agrupar
+    df %>%
+      filter(condicao) %>%
+      group_by(categoria = categoria, orgao_uge_tipo_administracao_nome) %>%
+      summarise(valor = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop")
+  })
+  
+  return(resultado)
+}
+
+# Teste rápido da estrutura (execute para verificar):
+# str(criterios_tabela_02[[1]])  # Ver como está estruturado
+
+# Exemplo de uso:
+resultado <- aplicar_criterios(
+  df = dados_despesa %>% filter(grupo_despesa_codigo_grupo == 1, orgao_uge_orcam_fiscal_s_n == "PERTENCE"),
+  criterios = criterios_tabela_02,
+  item_informacao_filtro = "13"  # Dotação Atualizada
+)
+
+
+datatable(resultado_pivotado <- resultado %>%
+  pivot_wider(
+    names_from = orgao_uge_tipo_administracao_nome,
+    values_from = valor,
+    values_fill = 0
+  ))%>%
+  formatRound(which(sapply(resultado_pivotado, is.numeric)), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "13" &
+                     (elemento_despesa_codigo %in% c('11',16) |
+                        (elemento_despesa_codigo %in% c('00','01', '03', '07', '11', '12', '13', '17', '41') &
+                           orgao_uge_orgao_maximo_codigo %notin% c('52000')) |
+                        (elemento_despesa_codigo %in% c('00','01', '03') & orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %in% c('0181')  ))) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "13") %>% 
+            filter(elemento_despesa_codigo %in% c('11',16)) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "13") %>% 
+            filter(elemento_despesa_codigo %in% c('00','01', '03', '07', '11', '12', '13', '17', '41') &
+                           orgao_uge_orgao_maximo_codigo %notin% c('52000')) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "13") %>% 
+            filter(elemento_despesa_codigo %in% c('00','01', '03') & orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %in% c('0181')) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
+
+```{r militar_ok}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(orgao_uge_orcam_fiscal_s_n == 'PERTENCE',
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "13") %>% 
+            filter((elemento_despesa_codigo %in% c('12', '17')) |
+                     ( elemento_despesa_codigo %in% c('01') & orgao_uge_orgao_maximo_codigo %in% c('52000') &
+                         acao_governo_codigo %notin% c('0181'))|
+                     ( elemento_despesa_codigo %in% c('03') & orgao_uge_orgao_maximo_codigo %in% c('52000') &
+                         acao_governo_codigo %notin% c('0181')) |
+                    ( elemento_despesa_codigo %in% c('13') & orgao_uge_orgao_maximo_codigo %in% c('52000') ) ) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
+
+```{r civil_ok}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "13") %>% 
+            filter( # Condições específicas (seguindo a lógica do SQL)
+    (elemento_despesa_codigo %in% c('11', '16')) |
+    (elemento_despesa_codigo == '01' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo == '01' & orgao_uge_orgao_maximo_codigo == '52000' & acao_governo_codigo == '0181') |
+    (elemento_despesa_codigo == '03' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo == '03' & orgao_uge_orgao_maximo_codigo == '52000' & acao_governo_codigo == '0181') |
+    (elemento_despesa_codigo == '07' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo == '13' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo %notin% c('00', '01', '03', '07', '11', '12', '13', '16', '17', '41') & 
+     orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo %notin% c('00', '01', '03') & 
+     orgao_uge_orgao_maximo_codigo == '52000' & 
+     acao_governo_codigo == '0181') ) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
+
+```{r}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "13") %>% 
+            filter( # Condições específicas (seguindo a lógica do SQL)
+    (elemento_despesa_codigo %in% c('11', '16', '00')) |
+    (elemento_despesa_codigo == '01' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo == '01' & orgao_uge_orgao_maximo_codigo == '52000' & acao_governo_codigo == '0181') |
+    (elemento_despesa_codigo == '03' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo == '03' & orgao_uge_orgao_maximo_codigo == '52000' & acao_governo_codigo == '0181') |
+    (elemento_despesa_codigo == '07' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo == '13' & orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo %notin% c('00', '01', '03', '07', '11', '12', '13', '16', '17', '41') & 
+     orgao_uge_orgao_maximo_codigo != '52000') |
+    (elemento_despesa_codigo %notin% c('00', '01', '03') & 
+     orgao_uge_orgao_maximo_codigo == '52000' & 
+     acao_governo_codigo == '0181') |
+    (elemento_despesa_codigo %in% c('12', '17')) |
+                     ( elemento_despesa_codigo %in% c('01') & orgao_uge_orgao_maximo_codigo %in% c('52000') &
+                         acao_governo_codigo %notin% c('0181'))|
+                     ( elemento_despesa_codigo %in% c('03') & orgao_uge_orgao_maximo_codigo %in% c('52000') &
+                         acao_governo_codigo %notin% c('0181')) |
+                    ( elemento_despesa_codigo %in% c('13') & orgao_uge_orgao_maximo_codigo %in% c('52000') ) ) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
+
+```{r tabela_02_ok}
+datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
+            filter(
+              grupo_despesa_codigo_grupo == 1,
+              mes_lancamento == "MAI/2025" &
+                     item_informacao_codigo == "25") %>% 
+            filter( # Condições específicas (seguindo a lógica do SQL)
+    # Elementos que se aplicam a todos os órgãos
+  (elemento_despesa_codigo %in% c('11', '16', '00', '12', '17')) |
+  
+  # Elementos 01 e 03 - fora do Min. Defesa
+  (elemento_despesa_codigo %in% c('01', '03') & 
+   orgao_uge_orgao_maximo_codigo != '52000') |
+  
+  # Elementos 01 e 03 - Min. Defesa (todas as ações)
+  (elemento_despesa_codigo %in% c('01', '03') & 
+   orgao_uge_orgao_maximo_codigo == '52000') |
+  
+  # Elementos 07 e 13 - fora do Min. Defesa
+  (elemento_despesa_codigo %in% c('07', '13') & 
+   orgao_uge_orgao_maximo_codigo != '52000') |
+  
+  # Elemento 13 - Min. Defesa (todas as ações)
+  (elemento_despesa_codigo == '13' & 
+   orgao_uge_orgao_maximo_codigo == '52000') |
+  
+  # Outros elementos - fora do Min. Defesa
+  (elemento_despesa_codigo %notin% c('00', '01', '03', '07', '11', '12', '13', '16', '17', '41') & 
+   orgao_uge_orgao_maximo_codigo != '52000') |
+  
+  # Outros elementos (exceto 00,01,03) - Min. Defesa com ação 0181
+  (elemento_despesa_codigo %notin% c('00', '01', '03') & 
+   orgao_uge_orgao_maximo_codigo == '52000' & 
+   acao_governo_codigo == '0181')) %>% 
+            summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+```
