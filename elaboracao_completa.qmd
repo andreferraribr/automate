@@ -308,7 +308,7 @@ emp_nao_liq_canc_pos <- c(631910000)
 library(dplyr)
 library(tidyr)
 
-tabela_04 <- dados_tabela_04
+tabela_04 <- dados_tabela_04 
 
 # =============================================================================
 # CONFIGURAR FORMATAÇÃO DE NÚMEROS
@@ -325,7 +325,7 @@ formatar_numero <- function(x) {
 # CARREGAR DADOS (assumindo que tabela_04 já está carregada)
 # =============================================================================
 
-# tabela_04 <- dados_tabela_04  # Descomentar conforme necessário
+tabela_04 <- dados_tabela_04  # Descomentar conforme necessário
 
 # =============================================================================
 # APLICAR CLASSIFICAÇÃO DE LINHAS (FONTES) SE NECESSÁRIO
@@ -339,8 +339,6 @@ if(!"linhas" %in% names(tabela_04)) {
         fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",
         fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", 
                                      "035", "040", "048", "049", "094", "126", "155", "156", "179", "184") ~ "2_seguridade_exceto_previdencia",
-        fonte_recursos_codigo %in% c("122", "123") & 
-          (is.na(detalhe_orgao_central_codigo_detalhe_oc) | detalhe_orgao_central_codigo_detalhe_oc != "000278") ~ "2_seguridade_exceto_previdencia",
         fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",
         fonte_recursos_codigo %in% c("054") ~ "4_rgps",
         fonte_recursos_codigo %in% c("400", "401", "443", "444", "448") ~ "5_divida",
@@ -605,6 +603,16 @@ cat("\n✅ Colunas verificadas e corretas: 10 colunas")
 cat("\n⏳ Colunas pendentes (critérios complexos): 4 colunas")
 ```
 
+![](images/tabela_04_linhas_previdencia.png)
+
+A regra "OU" fonte e detalhe órgão central da linha Seguridade Social é desnecessária, pois a fonte 122 está associada ao detalhe órgão 153 e a fonte 123 está associada ao detalhe órgão 154.
+
+![](images/planilha_fonte_detalhe_orgao.png)
+
+```{r descobertas_tabela_04}
+datatable(tabela_04 %>% filter(detalhe_orgao_central_id_fonte %notin% c(153, 154) & fonte_recursos_codigo %in% c(122, 123)) %>% group_by(fonte_recursos_codigo, detalhe_orgao_central_id_fonte) %>% count())
+```
+
 ```{r}
 # TABELA 4 RREO - CÓDIGO R CORRIGIDO (SEM ERROS DE SINTAXE)
 # Baseado no arquivo Excel real - Versão sem warnings
@@ -613,6 +621,10 @@ library(dplyr)
 library(tidyr)
 
 tabela_04 <- dados_tabela_04
+
+tabela_04 <- tabela_04 %>% mutate(orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte , "_", fonte_recursos_codigo ))
+
+tabela_04 <- tabela_04 %>% mutate(tg_orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte  ))
 
 # =============================================================================
 # CONFIGURAR FORMATAÇÃO DE NÚMEROS
@@ -636,33 +648,28 @@ if(!"linhas" %in% names(tabela_04)) {
         fonte_recursos_codigo %in% c("000") ~ "0_nao_vinculados",
         fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",
         fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", 
-                                     "035", "040", "048", "049", "094", "126", "155", "156", "179", "184") ~ "2_seguridade_exceto_previdencia",
-        fonte_recursos_codigo %in% c("122", "123") & 
-          (is.na(detalhe_orgao_central_codigo_detalhe_oc) | detalhe_orgao_central_codigo_detalhe_oc != "000278") ~ "2_seguridade_exceto_previdencia",
+                                     "035", "040", "048", "049", "094", "126", "155", "156", "179", "184") ~  "2_seguridade_exceto_previdencia",
         fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",
         fonte_recursos_codigo %in% c("054") ~ "4_rgps",
         fonte_recursos_codigo %in% c("400", "401", "443", "444", "448") ~ "5_divida",
-        fonte_recursos_codigo %in% c("034", "121", "122", "123") & 
-          detalhe_orgao_central_codigo_detalhe_oc == "000278" ~ "5_divida",
+        orgao_fonte %in% c("000278_034", "000278_121", "000278_122", "000278_123") ~ "5_divida",
         fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", "210", "211", "213",
                                      "219", "229", "234", "235", "241", "242", "251", 
                                      "286", "287", "288", "289") ~ "6_transferencias",
-        fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019", 
-                                     "020", "021", "022", "025", "026", "027", "028", "029", "030", "031", 
-                                     "032", "033", "036", "037", "038", "039", "041", "042", "043", "044", 
-                                     "045", "046", "047", "050", "051", "052", "053", "057", "058", "059", 
-                                     "060", "061", "062", "063", "064", "065", "066", "067", "068", "069", 
-                                     "070", "071", "072", "073", "074", "075", "076", "077", "078", "079", 
-                                     "080", "081", "082", "083", "084", "085", "086", "087", "088", "089", 
-                                     "090", "091", "092", "093", "095", "096", "097", "098", "099", "100", 
-                                     "101", "102", "103", "104", "105", "106", "107", "108", "109", "110", 
-                                     "111", "112", "113", "114", "115", "116", "117", "118", "119", "120", 
-                                     "124", "127", "128", "129", "131", "136", "137", "138", "139", 
-                                     "177", "178", "447", "449") ~ "7_fundos_orgaos_programa",
-        fonte_recursos_codigo %in% c("034", "121") & 
-          ( detalhe_orgao_central_codigo_detalhe_oc != "000278") ~ "7_fundos_orgaos_programa",
+        fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019",
+                                     "020", "021", "022", "025", "026", "027", "028", "029", "030", "031",
+                                     "032", "033", "034", "037", "038", "039", "041", "042", "043", "044",
+                                     "045", "046", "047", "050", "051", "052", "053", "057", "058", "059",
+                                     "060", "061", "062", "063", "064", "065", "066", "067", "068", "069",
+                                     "070", "071", "072", "073", "074", "075", "076", "077", "078", "079",
+                                     "080", "081", "082", "083", "084", "085", "086", "087", "088", "089",
+                                     "090", "091", "092", "093", "095", "096", "097", "098", "099", "100",
+                                     "101", "102", "103", "104", "105", "106", "107", "108", "109", "110",
+                                     "111", "112", "113", "114", "115", "116", "118", "119", "120", "121",
+                                     "124", "127", "128", "129", "131", "135", "136", "137", "138", "139",
+                                     "140", "141", "177", "178", "180", "181", "183", "449") ~ "7_fundos_orgaos_programa",
         fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
-        fonte_recursos_codigo %in% c("490") ~ "9_nao_classificados",
+        fonte_recursos_codigo %in% c("490", "-7", "-9") ~ "9_nao_classificados",
         TRUE ~ "outros"
       )
     )
@@ -918,4 +925,31 @@ print("✅ Disponibilidade Líquida calculada")
 print("✅ Pronto para produção")
 
 cat("\n🎯 TABELA 4 RREO FINALIZADA COM SUCESSO!")
+```
+
+```{r tabela_04_linha_seguridade_social}
+tabela_04_linha_seguridade_social <- (tabela_04 %>% filter(fonte_recursos_codigo %in% c(122, 123), tg_orgao_fonte %notin% c("000278_153","000278_154"))%>% mutate(linha = "seguridade_social") %>% group_by(orgao_fonte, detalhe_orgao_central_codigo_detalhe_oc, detalhe_orgao_central_id_fonte, fonte_recursos_codigo, fonte_recursos_detalhada_nome, fonte_recursos_detalhada_codigo, linha)  %>% count())
+```
+
+```{r tabela_04_linha_divida}
+tabela_04_linha_divida <- (tabela_04 %>% filter(fonte_recursos_codigo %in% c("034", "121", "122", "123"), tg_orgao_fonte %in% c("000278_133","000278_152","000278_153","000278_154")) %>% mutate(linha = "divida") %>% group_by(orgao_fonte, detalhe_orgao_central_codigo_detalhe_oc, detalhe_orgao_central_id_fonte, fonte_recursos_codigo, fonte_recursos_detalhada_nome, fonte_recursos_detalhada_codigo, linha)%>% count())
+```
+
+```{r tabela_04_linha_fundos_orgaos}
+tabela_04_linha_fundos_orgaos <- (tabela_04 %>% filter(fonte_recursos_codigo %in% c("034", "121"), tg_orgao_fonte %notin% c("000278_133","000278_152")) %>% mutate(linha = "fundos_orgaos")%>% group_by(orgao_fonte, detalhe_orgao_central_codigo_detalhe_oc, detalhe_orgao_central_id_fonte, fonte_recursos_codigo, fonte_recursos_detalhada_nome, fonte_recursos_detalhada_codigo, linha) %>% count())
+```
+
+```{r}
+orgao_fonte <- rbind(tabela_04_linha_seguridade_social, tabela_04_linha_divida)
+
+
+orgao_fonte <- rbind(orgao_fonte ,
+                    tabela_04_linha_fundos_orgaos )
+```
+
+```{r}
+
+
+all.equal( orgao_fonte %>% filter(fonte_recursos_detalhada_codigo %in% c("1034000000", "1121000088", "1121000100", "1121000149", "1121A00094", "1122000089", "1122000099", "1122A0011O", "1123000000", "1123A003KU", "3034000278", "3121000149", "3121000278", "3122000278", "3123000278") ), orgao_fonte)
+
 ```
