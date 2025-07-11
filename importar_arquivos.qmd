@@ -277,7 +277,13 @@ dados_rp_anexo_12 <- read_excel("rp_anexo_12.xlsx") %>% clean_names()
 
 # importar as contas contabeis para a tabela 04
 
-dados_tabela_04 <- read_excel("dados_2024_conta_contabil_tabela_04.xlsx") %>% clean_names()
+dados_tabela_04 <- read_excel("dados_conta_contabil_tabela_04_claude_conta_contabil.xlsx") %>% clean_names()
+
+dados_tabela_04_170600 <- read_excel("dados_conta_contabil_tabela_04_claude_conta_contabil_170600.xlsx") %>% clean_names() %>% mutate(ug = "170600")
+
+dados_tabela_04_filtro_rreo <- read_excel("dados_conta_contabil_tabela_04_claude_conta_contabil_filtro_rreo.xlsx") %>% clean_names() %>% mutate(ug = "demais")
+
+
 
 # importar as tabelas referentes a metodologia
 
