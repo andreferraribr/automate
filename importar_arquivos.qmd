@@ -351,6 +351,19 @@ criterios_educacao <- list(
 # 26298 12 847 5111 00SB 0003
 
 # plano_orcamentario_codigo_po %in% c( '0003'), funcao_governo_codigo == '12'& subfuncao_governo_codigo == '847', programa_governo_codigo == 5111&  acao_governo_codigo == '00SB'& unidade_orcamentaria_codigo ==  '26298' 
+
+
+```
+
+```{r dados_dcl}
+
+
+dcl_1 <- read_excel("dcl_1.xlsx") %>% clean_names()
+
+
+dcl_2a <- read_excel("dcl_2a.xlsx") %>% clean_names()
+
+dcl_2b <- read_excel("dcl_2b.xlsx") %>% clean_names()
 ```
 
 ```{r dt_mde}
