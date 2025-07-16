@@ -187,7 +187,7 @@ options(DT.options =
 #| include: false
 # selecionar e ler todos os arquivos com dados da despesa
 
-arq_despesa <- list.files( pattern='fechado_despesa_parte')
+arq_despesa <- list.files( pattern='tg_despesa')
 
 
 dados_despesa <- map_df(arq_despesa,read_excel) %>% clean_names()
@@ -239,7 +239,7 @@ dados_despesa <- dados_despesa %>%
 
 # criar as variaveis tipo de modalidade e refinanciamento
 
-dados_receita <- read_excel("receita.xlsx") %>% clean_names() %>% filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
+dados_receita <- read_excel("tg_receita.xlsx") %>% clean_names() %>% filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
 
 
 
@@ -255,7 +255,7 @@ dados_receita <- dados_receita %>%
 
 
 
-dados_rp_anexo_07 <- read_excel("dados_2024_rp_anexo_07.xlsx") %>% clean_names()
+dados_rp_anexo_07 <- read_excel("tg_rp_anexo_07.xlsx") %>% clean_names()
 
 
 dados_rp_anexo_07 <- dados_rp_anexo_07 %>%  
@@ -273,7 +273,7 @@ dados_rp_anexo_07 <- dados_rp_anexo_07 %>%
 
 # importar os dados de RP do anexo 12
 
-dados_rp_anexo_12 <- read_excel("rp_anexo_12.xlsx") %>% clean_names()
+dados_rp_anexo_12 <- read_excel("tg_rp_anexo_12.xlsx") %>% clean_names()
 
 # importar as contas contabeis para a tabela 04
 

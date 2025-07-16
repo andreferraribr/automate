@@ -1444,7 +1444,7 @@ aplicacoes_fundos_2 <- dcl_2a %>%
 # Baseado no print do Tesouro Gerencial com condições E/OU corretas
 
 # LINHA 16 - AGORA USANDO dcl_2b (com todas as contas necessárias)
-aplicacoes_fundos_3 <- dcl_2b %>%
+aplicacoes_fundos_3 <- dcl_2a %>%
   filter(
     orgao_uge_tipo_administracao_codigo %in% c(7),
     orgao_uge_codigo %notin% c("37904", "25915"),
@@ -1455,7 +1455,8 @@ aplicacoes_fundos_3 <- dcl_2b %>%
       conta_contabil_numero %in% c(111210200, 111210300, 111215000, 111215200) |
       (str_starts(as.character(conta_contabil_numero), "1111119") & 
        ug_executora_codigo %notin% c("380916")) |
-      c_con_subgrupo_3_codigo_subgrupo %in% c(2, 3, 4, 5)
+      # FILTRO POR NOME DO SUBGRUPO
+      (c_con_subgrupo_3_nome %in% c("INVESTIMENTOS", "IMOBILIZADO", "INTANGIVEL", "DIFERIDO"))
     )
   ) %>%
   summarise(valor = sum(saldo_r_conta_contabil, na.rm = TRUE)) %>%
@@ -1839,7 +1840,7 @@ exportar_dcl <- function(arquivo = "DCL_Resultado_Consolidado.xlsx") {
 ```
 
 ```{r}
-datatable( dcl_2b %>%
+datatable(dcl_2a %>%
   filter(
     orgao_uge_tipo_administracao_codigo %in% c(7),
     orgao_uge_codigo %notin% c("37904", "25915"),
@@ -1850,8 +1851,9 @@ datatable( dcl_2b %>%
       conta_contabil_numero %in% c(111210200, 111210300, 111215000, 111215200) |
       (str_starts(as.character(conta_contabil_numero), "1111119") & 
        ug_executora_codigo %notin% c("380916")) |
-      c_con_subgrupo_3_codigo_subgrupo %in% c(2, 3, 4, 5)
+      # FILTRO POR NOME DO SUBGRUPO
+      (c_con_subgrupo_3_nome %in% c("INVESTIMENTOS", "IMOBILIZADO", "INTANGIVEL", "DIFERIDO"))
     )
-  ) %>% group_by(conta_contabil_numero, orgao_uge_codigo, ug_executora_codigo, orgao_uge_tipo_administracao_codigo, isf_lancamento) %>% 
-  summarise(valor = sum(saldo_r_conta_contabil, na.rm = TRUE)) )
+  ) %>%
+  summarise(valor = sum(saldo_r_conta_contabil, na.rm = TRUE)))
 ```
