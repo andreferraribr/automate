@@ -40,6 +40,8 @@ library(scales)
 
 # funcao para pivotar a tabela a partir dos itens de informacao
 
+mes_filtro <- "JUN/2025"
+
 tabela_pivotada <- function(df, grupo){
   itens <- df$item_informacao_nome %>% unique() %>% na.omit()
   
@@ -76,14 +78,14 @@ desmembrar_codigo <- function(codigo) {
   }
   
   # Extrair os componentes
-  mes_lancamento <- str_sub(codigo, 1, 8)  # Ex.: "MAI/2025"
+  mes_lancamento <- str_sub(codigo, 1, 8)  # Ex.: mes_filtro
   demonstrativo <- str_sub(codigo, 9, 11)  # Ex.: "RGF" ou "REO"
   anexo <- str_sub(codigo, 12, 14)         # Ex.: "A08"
   parte <- str_sub(codigo, 15, -1)         # Ex.: "despesa" ou "" se não houver
   
   # Validar mes_lancamento (formato MMM/AAAA)
   if (!str_detect(mes_lancamento, "^[A-Z]{3}/\\d{4}$")) {
-    stop("Formato de mes_lancamento inválido. Deve ser MMM/AAAA (ex.: MAI/2025)")
+    stop("Formato de mes_lancamento inválido. Deve ser MMM/AAAA (ex.: JUN/2025)")
   }
   
   # Mapear meses para validação
@@ -369,12 +371,12 @@ dcl_2b <- read_excel("dcl_2b.xlsx") %>% clean_names()
 ```{r dt_mde}
 
 
-anexo_08 <- agrupar_e_combinar_dados(dados_despesa, criterios_educacao, "MAI/2025REOA08despesas")
+anexo_08 <- agrupar_e_combinar_dados(dados_despesa, criterios_educacao, "JUN/2025REOA08despesas")
 
 anexo_08 <- anexo_08 %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 dados <- anexo_08 %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro) %>%
   group_by(categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -385,7 +387,7 @@ datatable(dados) %>%
 
 
 datatable (dados_rp_anexo_08%>%
-  filter(mes_lancamento == 'MAI/2025',  !elemento_despesa_codigo %in% c('01', '03') &
+  filter(mes_lancamento == mes_filtro,  !elemento_despesa_codigo %in% c('01', '03') &
          ((fonte_recursos_codigo %in% c('000', '012', '00' , '12') & 
            (iduso_codigo == 8 | lei_calmon_s_n == 'SIM')) |
           (ne_c_cor_ano_emissao >= 2020 & 
@@ -393,7 +395,7 @@ datatable (dados_rp_anexo_08%>%
            iduso_codigo == 8)) )%>% group_by(item_informacao_nome) %>% summarise(saldo = sum(saldo_r_item_informacao, na.rm =  TRUE)))
 
 despesa_mde_rp <- dados_rp_anexo_08%>%
-  filter(mes_lancamento == 'MAI/2025',  !elemento_despesa_codigo %in% c('01', '03') &
+  filter(mes_lancamento == mes_filtro,  !elemento_despesa_codigo %in% c('01', '03') &
          ((fonte_recursos_codigo %in% c('000', '012', '00' , '12') & 
            (iduso_codigo == 8 | lei_calmon_s_n == 'SIM')) |
           (ne_c_cor_ano_emissao >= 2020 & 
@@ -407,12 +409,12 @@ despesa_mde_rp <- dados_rp_anexo_08%>%
 #| message: false
 #| error: true
 
-dados_receita %>% filter(startsWith(natureza_receita_codigo_completo , '711')| startsWith(natureza_receita_codigo_completo , '111'), mes_lancamento == 'MAI/2025', item_informacao_codigo == 3) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao))
+dados_receita %>% filter(startsWith(natureza_receita_codigo_completo , '711')| startsWith(natureza_receita_codigo_completo , '111'), mes_lancamento == mes_filtro, item_informacao_codigo == 3) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao))
 
 datatable( dados_receita %>% filter(item_informacao_codigo == "5",startsWith(natureza_receita_codigo_completo , '711')| startsWith( natureza_receita_codigo_completo,"111")|startsWith(natureza_receita_codigo_completo , '711')) %>% group_by(mes_lancamento) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))
 
 
-rli_transf <- dados_despesa %>% filter( item_informacao_codigo == "56", mes_lancamento == "MAI/2025" ) %>% mutate(transferencia = case_when(
+rli_transf <- dados_despesa %>% filter( item_informacao_codigo == "56", mes_lancamento == mes_filtro ) %>% mutate(transferencia = case_when(
   acao_governo_codigo == "0044" ~ "FPE",
   acao_governo_codigo == "0045" ~ "FPM",
   acao_governo_codigo == "0046" ~ "IPI_repasse",
@@ -445,14 +447,14 @@ rli_mensal <- full_join(dados_receita%>% filter(item_informacao_codigo == "5",st
 
 rli_mensal <- rli_mensal  %>% mutate(rli = (receita - transferencia)*.18)
 
-rli_maio <- rli_mensal %>% filter(mes_lancamento == "MAI/2025")  %>% summarise(minimo = sum(rli))
+rli_maio <- rli_mensal %>% filter(mes_lancamento == mes_filtro)  %>% summarise(minimo = sum(rli))
 
 
 despesa_mde <- anexo_08 %>% filter(item_informacao_codigo == 25, ordem %in% c("02", "03", "04", "05", "06")) %>% summarise(saldo_r_item_informacao= sum(saldo_r_item_informacao))
 
 
 
-complementacao_fundeb <- dados_despesa %>% filter(item_informacao_codigo == 25, mes_lancamento == "MAI/2025", fonte_recursos_codigo %in% c('000', '008' ,'014', '130'), acao_governo_codigo %in% c ('0E36', '00SB' ) )  %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)*0.3)
+complementacao_fundeb <- dados_despesa %>% filter(item_informacao_codigo == 25, mes_lancamento == mes_filtro, fonte_recursos_codigo %in% c('000', '008' ,'014', '130'), acao_governo_codigo %in% c ('0E36', '00SB' ) )  %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)*0.3)
 
 
 ((complementacao_fundeb$saldo_r_item_informacao + despesa_mde$saldo_r_item_informacao)/rli_maio$minimo*100)
@@ -462,7 +464,7 @@ complementacao_fundeb <- dados_despesa %>% filter(item_informacao_codigo == 25, 
 ```{r saude_iduso_6}
 
 
-despesas_saude <- dados_despesa %>% filter(mes_lancamento == "MAI/2025", iduso_codigo == 6, item_informacao_codigo == 25, subfuncao_governo_codigo %in% c(301, 302, 303, 304, 305, 306 )) %>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome, categoria_economica_despesa_codigo,categoria_economica_despesa_nome, modalidade_aplicacao_codigo)%>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)) 
+despesas_saude <- dados_despesa %>% filter(mes_lancamento == mes_filtro, iduso_codigo == 6, item_informacao_codigo == 25, subfuncao_governo_codigo %in% c(301, 302, 303, 304, 305, 306 )) %>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome, categoria_economica_despesa_codigo,categoria_economica_despesa_nome, modalidade_aplicacao_codigo)%>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)) 
 
 despesas_saude <-  despesas_saude %>% mutate(transferencia = ifelse(modalidade_aplicacao_codigo %in% c ('30', '31', '32', '35', '36', '40', '41', '42', '45', '46'), "_transferencia", "aplicacao_direta"))
 
@@ -477,14 +479,14 @@ sum(despesas_saude$saldo_r_item_informacao)
 
 
 
-despesas_saude_demais <- as.numeric( dados_despesa %>% filter(mes_lancamento == "MAI/2025", iduso_codigo == 6, item_informacao_codigo == 25, subfuncao_governo_codigo %notin% c(301, 302, 303, 304, 305, 306 )) %>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)))
+despesas_saude_demais <- as.numeric( dados_despesa %>% filter(mes_lancamento == mes_filtro, iduso_codigo == 6, item_informacao_codigo == 25, subfuncao_governo_codigo %notin% c(301, 302, 303, 304, 305, 306 )) %>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)))
 
 
 (sum(despesas_saude$saldo_r_item_informacao) + despesas_saude_demais)
 
 
 
-despesas_saude <- dados_despesa %>% filter(mes_lancamento == "MAI/2025", iduso_codigo == 6, item_informacao_codigo == 25) %>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome, categoria_economica_despesa_codigo,categoria_economica_despesa_nome, modalidade_aplicacao_codigo)%>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)) 
+despesas_saude <- dados_despesa %>% filter(mes_lancamento == mes_filtro, iduso_codigo == 6, item_informacao_codigo == 25) %>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome, categoria_economica_despesa_codigo,categoria_economica_despesa_nome, modalidade_aplicacao_codigo)%>% summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)) 
 
 
 despesas_saude <- despesas_saude %>% mutate(
@@ -503,7 +505,7 @@ datatable(despesas_saude %>% group_by(subfuncao_governo_codigo, subfuncao_govern
 sum(despesas_saude$saldo_r_item_informacao)/1000
 
 
-despesa_saude_nao_computadas <-  dados_despesa %>% filter(mes_lancamento == "MAI/2025", iduso_codigo != 6, item_informacao_codigo == 25,uo_orgao_superior_codigo == "36000", unidade_orcamentaria_codigo != "74202" )%>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome, categoria_economica_despesa_codigo,categoria_economica_despesa_nome, modalidade_aplicacao_codigo) %>%  summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)) 
+despesa_saude_nao_computadas <-  dados_despesa %>% filter(mes_lancamento == mes_filtro, iduso_codigo != 6, item_informacao_codigo == 25,uo_orgao_superior_codigo == "36000", unidade_orcamentaria_codigo != "74202" )%>% group_by(subfuncao_governo_codigo, subfuncao_governo_nome, categoria_economica_despesa_codigo,categoria_economica_despesa_nome, modalidade_aplicacao_codigo) %>%  summarise(saldo_r_item_informacao=sum(saldo_r_item_informacao)) 
 
 
 despesa_saude_nao_computadas <- despesa_saude_nao_computadas %>% mutate(
@@ -672,13 +674,13 @@ criterios_despesas_fcdf <- list(
 receita_rpps_fcdf<- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(unidade_orcamentaria_codigo %in% c(73901)  ) ,
   criterios = criterios_receitas_fcdf,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 receita_rpps_fcdf <- receita_rpps_fcdf %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_receita_rpps_fcdf <- receita_rpps_fcdf %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -692,13 +694,13 @@ datatable(receita_rpps_fcdf)%>%
 despesa_rpps_fcdf<- agrupar_e_combinar_dados(
   df = dados_despesa %>% filter(unidade_orcamentaria_codigo %in% c(73901) , elemento_despesa_codigo %notin% c(04, 07, 11, 13, 16, 39, 67,96), acao_governo_codigo != '09HB' ) ,
   criterios = criterios_despesas_fcdf,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 despesa_rpps_fcdf <- despesa_rpps_fcdf %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_despesa_rpps_fcdf <- despesa_rpps_fcdf %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -867,13 +869,13 @@ receita_rpps<- agrupar_e_combinar_dados(
       # Fonte Recursos: Não relacionado (054:0023:BENEFICIOS DO RGPS)
       fonte_recursos_codigo %notin% c('054') ) ,
   criterios = criterios_receitas_rpps,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 receita_rpps <- receita_rpps %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_receita_rpps <- receita_rpps %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -883,7 +885,7 @@ datatable(receita_rpps)%>%
   formatRound(which(sapply(receita_rpps, is.numeric)), 2, mark = ".", dec.mark = ",")
 
 
-dados_receita %>% filter(fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12105111', '12105121', '12105131', '12105141', '12150411', '12150412', '12150421', '12150431', '12150441') | startsWith(natureza_receita_codigo_completo, '121911')), unidade_orcamentaria_codigo != 73901, item_informacao_codigo == 5, mes_lancamento == "MAI/2025") %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE))
+dados_receita %>% filter(fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12105111', '12105121', '12105131', '12105141', '12150411', '12150412', '12150421', '12150431', '12150441') | startsWith(natureza_receita_codigo_completo, '121911')), unidade_orcamentaria_codigo != 73901, item_informacao_codigo == 5, mes_lancamento == mes_filtro ) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE))
 ```
 
 ```{r rgps_receitas_despesas}
@@ -1008,13 +1010,13 @@ criterios_despesas_rgps <- list(
 receita_rgps<- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917) | natureza_receita_codigo_completo == 79900211 ) ,
   criterios = criterios_receitas_rgps,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 receita_rgps <- receita_rgps %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_receita_rgps <- receita_rgps %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1040,13 +1042,13 @@ datatable(dados_receita %>% filter(unidade_orcamentaria_codigo %in% c(33904, 409
 despesa_rgps<- agrupar_e_combinar_dados(
   df = dados_despesa %>% filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917)  ) ,
   criterios = criterios_despesas_rgps,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 despesa_rgps <- despesa_rgps %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_despesa_rgps <- despesa_rgps %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1397,13 +1399,13 @@ aplicar_criterio_estruturado <- function(dados, categoria, origem, especie = NUL
 receitas_anexo3_rcl <- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE"),
   criterios = criterios_receitas_anexo3_rcl,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 receitas_anexo3_rcl <- receitas_anexo3_rcl %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1448,13 +1450,13 @@ criterios_despesas_anexo3_rcl <- list(
 despesas_anexo3_rcl <- agrupar_e_combinar_dados(
   df = dados_despesa %>% unique() ,
   criterios = criterios_despesas_anexo3_rcl,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 despesas_anexo3_rcl <-despesas_anexo3_rcl %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1475,13 +1477,13 @@ DT_receitas_anexo3_rcl %>% filter(ordem == "11") %>% summarise(saldo = sum(`RECE
 teste <- agrupar_e_combinar_dados(
   df = dados_receita %>% unique() ,
   criterios = criterios_receitas_rpps,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 teste <- teste %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_teste <- teste %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1648,13 +1650,13 @@ criterios_tabela1_despesas <- list(
 tabela1_despesas <- agrupar_e_combinar_dados(
   df = dados_despesa %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
   criterios = criterios_tabela1_despesas,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 tabela1_despesas <-tabela1_despesas %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_tabela1_despesas <- tabela1_despesas %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1668,13 +1670,13 @@ datatable(DT_tabela1_despesas )%>%
 tabela1_receitas <- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
   criterios = criterios_tabela1_receitas,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 tabela1_receitas <-tabela1_receitas %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_tabela1_receitas <- tabela1_receitas %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1739,13 +1741,13 @@ criterios_tabela1a_colunas <- list(
 tabela_01A_receitas <- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
   criterios = criterios_tabela1a_colunas,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 tabela_01A_receitas <-tabela_01A_receitas %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_tabela_01A_receitas <- tabela_01A_receitas %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -1789,13 +1791,13 @@ criterios_tabela_1b_seguridade <- list(
 tabela_1b_seguridade <- agrupar_e_combinar_dados(
   df = dados_despesa %>% filter(esfera_orcamentaria_codigo ==2) %>% unique() ,
   criterios = criterios_tabela_1b_seguridade,
-  codigo = "MAI/2025REOA12saude"
+  codigo = "JUN/2025REOA12saude"
 )
 
 tabela_1b_seguridade <-tabela_1b_seguridade %>%   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 DT_tabela_1b_seguridade <- tabela_1b_seguridade %>% 
-  filter(mes_lancamento == "MAI/2025") %>%
+  filter(mes_lancamento == mes_filtro ) %>%
   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
@@ -2024,7 +2026,7 @@ datatable(resultado_pivotado <- resultado %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro  &
                      item_informacao_codigo == "13" &
                      (elemento_despesa_codigo %in% c('11',16) |
                         (elemento_despesa_codigo %in% c('00','01', '03', '07', '11', '12', '13', '17', '41') &
@@ -2038,7 +2040,7 @@ datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro  &
                      item_informacao_codigo == "13") %>% 
             filter(elemento_despesa_codigo %in% c('11',16)) %>% 
             summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
@@ -2049,7 +2051,7 @@ datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro  &
                      item_informacao_codigo == "13") %>% 
             filter(elemento_despesa_codigo %in% c('00','01', '03', '07', '11', '12', '13', '17', '41') &
                            orgao_uge_orgao_maximo_codigo %notin% c('52000')) %>% 
@@ -2061,7 +2063,7 @@ datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro  &
                      item_informacao_codigo == "13") %>% 
             filter(elemento_despesa_codigo %in% c('00','01', '03') & orgao_uge_orgao_maximo_codigo %in% c('52000') & acao_governo_codigo %in% c('0181')) %>% 
             summarise( saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
@@ -2072,7 +2074,7 @@ datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(orgao_uge_orcam_fiscal_s_n == 'PERTENCE',
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro &
                      item_informacao_codigo == "13") %>% 
             filter((elemento_despesa_codigo %in% c('12', '17')) |
                      ( elemento_despesa_codigo %in% c('01') & orgao_uge_orgao_maximo_codigo %in% c('52000') &
@@ -2088,7 +2090,7 @@ datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro  &
                      item_informacao_codigo == "13") %>% 
             filter( # Condições específicas (seguindo a lógica do SQL)
     (elemento_despesa_codigo %in% c('11', '16')) |
@@ -2111,7 +2113,7 @@ datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro  &
                      item_informacao_codigo == "13") %>% 
             filter( # Condições específicas (seguindo a lógica do SQL)
     (elemento_despesa_codigo %in% c('11', '16', '00')) |
@@ -2140,7 +2142,7 @@ datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
 datatable(dados_despesa %>% group_by(orgao_uge_tipo_administracao_nome) %>%
             filter(
               grupo_despesa_codigo_grupo == 1,
-              mes_lancamento == "MAI/2025" &
+              mes_lancamento == mes_filtro  &
                      item_informacao_codigo == "25") %>% 
             filter( # Condições específicas (seguindo a lógica do SQL)
     # Elementos que se aplicam a todos os órgãos
