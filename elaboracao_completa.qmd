@@ -2737,3 +2737,222 @@ exportar_anexo6_final <- function(arquivo = "Anexo6_RREO_JUN2025.xlsx") {
 }
 
 ```
+
+```{r}
+# RREO ANEXO 6 - RECEITAS PRIMÁRIAS (CÓDIGO SIMPLES)
+# Replica exatamente os valores da planilha oficial
+
+library(dplyr)
+library(tidyr)
+library(DT)
+library(scales)
+
+# Operador auxiliar
+`%notin%` <- Negate(`%in%`)
+
+# =============================================================================
+# FUNÇÃO SIMPLES PARA RECEITAS PRIMÁRIAS
+# =============================================================================
+
+receitas_primarias_rreo <- function(dados_receita) {
+    
+    # Filtros conforme critérios do Tesouro Gerencial
+    dados <- dados_receita %>%
+        filter(
+            # {NRE1 Categoria Econômica} <> 7:RECEITAS CORRENTES, 8:RECEITAS DE CAPITAL
+            nre1_categoria_economica_codigo %in% c(1, 2),  # 1:RECEITAS CORRENTES, 2:RECEITAS DE CAPITAL
+            # {Órgão UGE - Orçam. Fiscal S/N} = PERTENCE
+            orgao_uge_orcam_fiscal_s_n == "PERTENCE",
+            # Adicionar filtro para receita líquida para maior precisão
+            item_informacao_codigo == 5  # Receita Líquida
+        )
+    
+    # Função para ordenar meses cronologicamente
+    ordenar_meses <- function(meses_lista) {
+        ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                        "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+        
+        meses_df <- data.frame(
+            mes_completo = meses_lista,
+            mes = substr(meses_lista, 1, 3),
+            ano = substr(meses_lista, 5, 8),
+            stringsAsFactors = FALSE
+        )
+        
+        meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+        meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+        
+        return(meses_ordenados$mes_completo)
+    }
+    
+    # Obter meses disponíveis e ordenar
+    meses_ordenados <- ordenar_meses(unique(dados$mes_lancamento))
+    
+    # Criar estrutura final do relatório
+    relatorio <- data.frame(
+        elemento = c(
+            "RECEITAS CORRENTES (I)",
+            "___Impostos, Taxas e Contribuições de Melhoria", 
+            "___Contribuições",
+            "___Receita Patrimonial",
+            "______Aplicações Financeiras (II)",
+            "______Outras Receitas Patrimoniais",
+            "___Transferências Correntes",
+            "___Demais Receitas Correntes",
+            "______Outras Receitas Financeiras (III)",
+            "___Receitas Correntes Restantes",
+            "RECEITAS PRIMÁRIAS CORRENTES (IV) = (I - II - III)",
+            "RECEITAS DE CAPITAL (V)",
+            "___Operações de Crédito (VI)",
+            "___Amortização de Empréstimos (VII)",
+            "___Alienações de Bens",
+            "______Outras Alienações de Bens", 
+            "___Transferências de Capital",
+            "___Outras Receitas de Capital",
+            "______Outras Receitas de Capital Não Primárias (X)",
+            "RECEITAS PRIMÁRIAS DE CAPITAL (XI) = (V - VI - VII - VIII - IX - X)",
+            "RECEITA PRIMÁRIA TOTAL (XII) = (IV + XI)"
+        ),
+        stringsAsFactors = FALSE
+    )
+    
+    # Calcular valores para cada mês com maior precisão
+    for (mes in meses_ordenados) {
+        
+        dados_mes <- dados[dados$mes_lancamento == mes, ]
+        
+        # RECEITAS CORRENTES
+        correntes_total <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        impostos <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                dados_mes$nre2_origem_receita_codigo_origem == 1, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        contribuicoes <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                     dados_mes$nre2_origem_receita_codigo_origem == 2, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        patrimonial <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                   dados_mes$nre2_origem_receita_codigo_origem == 3, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # Aplicações Financeiras - usar código mais específico
+        aplicacoes <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                  dados_mes$nre2_origem_receita_codigo_origem == 3 & 
+                                  startsWith(dados_mes$natureza_receita_codigo_completo, "132"), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        outras_patrimoniais <- patrimonial - aplicacoes
+        
+        transferencias <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                      dados_mes$nre2_origem_receita_codigo_origem == 7, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        demais <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                              dados_mes$nre2_origem_receita_codigo_origem %in% c(4, 5, 6, 8, 9), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # Outras Receitas Financeiras - códigos específicos conforme metodologia
+        outras_financeiras <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                          dados_mes$natureza_receita_codigo_completo %in% c("164011011", "192012012", "199011111", "190992992", "164003131"), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        receitas_correntes_restantes <- correntes_total - impostos - contribuicoes - patrimonial - transferencias - demais
+        
+        primarias_correntes <- correntes_total - aplicacoes - outras_financeiras
+        
+        # RECEITAS DE CAPITAL
+        capital_total <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        operacoes_credito <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                         dados_mes$nre2_origem_receita_codigo_origem == 1, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        amortizacao <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                   dados_mes$nre2_origem_receita_codigo_origem == 3, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        alienacoes <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                  dados_mes$nre2_origem_receita_codigo_origem == 2, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        outras_alienacoes <- alienacoes  # Para manter consistência com a planilha
+        
+        transf_capital <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                      dados_mes$nre2_origem_receita_codigo_origem == 4, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        outras_capital <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                      dados_mes$nre2_origem_receita_codigo_origem %in% c(5, 6, 7, 8, 9), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # Outras Receitas de Capital Não Primárias
+        outras_capital_nao_primarias <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                                    dados_mes$natureza_receita_codigo_completo %in% c("292292", "293293", "294294"), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        primarias_capital <- capital_total - operacoes_credito - amortizacao - outras_capital_nao_primarias
+        
+        primaria_total <- primarias_correntes + primarias_capital
+        
+        # Adicionar valores ao relatório (manter como numeric para precisão)
+        relatorio[[mes]] <- c(
+            correntes_total,
+            impostos,
+            contribuicoes,
+            patrimonial,
+            aplicacoes,
+            outras_patrimoniais,
+            transferencias,
+            demais,
+            outras_financeiras,
+            receitas_correntes_restantes,
+            primarias_correntes,
+            capital_total,
+            operacoes_credito,
+            amortizacao,
+            alienacoes,
+            outras_alienacoes,
+            transf_capital,
+            outras_capital,
+            outras_capital_nao_primarias,
+            primarias_capital,
+            primaria_total
+        )
+    }
+    
+    return(relatorio)
+}
+
+# =============================================================================
+# USAR A FUNÇÃO
+# =============================================================================
+
+# Executar
+relatorio_final <- receitas_primarias_rreo(dados_receita)
+
+# Criar DT datatable com formatação em R$
+criar_datatable_rreo <- function(relatorio) {
+    
+    # Identificar colunas de valores (excluir coluna 'elemento')
+    colunas_valores <- names(relatorio)[names(relatorio) != "elemento"]
+    
+    # Criar datatable 
+    dt <- DT::datatable(
+        relatorio,
+        options = list(
+            pageLength = 20,
+            scrollX = TRUE,
+            dom = 't',  # Apenas tabela, sem paginação
+            columnDefs = list(
+                list(className = 'dt-left', targets = 0),  # Alinhar primeira coluna à esquerda
+                list(className = 'dt-right', targets = 1:length(colunas_valores))  # Alinhar números à direita
+            )
+        ),
+        rownames = FALSE,
+        class = 'cell-border stripe hover'
+    ) %>%
+    formatRound(which(sapply(relatorio, is.numeric)), 2, mark = ".", dec.mark = ",")
+    
+    return(dt)
+}
+
+# Gerar datatable formatado
+datatable_rreo <- criar_datatable_rreo(relatorio_final)
+
+# Exibir datatable
+datatable_rreo
+
+# Ver resultado simples também
+print(relatorio_final)
+
+# Salvar em CSV se necessário
+# write.csv2(relatorio_final, "receitas_primarias_rreo.csv", row.names = FALSE)
+```
