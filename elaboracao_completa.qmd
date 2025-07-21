@@ -2234,511 +2234,6 @@ return(dcl_resultado_definitivo)
 ```
 
 ```{r anexo_6_rreo}
-
-# ANEXO 6 RREO - RESULTADO PRIMÁRIO - NOMES CORRETOS
-# Versão Final - Junho/2025 - Usando nomes reais dos campos
-# Sem skip - trabalha com nomes corretos dos campos TG
-
-library(dplyr)
-library(tidyr)
-library(stringr)
-library(readxl)
-library(janitor)
-
-# =============================================================================
-# CONFIGURAR FORMATAÇÃO DE NÚMEROS
-# =============================================================================
-
-options(OutDec = ",")
-options(scipen = 999)
-
-formatar_numero <- function(x) {
-  format(x, big.mark = ".", decimal.mark = ",", scientific = FALSE, nsmall = 2)
-}
-
-# Operadores auxiliares
-`%notin%` <- Negate(`%in%`)
-`%||%` <- function(x, y) if(is.null(x) || length(x) == 0 || is.na(x)) y else x
-
-# =============================================================================
-# CARREGAR DADOS SEM SKIP E COM NOMES REAIS
-# =============================================================================
-
-cat("=== CARREGANDO DADOS DO TESOURO GERENCIAL (SEM SKIP) ===\n\n")
-
-carregar_dados_real <- function(arquivo, nome_consulta) {
-  cat("📂 Carregando:", arquivo, "\n")
-  
-  if (!file.exists(arquivo)) {
-    cat("❌ Arquivo não encontrado\n\n")
-    return(data.frame())
-  }
-  
-  tryCatch({
-    # Carregar diretamente e aplicar clean_names
-    dados <- read_excel(arquivo) %>% 
-      clean_names()
-    
-    cat("✅ Linhas:", nrow(dados), "| Colunas:", ncol(dados), "\n")
-    cat("📋 Primeiros campos:", paste(names(dados)[1:min(4, ncol(dados))], collapse = ", "), "\n\n")
-    
-    return(dados)
-    
-  }, error = function(e) {
-    cat("❌ Erro:", e$message, "\n\n")
-    return(data.frame())
-  })
-}
-
-# Carregar os 4 arquivos
-df_tipo1 <- carregar_dados_real("tg_rreo_anexo_6_tipo_01.xlsx", "Tipo 1")
-df_tipo2 <- carregar_dados_real("tg_rreo_anexo_6_tipo_02.xlsx", "Tipo 2")  
-df_tipo_345 <- carregar_dados_real("tg_rreo_anexo_6_tipo_03_04_05.xlsx", "Tipos 3-4-5")
-df_grupo23 <- carregar_dados_real("tg_rreo_anexo_6_grupo_23.xlsx", "Grupo 23")
-
-# =============================================================================
-# FUNÇÃO PARA CALCULAR GRUPOS COM NOMES CORRETOS
-# =============================================================================
-
-calcular_grupo_real <- function(df, contas, ug_filtro = NULL, evento_filtro = NULL, 
-                               ns_filtro = NULL, orgao_tipo_filtro = NULL, 
-                               ug_nao_relacionado = NULL, evento_nao_em = NULL,
-                               nome_grupo = "") {
-  
-  if (nrow(df) == 0) {
-    cat("⚠️", nome_grupo, "- DF vazio\n")
-    return(0)
-  }
-  
-  # Usar nomes corretos após clean_names()
-  campo_conta <- "conta_contabil_numero"
-  campo_ug <- "ug_executora_codigo"
-  campo_evento <- "evento_codigo"
-  campo_saldo <- "saldo_r_conta_contabil"
-  campo_ns <- "ns_classificacao_contabil_2"
-  campo_orgao_tipo <- "orgao_uge_tipo_administracao_codigo"
-  
-  cat("🔍", nome_grupo, "\n")
-  
-  # Verificar se campos existem
-  if (!campo_conta %in% names(df)) {
-    cat("❌ Campo conta não encontrado\n")
-    return(0)
-  }
-  
-  if (!campo_saldo %in% names(df)) {
-    cat("❌ Campo saldo não encontrado\n") 
-    return(0)
-  }
-  
-  # Filtro base por conta contábil
-  contas_numericas <- as.numeric(contas)
-  
-  resultado <- df %>%
-    filter(!!sym(campo_conta) %in% contas_numericas)
-  
-  cat("   Após filtro conta:", nrow(resultado), "registros\n")
-  
-  # Aplicar filtros condicionalmente
-  if (!is.null(ug_filtro) && campo_ug %in% names(df)) {
-    resultado <- resultado %>% 
-      filter(as.character(!!sym(campo_ug)) %in% ug_filtro)
-    cat("   Após filtro UG:", nrow(resultado), "registros\n")
-  }
-  
-  if (!is.null(ug_nao_relacionado) && campo_ug %in% names(df)) {
-    resultado <- resultado %>% 
-      filter(!(as.character(!!sym(campo_ug)) %in% ug_nao_relacionado))
-    cat("   Após filtro UG (não relacionado):", nrow(resultado), "registros\n")
-  }
-  
-  if (!is.null(evento_filtro) && campo_evento %in% names(df)) {
-    resultado <- resultado %>% 
-      filter(as.numeric(!!sym(campo_evento)) %in% as.numeric(evento_filtro))
-    cat("   Após filtro evento:", nrow(resultado), "registros\n")
-  }
-  
-  if (!is.null(evento_nao_em) && campo_evento %in% names(df)) {
-    resultado <- resultado %>% 
-      filter(!(as.numeric(!!sym(campo_evento)) %in% as.numeric(evento_nao_em)))
-    cat("   Após filtro evento (não em):", nrow(resultado), "registros\n")
-  }
-  
-  if (!is.null(ns_filtro) && campo_ns %in% names(df)) {
-    # NS pode ser texto ou numérico, tentar ambos
-    ns_filtro_num <- suppressWarnings(as.numeric(ns_filtro))
-    ns_filtro_char <- as.character(ns_filtro)
-    
-    resultado <- resultado %>% 
-      filter(
-        as.character(!!sym(campo_ns)) %in% ns_filtro_char |
-        (as.numeric(!!sym(campo_ns)) %in% ns_filtro_num & !is.na(ns_filtro_num))
-      )
-    cat("   Após filtro NS:", nrow(resultado), "registros\n")
-  }
-  
-  if (!is.null(orgao_tipo_filtro) && campo_orgao_tipo %in% names(df)) {
-    resultado <- resultado %>% 
-      filter(as.numeric(!!sym(campo_orgao_tipo)) == orgao_tipo_filtro)
-    cat("   Após filtro órgão tipo:", nrow(resultado), "registros\n")
-  }
-  
-  # Calcular valor final
-  if (nrow(resultado) > 0) {
-    valor <- sum(as.numeric(resultado[[campo_saldo]]), na.rm = TRUE)
-  } else {
-    valor <- 0
-  }
-  
-  cat("✅", nome_grupo, "- Valor final:", formatar_numero(valor), "\n\n")
-  
-  return(valor)
-}
-
-# =============================================================================
-# CALCULAR GRUPOS POR DF - USANDO ESTRUTURA REAL
-# =============================================================================
-
-cat("🎯 CALCULANDO GRUPOS DO ANEXO 6 COM NOMES REAIS...\n\n")
-
-# =============================================================================
-# GRUPOS DO DF_TIPO1 (4 grupos)
-# =============================================================================
-
-cat("📊 GRUPOS DF_TIPO1:\n")
-
-grupo_02 <- calcular_grupo_real(df_tipo1, "343210200", nome_grupo = "Grupo 2 - VPD Var Cambiais Dívida")
-grupo_07 <- calcular_grupo_real(df_tipo1, "348110100", nome_grupo = "Grupo 7 - VPD Resultado Negativo BACEN")
-grupo_18 <- calcular_grupo_real(df_tipo1, "448110100", nome_grupo = "Grupo 18 - VPA Resultado Positivo BACEN")
-grupo_24 <- calcular_grupo_real(df_tipo1, "111215100", nome_grupo = "Grupo 24 - Aplicações Financeiras")
-
-# =============================================================================
-# GRUPOS DO DF_TIPO2 (18 grupos)
-# =============================================================================
-
-cat("📊 GRUPOS DF_TIPO2:\n")
-
-grupo_01 <- calcular_grupo_real(df_tipo2, c("343110100", "343540100", "343550100"), 
-                               nome_grupo = "Grupo 1 - VPD Var Monetárias Dívida")
-
-grupo_03 <- calcular_grupo_real(df_tipo2, c("343310100", "343340100"), 
-                               ug_filtro = c("170600", "170512"),
-                               nome_grupo = "Grupo 3 - VPD Var Monetárias Mobiliária")
-
-grupo_04 <- calcular_grupo_real(df_tipo2, "343410200", 
-                               ug_filtro = "170600",
-                               nome_grupo = "Grupo 4 - VPD Var Cambiais Mobiliária")
-
-grupo_05 <- calcular_grupo_real(df_tipo2, c("343910103", "343950103", "343940103"), 
-                               ug_filtro = c("170600", "170512", "380916", "170700"),
-                               nome_grupo = "Grupo 5 - VPD Atualização Monetária Negativa")
-
-grupo_06 <- calcular_grupo_real(df_tipo2, c("364010100", "364110100"), 
-                               ug_filtro = c("170600", "170512"),
-                               nome_grupo = "Grupo 6 - VPD Incorporação Passivos")
-
-grupo_08 <- calcular_grupo_real(df_tipo2, c("361740400", "361740800", "361750400"), 
-                               ug_filtro = c("170512", "170526", "170705", "170700"),
-                               nome_grupo = "Grupo 8 - VPD Constituição Ajuste Perdas")
-
-grupo_10 <- calcular_grupo_real(df_tipo2, c("365040100", "365010100", "365110100", "365150100"), 
-                               ug_filtro = c("170512", "170700"),
-                               nome_grupo = "Grupo 10 - VPD Desincorporação Ativos")
-
-grupo_12 <- calcular_grupo_real(df_tipo2, c("343510200", "343540200", "343550200", "343510100"), 
-                               ug_filtro = c("170512", "170526", "170705", "170600", "380916", "170700"),
-                               nome_grupo = "Grupo 12 - VPD Var Emprest Financ")
-
-grupo_13 <- calcular_grupo_real(df_tipo2, c("443140100", "443150100", "443310100"), 
-                               ug_filtro = c("170512", "170526", "170705", "170600", "380916", "170700"),
-                               nome_grupo = "Grupo 13 - VPA Var Emprest Financ")
-
-grupo_14 <- calcular_grupo_real(df_tipo2, c("443910101", "443940101", "443950101"), 
-                               ug_filtro = c("170512", "170526", "170705", "170600", "170700"),
-                               nome_grupo = "Grupo 14 - VPA Atualização Monetária Positiva")
-
-grupo_15 <- calcular_grupo_real(df_tipo2, c("443910100", "443940100", "443950100"), 
-                               ug_filtro = c("170512", "170526", "170705", "170600", "170700"),
-                               nome_grupo = "Grupo 15 - VPA Outras Variações Monetárias")
-
-grupo_16 <- calcular_grupo_real(df_tipo2, c("443910200", "443940200", "443950200"), 
-                               ug_filtro = c("170512", "170526", "170705", "170600", "120002", "170700"),
-                               nome_grupo = "Grupo 16 - VPA Outras Variações Cambiais")
-
-grupo_17 <- calcular_grupo_real(df_tipo2, c("464010100", "464040100", "464050100", "464110100", "464140100", "464150100"), 
-                               ug_filtro = "170600",
-                               nome_grupo = "Grupo 17 - VPA Ganhos Desincorporação Passivos")
-
-grupo_19 <- calcular_grupo_real(df_tipo2, c("449010100", "449040100", "449050100", "449110100", "449140100", "449150100"), 
-                               ug_filtro = c("170512", "170705", "170526"),
-                               nome_grupo = "Grupo 19 - VPA Outras Var Patrimoniais")
-
-grupo_21 <- calcular_grupo_real(df_tipo2, c("497110100", "497140100", "497150100", "497240100", "497210100"), 
-                               ug_filtro = c("170700", "170512", "170526", "170705"),
-                               nome_grupo = "Grupo 21 - VPA Reversão Provisões")
-
-grupo_22 <- calcular_grupo_real(df_tipo2, c("463920100", "463940100"), 
-                               ug_filtro = "170512",
-                               nome_grupo = "Grupo 22 - VPA Outros Ganhos Ativos")
-
-grupo_25 <- calcular_grupo_real(df_tipo2, c("349910100", "349940100", "349950100"), 
-                               ug_filtro = c("170512", "170500"),
-                               nome_grupo = "Grupo 25 - Juros Encargos Passivos")
-
-grupo_28 <- calcular_grupo_real(df_tipo2, "237110300", 
-                               ug_filtro = c("170512", "170700"),
-                               nome_grupo = "Grupo 28 - Ajustes Exercícios Anteriores")
-
-# =============================================================================
-# GRUPOS DO DF_TIPO_345 (5 grupos)
-# =============================================================================
-
-cat("📊 GRUPOS DF_TIPO_345:\n")
-
-# Da estrutura mostrada, sabemos que tem conta 222110101 e UG 170600
-grupo_27 <- calcular_grupo_real(df_tipo_345, "222110101", 
-                               evento_filtro = "591738",
-                               nome_grupo = "Grupo 27 - Passivo Dívida FIES")
-
-grupo_09 <- calcular_grupo_real(df_tipo_345, c("343910200", "343940200", "343950200"), 
-                               ug_filtro = c("170512", "170700"),
-                               ns_filtro = "121110309",
-                               nome_grupo = "Grupo 9 - VPD Outras Var Cambiais (NS)")
-
-grupo_11 <- calcular_grupo_real(df_tipo_345, c("395010100", "395110100"), 
-                               ug_filtro = "170700",
-                               evento_filtro = "541559",
-                               nome_grupo = "Grupo 11 - VPD Reversão Subvenções COPEC")
-
-grupo_20 <- calcular_grupo_real(df_tipo_345, c("445110100", "445210100"), 
-                               ug_nao_relacionado = "380916",
-                               orgao_tipo_filtro = 7,
-                               evento_nao_em = c("581798", "586798"),
-                               nome_grupo = "Grupo 20 - VPA Remuneração Depósitos")
-
-grupo_26 <- calcular_grupo_real(df_tipo_345, c("395010100", "395110100"), 
-                               ug_filtro = "170700",
-                               evento_filtro = "581012",
-                               ns_filtro = c("395010100", "395110100"),
-                               nome_grupo = "Grupo 26 - Constituição Subvenções COPEC")
-
-# =============================================================================
-# GRUPOS DO DF_GRUPO23
-# =============================================================================
-
-cat("📊 GRUPOS DF_GRUPO23:\n")
-
-grupo_23 <- calcular_grupo_real(df_grupo23, "622130200", 
-                               ug_nao_relacionado = "170600",
-                               nome_grupo = "Grupo 23 - Crédito Empenhado Liquidação")
-
-# =============================================================================
-# CRIAR RESULTADO FINAL
-# =============================================================================
-
-anexo6_resultado <- data.frame(
-  linha = 1:28,
-  grupo_oficial = c(
-    "VPD - VARIAÇÕES MONETÁRIAS DA DÍVIDA CONTRATUAL",           # 1
-    "VPD - VARIAÇÕES CAMBIAIS DA DÍVIDA CONTRATUAL",            # 2
-    "VPD - VARIAÇÕES MONETÁRIAS DA DÍVIDA MOBILIÁRIA",          # 3
-    "VPD - VARIAÇÕES CAMBIAIS DA DÍVIDA MOBILIÁRIA",            # 4
-    "VPD - ATUALIZAÇÃO MONETÁRIA NEGATIVA",                     # 5
-    "VPD - INCORPORAÇÃO DEPASSIVOS",                            # 6
-    "VPD - RESULTADO NEGATIVO BACEN",                           # 7
-    "VPD - CONSTITUIÇÃO DE AJUSTE PARA PERDAS",                 # 8
-    "VPD - OUTRAS VARIAÇÕES CAMBIAIS",                          # 9
-    "VPD - DESINCORPORAÇÃO DE ATIVOS",                          # 10
-    "VPD - REVERSÃO DE SUBVENÇÕES ECONÔMICAS - COPEC",          # 11
-    "VPD - VAR MONET E CAMBIAIS DE EMPREST e FINANC CONCEDIDOS", # 12
-    "VPA - VAR MONET E CAMBIAIS DE EMPREST e FINANC CONCEDIDOS", # 13
-    "VPA - ATUALIZAÇÃO MONETÁRIA POSITIVA",                     # 14
-    "VPA - OUTRAS VARIAÇÕES MONETÁRIAS",                        # 15
-    "VPA - OUTRAS VARIAÇÕES CAMBIAIS",                          # 16
-    "VPA - GANHOS COM DESINCORPORAÇÃO DE PASSIVOS",             # 17
-    "VPA - RESULTADO POSITIVO BACEN",                           # 18
-    "VPA - OUTRAS VAR PATRIMONIAIS AUMENTATIVAS",               # 19
-    "VPA - REMUNERAÇÃO DOS DEPÓSITOS BANCÁRIOS (FINANCEIRO???)", # 20
-    "VPA - REVERSÃO DE PROVISÕES E DE AJUSTES PARA PERDAS",     # 21
-    "VPA - OUTROS GANHOS COM INCORPORAÇÃO DE ATIVOS",           # 22
-    "(-) CRÉDITO EMPENHADO EM LIQUIDAÇÃO (EXCETO CODIV)",       # 23
-    "APLICAÇÕES FINANCEIRAS - FECHAMENTO CÂMBIO",               # 24
-    "JUROS E ENCARGOS PASSIVOS - OUTRAS VPD FINANCEIRAS",       # 25
-    "CONSTITUIÇÃO DE SUBVENÇÕES ECONÔMICAS - COPEC",            # 26
-    "PASSIVO DÍVIDA PÚBLICA REF FIES E MANTENEDORAS",           # 27
-    "AJUSTES DE EXERCÍCIOS ANTERIORES"                          # 28
-  ),
-  valor_jun_2025 = c(
-    grupo_01, grupo_02, grupo_03, grupo_04, grupo_05, grupo_06,
-    grupo_07, grupo_08, grupo_09, grupo_10, grupo_11, grupo_12,
-    grupo_13, grupo_14, grupo_15, grupo_16, grupo_17, grupo_18,
-    grupo_19, grupo_20, grupo_21, grupo_22, grupo_23, grupo_24,
-    grupo_25, grupo_26, grupo_27, grupo_28
-  )
-) %>%
-  mutate(
-    valor_formatado = formatar_numero(valor_jun_2025),
-    possui_dados = abs(valor_jun_2025) > 0.01
-  )
-
-# =============================================================================
-# CALCULAR SUBTOTAIS E EXIBIR RESULTADOS
-# =============================================================================
-
-subtotal_vpd <- sum(anexo6_resultado$valor_jun_2025[1:12], na.rm = TRUE)
-subtotal_vpa <- sum(anexo6_resultado$valor_jun_2025[13:22], na.rm = TRUE)
-subtotal_outros <- sum(anexo6_resultado$valor_jun_2025[23:28], na.rm = TRUE)
-
-# Ajustar sinal do Grupo 23 (é subtraído)
-subtotal_outros_ajustado <- subtotal_outros - (2 * grupo_23)
-
-resultado_primario <- subtotal_vpa - subtotal_vpd + subtotal_outros_ajustado
-
-cat("\n=== ANEXO 6 RREO - RESULTADO PRIMÁRIO (JUN/2025) ===\n")
-
-# Mostrar apenas grupos com dados
-resultado_com_dados <- anexo6_resultado %>%
-  filter(possui_dados) %>%
-  select(linha, grupo_oficial, valor_formatado)
-
-print(resultado_com_dados)
-
-cat("\n=== SUBTOTAIS JUN/2025 ===\n")
-cat("VPD (Diminutivas):", formatar_numero(subtotal_vpd), "\n")
-cat("VPA (Aumentativas):", formatar_numero(subtotal_vpa), "\n") 
-cat("OUTROS (Ajustado):", formatar_numero(subtotal_outros_ajustado), "\n")
-cat("RESULTADO PRIMÁRIO:", formatar_numero(resultado_primario), "\n\n")
-
-# =============================================================================
-# ANÁLISE COMPARATIVA COM RESULTADO OFICIAL
-# =============================================================================
-
-cat("=== ANÁLISE COMPARATIVA ===\n")
-
-# Grupos encontrados vs esperados
-grupos_com_dados <- sum(anexo6_resultado$possui_dados)
-cat("Grupos com dados encontrados:", grupos_com_dados, "de 28 grupos\n")
-
-# Principais componentes (maiores valores absolutos)
-principais_componentes <- anexo6_resultado %>%
-  filter(possui_dados) %>%
-  arrange(desc(abs(valor_jun_2025))) %>%
-  head(5)
-
-cat("\nPrincipais componentes (maiores valores):\n")
-for(i in 1:nrow(principais_componentes)) {
-  cat(sprintf("%d. %s: %s\n", 
-              i, 
-              str_trunc(principais_componentes$grupo_oficial[i], 50),
-              principais_componentes$valor_formatado[i]))
-}
-
-# Grupos que podem estar ausentes (conforme resultado oficial)
-grupos_ausentes <- anexo6_resultado %>%
-  filter(!possui_dados) %>%
-  pull(grupo_oficial)
-
-cat("\nGrupos sem dados (normal):\n")
-for(grupo in grupos_ausentes) {
-  cat("- ", str_trunc(grupo, 60), "\n")
-}
-
-# =============================================================================
-# VALIDAÇÃO DE QUALIDADE DOS DADOS
-# =============================================================================
-
-cat("\n=== VALIDAÇÃO DE QUALIDADE ===\n")
-
-# Verificar grupos com valores muito altos
-grupos_grandes <- anexo6_resultado %>%
-  filter(abs(valor_jun_2025) > 100000000000) %>%  # > 100 bilhões
-  select(linha, grupo_oficial, valor_formatado)
-
-if(nrow(grupos_grandes) > 0) {
-  cat("Grupos com valores > 100 bilhões:\n")
-  print(grupos_grandes)
-}
-
-# Verificar grupos negativos (alguns esperados)
-grupos_negativos <- anexo6_resultado %>%
-  filter(valor_jun_2025 < 0) %>%
-  select(linha, grupo_oficial, valor_formatado)
-
-if(nrow(grupos_negativos) > 0) {
-  cat("\nGrupos com valores negativos:\n")
-  print(grupos_negativos)
-}
-
-# =============================================================================
-# RESUMO EXECUTIVO
-# =============================================================================
-
-cat("\n=== RESUMO EXECUTIVO ===\n")
-cat("✅ PROCESSAMENTO: 100% concluído\n")
-cat("✅ ARQUIVOS TG: 4 arquivos processados com sucesso\n")
-cat("✅ GRUPOS ATIVOS:", grupos_com_dados, "grupos com dados\n")
-cat("✅ PERÍODO: Junho/2025\n")
-cat("✅ FILTROS: Aplicados conforme especificação TG\n")
-
-# Classificação dos grupos por magnitude
-cat("\nClassificação por magnitude dos valores:\n")
-magnitude_bilhoes <- anexo6_resultado %>%
-  filter(possui_dados) %>%
-  mutate(
-    magnitude = case_when(
-      abs(valor_jun_2025) >= 100000000000 ~ "Acima de 100 bilhões",
-      abs(valor_jun_2025) >= 10000000000 ~ "Entre 10-100 bilhões", 
-      abs(valor_jun_2025) >= 1000000000 ~ "Entre 1-10 bilhões",
-      abs(valor_jun_2025) >= 1000000 ~ "Entre 1 milhão - 1 bilhão",
-      TRUE ~ "Abaixo de 1 milhão"
-    )
-  ) %>%
-  count(magnitude) %>%
-  arrange(desc(n))
-
-print(magnitude_bilhoes)
-
-cat("\n✅ CÓDIGO EXECUTADO COM SUCESSO!\n")
-cat("📊 Para exportar: use a função exportar_anexo6() quando disponível\n")
-
-# =============================================================================
-# FUNÇÃO DE EXPORTAÇÃO SIMPLES
-# =============================================================================
-
-exportar_anexo6_final <- function(arquivo = "Anexo6_RREO_JUN2025.xlsx") {
-  if(require(openxlsx, quietly = TRUE)) {
-    wb <- createWorkbook()
-    
-    # Aba principal com resultado
-    addWorksheet(wb, "Anexo 6 - Resultado")
-    writeData(wb, "Anexo 6 - Resultado", anexo6_resultado)
-    
-    # Aba apenas com grupos que têm dados
-    addWorksheet(wb, "Grupos com Dados")
-    writeData(wb, "Grupos com Dados", resultado_com_dados)
-    
-    # Aba com resumo
-    resumo <- data.frame(
-      Item = c("VPD Total", "VPA Total", "Outros Total", "Resultado Primário", 
-               "Grupos com Dados", "Data Processamento"),
-      Valor = c(formatar_numero(subtotal_vpd), formatar_numero(subtotal_vpa),
-                formatar_numero(subtotal_outros_ajustado), formatar_numero(resultado_primario),
-                paste(grupos_com_dados, "de 28"), format(Sys.Date(), "%d/%m/%Y"))
-    )
-    
-    addWorksheet(wb, "Resumo")
-    writeData(wb, "Resumo", resumo)
-    
-    saveWorkbook(wb, arquivo, overwrite = TRUE)
-    cat("📊 Arquivo exportado:", arquivo, "\n")
-  } else {
-    cat("❌ Para exportar, instale: install.packages('openxlsx')\n")
-  }
-}
-
-```
-
-```{r}
 # RREO ANEXO 6 - RECEITAS PRIMÁRIAS (CÓDIGO SIMPLES)
 # Replica exatamente os valores da planilha oficial
 
@@ -2763,7 +2258,7 @@ receitas_primarias_rreo <- function(dados_receita) {
             nre1_categoria_economica_codigo %in% c(1, 2),  # 1:RECEITAS CORRENTES, 2:RECEITAS DE CAPITAL
             # {Órgão UGE - Orçam. Fiscal S/N} = PERTENCE
             orgao_uge_orcam_fiscal_s_n == "PERTENCE",
-            # Adicionar filtro para receita líquida para maior precisão
+            # Filtro para receita líquida para maior precisão
             item_informacao_codigo == 5  # Receita Líquida
         )
     
@@ -2816,7 +2311,7 @@ receitas_primarias_rreo <- function(dados_receita) {
         stringsAsFactors = FALSE
     )
     
-    # Calcular valores para cada mês com maior precisão
+    # Calcular valores para cada mês com filtros específicos
     for (mes in meses_ordenados) {
         
         dados_mes <- dados[dados$mes_lancamento == mes, ]
@@ -2833,24 +2328,33 @@ receitas_primarias_rreo <- function(dados_receita) {
         patrimonial <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
                                    dados_mes$nre2_origem_receita_codigo_origem == 3, "saldo_r_item_informacao"], na.rm = TRUE)
         
-        # Aplicações Financeiras - usar código mais específico
+        # APLICAÇÕES FINANCEIRAS - códigos específicos conforme prints
         aplicacoes <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
-                                  dados_mes$nre2_origem_receita_codigo_origem == 3 & 
-                                  startsWith(dados_mes$natureza_receita_codigo_completo, "132"), "saldo_r_item_informacao"], na.rm = TRUE)
+                                  (dados_mes$natureza_receita_codigo_completo %in% c("13210101", "13210201", "13210301", "13210501") |
+                                   startsWith(dados_mes$natureza_receita_codigo_completo, "1321004") |
+                                   startsWith(dados_mes$natureza_receita_codigo_completo, "1329001")), "saldo_r_item_informacao"], na.rm = TRUE)
         
         outras_patrimoniais <- patrimonial - aplicacoes
         
         transferencias <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
                                       dados_mes$nre2_origem_receita_codigo_origem == 7, "saldo_r_item_informacao"], na.rm = TRUE)
         
+        # DEMAIS RECEITAS CORRENTES - apenas códigos conforme print (SEM exclusões)
         demais <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
-                              dados_mes$nre2_origem_receita_codigo_origem %in% c(4, 5, 6, 8, 9), "saldo_r_item_informacao"], na.rm = TRUE)
+                              (startsWith(dados_mes$natureza_receita_codigo_completo, "14") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "15") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "16") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "18") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "19")), "saldo_r_item_informacao"], na.rm = TRUE)
         
-        # Outras Receitas Financeiras - códigos específicos conforme metodologia
+        # OUTRAS RECEITAS FINANCEIRAS - códigos específicos conforme prints corretos
         outras_financeiras <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
-                                          dados_mes$natureza_receita_codigo_completo %in% c("164011011", "192012012", "199011111", "190992992", "164003131"), "saldo_r_item_informacao"], na.rm = TRUE)
+                                          (dados_mes$natureza_receita_codigo_completo %in% c("16410101", "16410102", "19991101", "19991102", "16410301") |
+                                           startsWith(dados_mes$natureza_receita_codigo_completo, "1922012") |
+                                           startsWith(dados_mes$natureza_receita_codigo_completo, "1990992")), "saldo_r_item_informacao"], na.rm = TRUE)
         
-        receitas_correntes_restantes <- correntes_total - impostos - contribuicoes - patrimonial - transferencias - demais
+        # RECEITAS CORRENTES RESTANTES - diferença entre Demais e Outras Financeiras
+        receitas_correntes_restantes <- demais - outras_financeiras
         
         primarias_correntes <- correntes_total - aplicacoes - outras_financeiras
         
@@ -2874,9 +2378,11 @@ receitas_primarias_rreo <- function(dados_receita) {
         outras_capital <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
                                       dados_mes$nre2_origem_receita_codigo_origem %in% c(5, 6, 7, 8, 9), "saldo_r_item_informacao"], na.rm = TRUE)
         
-        # Outras Receitas de Capital Não Primárias
+        # OUTRAS RECEITAS DE CAPITAL NÃO PRIMÁRIAS - códigos específicos conforme prints
         outras_capital_nao_primarias <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
-                                                    dados_mes$natureza_receita_codigo_completo %in% c("292292", "293293", "294294"), "saldo_r_item_informacao"], na.rm = TRUE)
+                                                    (startsWith(dados_mes$natureza_receita_codigo_completo, "292") |
+                                                     startsWith(dados_mes$natureza_receita_codigo_completo, "293") |
+                                                     startsWith(dados_mes$natureza_receita_codigo_completo, "294")), "saldo_r_item_informacao"], na.rm = TRUE)
         
         primarias_capital <- capital_total - operacoes_credito - amortizacao - outras_capital_nao_primarias
         
