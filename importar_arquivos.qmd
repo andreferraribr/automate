@@ -285,7 +285,9 @@ dados_tabela_04_170600 <- read_excel("dados_conta_contabil_tabela_04_claude_cont
 
 dados_tabela_04_filtro_rreo <- read_excel("dados_conta_contabil_tabela_04_claude_conta_contabil_filtro_rreo.xlsx") %>% clean_names() %>% mutate(ug = "demais")
 
+dados_ndd <- read_excel("tg_anexo_06_rreo_despesas_primarias_ndd.xlsx")%>% clean_names()
 
+dados_categoria_grupo <- read_excel("tg_anexo_06_rreo_despesas_primarias_categoria_grupo.xlsx")%>% clean_names()
 
 # importar as tabelas referentes a metodologia
 

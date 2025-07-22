@@ -2233,7 +2233,7 @@ cat("📊 VALOR ENTREGUE: Solução completa para automação de relatórios fis
 return(dcl_resultado_definitivo)
 ```
 
-```{r anexo_6_rreo}
+```{r anexo_6_rreo_receitas}
 # RREO ANEXO 6 - RECEITAS PRIMÁRIAS (CÓDIGO SIMPLES)
 # Replica exatamente os valores da planilha oficial
 
@@ -2461,4 +2461,209 @@ print(relatorio_final)
 
 # Salvar em CSV se necessário
 # write.csv2(relatorio_final, "receitas_primarias_rreo.csv", row.names = FALSE)
+```
+
+```{r anexo_06_rreo_despesas}
+
+# RREO ANEXO 6 - DESPESAS PRIMÁRIAS - CÓDIGO SIMPLIFICADO
+# Aplica filtros diretos nas DataFrames
+
+library(dplyr)
+library(tidyr)
+library(DT)
+library(scales)
+
+# =============================================================================
+# FUNÇÃO SIMPLIFICADA PARA DESPESAS PRIMÁRIAS RREO
+# =============================================================================
+
+despesas_primarias_rreo <- function(dados_ndd, dados_categoria_grupo) {
+    
+    # FILTROS DIRETOS NAS DATAFRAMES
+    
+    # Lista de ações excluídas (subsídios)
+    acoes_excluidas <- c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                        '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                        '20GI', '006C', '00ED', '00EE', '00SG')
+    
+    # Filtrar dados_ndd
+    dados_ndd <- dados_ndd %>%
+        filter(!acao_governo_codigo %in% acoes_excluidas,
+               !is.na(mes_lancamento),
+               mes_lancamento != "",
+               # Remover linha com data do relatório TG (formato dd/mm/yyyy)
+               !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento))
+    
+    # Filtrar dados_categoria_grupo  
+    dados_categoria_grupo <- dados_categoria_grupo %>%
+        filter(!acao_governo_codigo %in% acoes_excluidas,
+               !is.na(mes_lancamento), 
+               mes_lancamento != "",
+               # Remover linha com data do relatório TG (formato dd/mm/yyyy)
+               !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento))
+    
+    # Função para ordenar meses cronologicamente
+    ordenar_meses <- function(meses_lista) {
+        ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                        "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+        
+        meses_df <- data.frame(
+            mes_completo = meses_lista,
+            mes = substr(meses_lista, 1, 3),
+            ano = substr(meses_lista, 5, 8),
+            stringsAsFactors = FALSE
+        )
+        
+        meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+        meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+        
+        return(meses_ordenados$mes_completo)
+    }
+    
+    # Obter meses únicos e ordenar cronologicamente
+    meses_unicos <- unique(c(dados_ndd$mes_lancamento, dados_categoria_grupo$mes_lancamento))
+    meses <- ordenar_meses(meses_unicos)
+    
+    # Estrutura do relatório
+    relatorio <- data.frame(
+        elemento = c(
+            "DESPESAS CORRENTES (XIII)",
+            "___Pessoal e Encargos Sociais", 
+            "___Juros e Encargos da Dívida (XIV)",
+            "___Outras Despesas Correntes",
+            "______Transferências Constitucionais e Legais",
+            "______Demais Outras Despesas Correntes", 
+            "DESPESAS PRIMÁRIAS CORRENTES (XV) = (XIII - XIV)",
+            "DESPESAS DE CAPITAL (XVI)",
+            "___Investimentos",
+            "___Inversões Financeiras", 
+            "______Concessão de Empréstimos e Financiamentos (XVII)",
+            "______Demais Inversões Financeiras",
+            "______Amortização da Dívida (XX)",
+            "DESPESAS PRIMÁRIAS DE CAPITAL (XXI) = (XVI - XVII - XX)",
+            "DESPESA PRIMÁRIA TOTAL (XXII) = (XV + XXI)"
+        ),
+        stringsAsFactors = FALSE
+    )
+    
+    # Calcular para cada mês
+    for (mes in meses) {
+        
+        # Filtrar por mês
+        ndd_mes <- dados_ndd[dados_ndd$mes_lancamento == mes, ]
+        cat_mes <- dados_categoria_grupo[dados_categoria_grupo$mes_lancamento == mes, ]
+        
+        # DESPESAS CORRENTES (Categoria 3)
+        correntes <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # PESSOAL (Categoria 3 + Grupo 1)
+        pessoal <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3 & cat_mes$grupo_despesa_codigo_grupo == 1, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # JUROS (Categoria 3 + Grupo 2)
+        juros <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3 & cat_mes$grupo_despesa_codigo_grupo == 2, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # OUTRAS DESPESAS CORRENTES (Categoria 3 + Grupo 3)
+        outras_correntes <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3 & cat_mes$grupo_despesa_codigo_grupo == 3, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # TRANSFERÊNCIAS CONSTITUCIONAIS (códigos específicos)
+        transferencias <- sum(ndd_mes[startsWith(ndd_mes$natureza_despesa_detalhada_codigo, "333081") | startsWith(ndd_mes$natureza_despesa_detalhada_codigo, "334081"), "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # DEMAIS OUTRAS DESPESAS CORRENTES
+        demais_correntes <- outras_correntes - transferencias
+        
+        # DESPESAS PRIMÁRIAS CORRENTES
+        primarias_correntes <- correntes - juros
+        
+        # DESPESAS DE CAPITAL (Categoria 4)
+        capital <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # INVESTIMENTOS (Categoria 4 + Grupo 4)
+        investimentos <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4 & cat_mes$grupo_despesa_codigo_grupo == 4, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # INVERSÕES FINANCEIRAS (Categoria 4 + Grupo 5)
+        inversoes <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4 & cat_mes$grupo_despesa_codigo_grupo == 5, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # CONCESSÃO DE EMPRÉSTIMOS (códigos específicos)
+        concessao <- sum(ndd_mes[ndd_mes$natureza_despesa_detalhada_codigo %in% c("45909206", "45909208", "45909266"), "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # DEMAIS INVERSÕES FINANCEIRAS
+        demais_inversoes <- inversoes - concessao
+        
+        # AMORTIZAÇÃO DA DÍVIDA (Categoria 4 + Grupo 6)
+        amortizacao <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4 & cat_mes$grupo_despesa_codigo_grupo == 6, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # DESPESAS PRIMÁRIAS DE CAPITAL
+        primarias_capital <- capital - concessao - amortizacao
+        
+        # DESPESA PRIMÁRIA TOTAL
+        primaria_total <- primarias_correntes + primarias_capital
+        
+        # Adicionar ao relatório
+        relatorio[[mes]] <- c(
+            correntes,
+            pessoal,
+            juros,
+            outras_correntes,
+            transferencias,
+            demais_correntes,
+            primarias_correntes,
+            capital,
+            investimentos,
+            inversoes,
+            concessao,
+            demais_inversoes,
+            amortizacao,
+            primarias_capital,
+            primaria_total
+        )
+    }
+    
+    return(relatorio)
+}
+
+# =============================================================================
+# FUNÇÃO PARA DATATABLE
+# =============================================================================
+
+criar_datatable_despesas <- function(relatorio) {
+    
+    colunas_valores <- names(relatorio)[names(relatorio) != "elemento"]
+    
+    dt <- DT::datatable(
+        relatorio,
+        options = list(
+            pageLength = 20,
+            scrollX = TRUE,
+            dom = 't',
+            columnDefs = list(
+                list(className = 'dt-left', targets = 0),
+                list(className = 'dt-right', targets = 1:length(colunas_valores))
+            )
+        ),
+        rownames = FALSE,
+        class = 'cell-border stripe hover'
+    ) %>%
+    formatRound(which(sapply(relatorio, is.numeric)), 2, mark = ".", dec.mark = ",")
+    
+    return(dt)
+}
+
+# =============================================================================
+# EXECUÇÃO
+# =============================================================================
+
+# Para executar:
+relatorio_despesas <- despesas_primarias_rreo(dados_ndd, dados_categoria_grupo)
+datatable_despesas <- criar_datatable_despesas(relatorio_despesas)
+datatable_despesas
+
+# =============================================================================
+# CAMPOS NECESSÁRIOS:
+# - dados_ndd: mes_lancamento, acao_governo_codigo, natureza_despesa_detalhada_codigo, saldo_r_conta_contabil
+# - dados_categoria_grupo: mes_lancamento, acao_governo_codigo, categoria_economica_despesa_codigo, grupo_despesa_codigo_grupo, saldo_r_conta_contabil
+# =============================================================================
+```
+
+```{r}
+datatable(dados_categoria_grupo %>% filter(categoria_economica_despesa_codigo == 4) %>% group_by(mes_lancamento) %>% summarise(saldo_r_conta_contabil = sum(saldo_r_conta_contabil, na.rm = TRUE)))
 ```
