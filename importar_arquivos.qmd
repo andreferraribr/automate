@@ -298,6 +298,10 @@ atributos_metodologia <- read_excel("filtros.xlsx", sheet = "metodologia")
 dados_rp_anexo_08 <- read_excel("dados_2025_rp_anexo_08.xlsx") %>% clean_names()
 
 
+tg_RPN_juros <- read_excel("tg_RPN_juros.xlsx") %>% clean_names()
+
+tg_RPN_disponibilidades <- read_excel("tg_RPN_disponibilidades.xlsx") %>% clean_names()
+
 ```
 
 ```{r despesas_mde}
@@ -1440,8 +1444,19 @@ criterios_despesas_anexo3_rcl <- list(
   ),
   
   # DEDUÇÕES  
+  # `02  Deduções` = list(
+  #   criterio = "acao_governo_codigo %in% c('0E36', '00SB') | grepl('^28846090900RX', programa_governo_codigo) | (programa_governo_codigo %in% c('0903', '2030', '2080') & modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))"
+  # ),
+  # 
+  
+  
+  # DEDUÇÕES  
   `02  Deduções` = list(
-    criterio = "acao_governo_codigo %in% c('0E36', '00SB') | grepl('^28846090900RX', programa_governo_codigo) | (programa_governo_codigo %in% c('0903', '2030', '2080') & modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))"
+    criterio = "acao_governo_codigo %in% c('0E36', '00SB') | 
+           grepl('^28846090900RX', programa_governo_codigo) | 
+           (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+            modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+            acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))"
   )
 )
 
@@ -1450,7 +1465,7 @@ criterios_despesas_anexo3_rcl <- list(
 
 ```{r}
 despesas_anexo3_rcl <- agrupar_e_combinar_dados(
-  df = dados_despesa %>% unique() ,
+  df = dados_despesa  %>% unique() ,
   criterios = criterios_despesas_anexo3_rcl,
   codigo = "JUN/2025REOA12saude"
 )
@@ -1468,11 +1483,27 @@ datatable(DT_despesas_anexo3_rcl )%>%
   formatRound(which(sapply(DT_despesas_anexo3_rcl, is.numeric)), 2, mark = ".", dec.mark = ",")
 
 
-DT_despesas_anexo3_rcl %>% filter(ordem == "02") %>% summarise(saldo = sum(`DESPESAS LIQUIDADAS`)) 
+DT_despesas_anexo3_rcl %>% filter(ordem == "02") %>% summarise(saldo = sum(`DESPESAS PAGAS`)) 
 
 
 DT_receitas_anexo3_rcl %>% filter(ordem == "11") %>% summarise(saldo = sum(`RECEITA ORCAMENTARIA (LIQUIDA)`))
 
+```
+
+```{r}
+datatable (dados_despesa %>% filter(mes_lancamento == "JUN/2025", item_informacao_codigo == 28, acao_governo_codigo %in% c('0E36', '00SB') | 
+           grepl('^28846090900RX', programa_governo_codigo) | 
+           (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+            modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+            acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH')) ) %>% group_by(modalidade_aplicacao_codigo, programa_governo_codigo, acao_governo_codigo) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>%
+  formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
+
+
+write.csv(dados_despesa %>% filter(mes_lancamento == "JUN/2025", item_informacao_codigo == 28, acao_governo_codigo %in% c('0E36', '00SB') | 
+           grepl('^28846090900RX', programa_governo_codigo) | 
+           (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+            modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+            acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH')) ) %>% group_by(modalidade_aplicacao_codigo, programa_governo_codigo, acao_governo_codigo) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)), "code.csv")
 ```
 
 ```{r}

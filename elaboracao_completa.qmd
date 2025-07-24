@@ -2667,3 +2667,493 @@ datatable_despesas
 ```{r}
 datatable(dados_categoria_grupo %>% filter(categoria_economica_despesa_codigo == 4) %>% group_by(mes_lancamento) %>% summarise(saldo_r_conta_contabil = sum(saldo_r_conta_contabil, na.rm = TRUE)))
 ```
+
+```{r anexo_06_rreo_juros}
+
+# RREO ANEXO 6 - JUROS ATIVOS E PASSIVOS - CÓDIGO SIMPLIFICADO
+# Totaliza apenas contas 34xxx (ativos) e 44xxx (passivos)
+
+library(dplyr)
+library(tidyr)
+library(DT)
+library(scales)
+
+# =============================================================================
+# FUNÇÃO SIMPLIFICADA PARA JUROS ATIVOS E PASSIVOS RREO
+# =============================================================================
+
+juros_ativos_passivos_rreo <- function(dados_juros) {
+    
+    # FILTROS DIRETOS NA DATAFRAME
+    dados_juros <- dados_juros %>%
+        filter(!is.na(mes_lancamento),
+               mes_lancamento != "",
+               # Remover célula com data de execução do relatório TG
+               !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento),
+               # Manter apenas meses válidos (formato MMM/YYYY)
+               grepl("^[A-Z]{3}/\\d{4}$", mes_lancamento),
+               # Manter apenas as contas específicas de juros (usando "começa com" e conta específica)
+               (substr(conta_contabil_numero, 1, 5) %in% c(
+                   # Juros Ativos (começa com)
+                   "34111", "34113", "34114", "34115", "34121", "34131", 
+                   "34141", "34181", "34183", "34184", "34185", "34191",
+                   "34211", "34213", "34214", "34215", "34221", "34291",
+                   # Juros Passivos (começa com)
+                   "44111", "44113", "44114", "44115", "44121", "44131", 
+                   "44133", "44134", "44135", "44141", "44211", "44213", 
+                   "44214", "44215", "44221"
+               )) |
+               # Juros Passivos (contas específicas - exatas)
+               conta_contabil_numero == "445110100" | conta_contabil_numero == "445210100")
+    
+    # Função para ordenar meses cronologicamente
+    ordenar_meses <- function(meses_lista) {
+        ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                        "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+        
+        meses_df <- data.frame(
+            mes_completo = meses_lista,
+            mes = substr(meses_lista, 1, 3),
+            ano = substr(meses_lista, 5, 8),
+            stringsAsFactors = FALSE
+        )
+        
+        meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+        meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+        
+        return(meses_ordenados$mes_completo)
+    }
+    
+    # Obter meses únicos e ordenar cronologicamente
+    meses_unicos <- unique(dados_juros$mes_lancamento)
+    meses <- ordenar_meses(meses_unicos)
+    
+    # Estrutura do relatório - COM FILTRO ORÇAMENTO FISCAL
+    relatorio <- data.frame(
+        elemento = c(
+            "TOTAL JUROS ATIVOS (Orçamento Fiscal)",
+            "TOTAL JUROS PASSIVOS (Orçamento Fiscal)",
+            "RESULTADO LÍQUIDO DE JUROS (ATIVOS - PASSIVOS)",
+            "FUNDOS - JUROS ATIVOS (Filtro Específico)",
+            "FUNDOS - JUROS PASSIVOS (Filtro Específico)",
+            "FUNDOS - RESULTADO LÍQUIDO"
+        ),
+        stringsAsFactors = FALSE
+    )
+    
+    # Calcular para cada mês
+    for (mes in meses) {
+        
+        # Filtrar por mês
+        juros_mes <- dados_juros[dados_juros$mes_lancamento == mes, ]
+        
+        # === JUROS ATIVOS - CONTAS QUE COMEÇAM COM OS CÓDIGOS DA IMAGEM 1 ===
+        contas_juros_ativos_prefixos <- c("44111", "44113", "44114", "44115", "44121", "44131", 
+                                         "44133", "44134", "44135", "44141", "44211", "44213", 
+                                         "44214", "44215", "44221")
+        contas_juros_ativos_especificas <- c("445110100", "445210100")
+        
+        juros_ativos_filter <- 
+            substr(juros_mes$conta_contabil_numero, 1, 5) %in% contas_juros_ativos_prefixos |
+            juros_mes$conta_contabil_numero %in% contas_juros_ativos_especificas
+        
+        total_juros_ativos <- sum(juros_mes[juros_ativos_filter, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # === JUROS PASSIVOS - CONTAS QUE COMEÇAM COM OS CÓDIGOS DA IMAGEM 2 ===
+        contas_juros_passivos_prefixos <- c("34111", "34113", "34114", "34115", "34121", "34131", 
+                                           "34141", "34181", "34183", "34184", "34185", "34191",
+                                           "34211", "34213", "34214", "34215", "34221", "34291")
+        
+        juros_passivos_filter <- substr(juros_mes$conta_contabil_numero, 1, 5) %in% contas_juros_passivos_prefixos
+        total_juros_passivos <- sum(juros_mes[juros_passivos_filter, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # Resultado Líquido
+        resultado_liquido <- total_juros_ativos - total_juros_passivos
+        
+        # === FILTRO ESPECÍFICO PARA FUNDOS ===
+        fundos_mes <- juros_mes %>%
+            filter(
+                # Tipo Administração = 7 (FUNDOS)
+                orgao_uge_tipo_administracao_codigo == "7",
+                # MANTER: Apenas órgãos que pertencem ao orçamento fiscal
+                orgao_uge_orcam_fiscal_s_n == "PERTENCE",
+                # UG Executora diferente de 380916 (CGFAT)
+                ug_executora_codigo != "380916",
+                # Órgão UGE diferente de 25915 e 37904
+                !orgao_uge_codigo %in% c("25915", "37904")
+            )
+        
+        # Fundos - Juros Ativos (usando mesma lógica)
+        fundos_juros_ativos <- sum(fundos_mes[
+            substr(fundos_mes$conta_contabil_numero, 1, 5) %in% contas_juros_ativos_prefixos |
+            fundos_mes$conta_contabil_numero %in% contas_juros_ativos_especificas, 
+            "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # Fundos - Juros Passivos (usando mesma lógica)
+        fundos_juros_passivos <- sum(fundos_mes[
+            substr(fundos_mes$conta_contabil_numero, 1, 5) %in% contas_juros_passivos_prefixos, 
+            "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # Fundos - Resultado Líquido
+        fundos_resultado_liquido <- fundos_juros_ativos - fundos_juros_passivos
+        
+        # Adicionar ao relatório
+        relatorio[[mes]] <- c(
+            total_juros_ativos,
+            total_juros_passivos,
+            resultado_liquido,
+            fundos_juros_ativos,
+            fundos_juros_passivos,
+            fundos_resultado_liquido
+        )
+    }
+    
+    return(relatorio)
+}
+
+# =============================================================================
+# FUNÇÃO PARA DATATABLE
+# =============================================================================
+
+criar_datatable_juros <- function(relatorio) {
+    
+    # Identificar colunas com valores numéricos
+    colunas_valores <- names(relatorio)[names(relatorio) != "elemento"]
+    
+    dt <- DT::datatable(
+        relatorio,
+        options = list(
+            pageLength = 8,
+            scrollX = TRUE,
+            dom = 't',
+            columnDefs = list(
+                list(className = 'dt-left', targets = 0),
+                list(className = 'dt-right', targets = 1:length(colunas_valores))
+            )
+        ),
+        rownames = FALSE,
+        class = 'cell-border stripe hover'
+    ) 
+    
+    # Aplicar formatação apenas em colunas numéricas não vazias
+    for (i in 2:ncol(relatorio)) {
+        if (is.numeric(relatorio[[i]])) {
+            dt <- dt %>% formatRound(i, 2, mark = ".", dec.mark = ",")
+        }
+    }
+    
+    return(dt)
+}
+
+# =============================================================================
+# EXECUÇÃO
+# =============================================================================
+
+# Para executar o relatório principal:
+# relatorio_juros <- juros_ativos_passivos_rreo(tg_RPN_juros)
+# datatable_juros <- criar_datatable_juros(relatorio_juros)
+# datatable_juros
+
+# =============================================================================
+# CAMPOS NECESSÁRIOS NA DATAFRAME tg_RPN_juros:
+# - mes_lancamento: Mês de referência (ex: "JAN/2025")
+# - orgao_uge_orcam_fiscal_s_n: Indica se pertence ao orçamento fiscal ("PERTENCE")
+# - saldo_r_conta_contabil: Valor em R$
+# - orgao_uge_tipo_administracao_codigo: Código do tipo de administração
+# - ug_executora_codigo: Código da UG executora
+# - orgao_uge_codigo: Código do órgão UGE
+# =============================================================================
+
+relatorio_juros <- juros_ativos_passivos_rreo(tg_RPN_juros)
+datatable_juros <- criar_datatable_juros(relatorio_juros)
+datatable_juros
+
+```
+
+```{r anexo_06_transf}
+# RREO ANEXO 6 - TRANSFERÊNCIAS E SUBSÍDIOS - CÓDIGO DIRETO
+# Script direto sem função - apenas totais
+
+library(dplyr)
+library(DT)
+library(scales)
+
+# =============================================================================
+# FILTROS E PREPARAÇÃO DOS DADOS
+# =============================================================================
+
+# FILTROS DIRETOS NA DATAFRAME
+dados_filtrados <- dados_despesa %>%
+    filter(!is.na(mes_lancamento),
+           mes_lancamento != "",
+           # Remover célula com data de execução do relatório TG
+           !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento),
+           # Manter apenas meses válidos (formato MMM/YYYY)
+           grepl("^[A-Z]{3}/\\d{4}$", mes_lancamento),
+           # FILTRO: Apenas órgãos que pertencem ao orçamento fiscal
+           orgao_uge_orcam_fiscal_s_n == "PERTENCE",
+           # FILTRO: Apenas pagamentos totais (exercício e RAP)
+           item_informacao_codigo == 56)
+
+# LISTA DE AÇÕES DE TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
+acoes_transferencias <- c(
+    "0044", "0045", "0046", "0050", "0051", "00D0", "00G6", "00H6", 
+    "0169", "0223", "0369", "0546", "0547", "0999", "099B", "0A53", 
+    "0C03", "0E25", "0E36", "00PX", "0C33", "006M", "00QR", "00RX", 
+    "00S3", "00S7", "00S8", "00SE", "00SB", "00UH"
+)
+
+# LISTA DE AÇÕES DE SUBSÍDIOS
+acoes_subsidios <- c(
+    "0021", "0029", "0030", "0031", "0061", "006A", "0427", "0534", 
+    "0A81", "0A84", "2130", "0062", "00DD", "00S5", "20GI", "006C", 
+    "00ED", "00EE", "00SG"
+)
+
+# =============================================================================
+# FUNÇÃO PARA ORDENAR MESES
+# =============================================================================
+
+ordenar_meses <- function(meses_lista) {
+    ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                    "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+    
+    meses_df <- data.frame(
+        mes_completo = meses_lista,
+        mes = substr(meses_lista, 1, 3),
+        ano = substr(meses_lista, 5, 8),
+        stringsAsFactors = FALSE
+    )
+    
+    meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+    meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+    
+    return(meses_ordenados$mes_completo)
+}
+
+# Obter meses únicos e ordenar cronologicamente
+meses_unicos <- unique(dados_filtrados$mes_lancamento)
+meses <- ordenar_meses(meses_unicos)
+
+# =============================================================================
+# CRIAÇÃO DO RELATÓRIO
+# =============================================================================
+
+# Estrutura do relatório - APENAS TOTAIS
+relatorio_transferencias <- data.frame(
+    elemento = c(
+        "TOTAL TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS",
+        "TOTAL SUBSÍDIOS E SUBVENÇÕES",
+        "TOTAL GERAL (TRANSFERÊNCIAS + SUBSÍDIOS)"
+    ),
+    stringsAsFactors = FALSE
+)
+
+# Calcular para cada mês
+for (mes in meses) {
+    
+    # Filtrar por mês
+    despesa_mes <- dados_filtrados[dados_filtrados$mes_lancamento == mes, ]
+    
+    # Total Transferências Constitucionais (todas as 30 ações)
+    total_transferencias <- sum(despesa_mes[despesa_mes$acao_governo_codigo %in% acoes_transferencias, "saldo_r_item_informacao"], na.rm = TRUE)
+    
+    # Total Subsídios (todas as 19 ações)
+    total_subsidios <- sum(despesa_mes[despesa_mes$acao_governo_codigo %in% acoes_subsidios, "saldo_r_item_informacao"], na.rm = TRUE)
+    
+    # Total Geral
+    total_geral <- total_transferencias + total_subsidios
+    
+    # Adicionar ao relatório
+    relatorio_transferencias[[mes]] <- c(
+        total_transferencias,
+        total_subsidios,
+        total_geral
+    )
+}
+
+# =============================================================================
+# CRIAÇÃO DO DATATABLE
+# =============================================================================
+
+# Identificar colunas com valores numéricos
+colunas_valores <- names(relatorio_transferencias)[names(relatorio_transferencias) != "elemento"]
+
+datatable_transferencias <- DT::datatable(
+    relatorio_transferencias,
+    options = list(
+        pageLength = 5,
+        scrollX = TRUE,
+        dom = 't',
+        columnDefs = list(
+            list(className = 'dt-left', targets = 0),
+            list(className = 'dt-right', targets = 1:length(colunas_valores))
+        )
+    ),
+    rownames = FALSE,
+    class = 'cell-border stripe hover'
+) 
+
+# Aplicar formatação apenas em colunas numéricas
+for (i in 2:ncol(relatorio_transferencias)) {
+    if (is.numeric(relatorio_transferencias[[i]])) {
+        datatable_transferencias <- datatable_transferencias %>% 
+            formatRound(i, 2, mark = ".", dec.mark = ",")
+    }
+}
+
+# =============================================================================
+# EXIBIR RESULTADO
+# =============================================================================
+
+# Mostrar o resultado
+datatable_transferencias
+
+# Para ver apenas o dataframe sem formatação:
+# View(relatorio_transferencias)
+
+# =============================================================================
+# RESUMO DO QUE FOI CALCULADO:
+# - 30 ações de transferências constitucionais e legais
+# - 19 ações de subsídios e subvenções  
+# - Filtro: orgao_uge_orcam_fiscal_s_n == "PERTENCE"
+# - Filtro: item_informacao_codigo == 56 (Pagamentos Totais)
+# =============================================================================
+```
+
+```{r rreo_anexo_6_disponibilidade}
+# RREO ANEXO 6 - DISPONIBILIDADES - CÓDIGO SIMPLIFICADO
+# Utiliza dcl_2a para capturar caixa e equivalentes de caixa
+
+library(dplyr)
+library(DT)
+library(scales)
+
+# =============================================================================
+# FILTROS E PREPARAÇÃO DOS DADOS
+# =============================================================================
+
+# FILTROS DIRETOS NA DATAFRAME - EXCLUINDO FUNDOS CORRETAMENTE
+dados_filtrados <- tg_RPN_disponibilidades %>%
+    filter(!is.na(mes_lancamento),
+           mes_lancamento != "",
+           # Remover célula com data de execução do relatório TG
+           !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento),
+           # Manter apenas meses válidos (formato MMM/YYYY)
+           grepl("^[A-Z]{3}/\\d{4}$", mes_lancamento),
+           # FILTRO CRUCIAL: Excluir Fundos (Tipo Administração diferente de 7)
+           orgao_uge_tipo_administracao_codigo != 7,
+           # FILTRO: Fontes específicas conforme TG
+           fonte_recursos_codigo %in% c("77", "90", "490", "491"))
+
+# =============================================================================
+# FUNÇÃO PARA ORDENAR MESES
+# =============================================================================
+
+ordenar_meses <- function(meses_lista) {
+    ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                    "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+    
+    meses_df <- data.frame(
+        mes_completo = meses_lista,
+        mes = substr(meses_lista, 1, 3),
+        ano = substr(meses_lista, 5, 8),
+        stringsAsFactors = FALSE
+    )
+    
+    meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+    meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+    
+    return(meses_ordenados$mes_completo)
+}
+
+# Obter meses únicos e ordenar cronologicamente
+meses_unicos <- unique(dados_filtrados$mes_lancamento)
+meses <- ordenar_meses(meses_unicos)
+
+# =============================================================================
+# CRIAÇÃO DO RELATÓRIO
+# =============================================================================
+
+# Estrutura do relatório - FONTES ESPECÍFICAS
+relatorio_disponibilidades <- data.frame(
+    elemento = c(
+        "RECURSOS A CLASSIFICAR (Fontes 77 + 490)",
+        "RECURSOS DIVERSOS (Fontes 90 + 491)",
+        "TOTAL DISPONIBILIDADES (Fontes Específicas)"
+    ),
+    stringsAsFactors = FALSE
+)
+
+# Calcular para cada mês
+for (mes in meses) {
+    
+    # Filtrar por mês
+    disponib_mes <- dados_filtrados[dados_filtrados$mes_lancamento == mes, ]
+    
+    # Recursos a Classificar (Fontes 77 e 490)
+    recursos_classificar <- sum(disponib_mes[disponib_mes$fonte_recursos_codigo %in% c("77", "490"), "saldo_r_conta_contabil"], na.rm = TRUE)
+    
+    # Recursos Diversos (Fontes 90 e 491)
+    recursos_diversos <- sum(disponib_mes[disponib_mes$fonte_recursos_codigo %in% c("90", "491"), "saldo_r_conta_contabil"], na.rm = TRUE)
+    
+    # Total de todas as fontes específicas
+    total_disponibilidades <- recursos_classificar + recursos_diversos
+    
+    # Adicionar ao relatório
+    relatorio_disponibilidades[[mes]] <- c(
+        recursos_classificar,
+        recursos_diversos,
+        total_disponibilidades
+    )
+}
+
+# =============================================================================
+# CRIAÇÃO DO DATATABLE
+# =============================================================================
+
+# Identificar colunas com valores numéricos
+colunas_valores <- names(relatorio_disponibilidades)[names(relatorio_disponibilidades) != "elemento"]
+
+datatable_disponibilidades <- DT::datatable(
+    relatorio_disponibilidades,
+    options = list(
+        pageLength = 10,
+        scrollX = TRUE,
+        dom = 't',
+        columnDefs = list(
+            list(className = 'dt-left', targets = 0),
+            list(className = 'dt-right', targets = 1:length(colunas_valores))
+        )
+    ),
+    rownames = FALSE,
+    class = 'cell-border stripe hover'
+) 
+
+# Aplicar formatação apenas em colunas numéricas
+for (i in 2:ncol(relatorio_disponibilidades)) {
+    if (is.numeric(relatorio_disponibilidades[[i]])) {
+        datatable_disponibilidades <- datatable_disponibilidades %>% 
+            formatRound(i, 2, mark = ".", dec.mark = ",")
+    }
+}
+
+# =============================================================================
+# EXIBIR RESULTADO
+# =============================================================================
+
+# Mostrar o resultado
+datatable_disponibilidades
+
+# Para ver apenas o dataframe sem formatação:
+# View(relatorio_disponibilidades)
+
+# =============================================================================
+# RESUMO DO QUE FOI CALCULADO:
+# - Dataframe: tg_RPN_disponibilidades
+# - FILTRO CRUCIAL: orgao_uge_tipo_administracao_codigo != 7 (EXCLUIR FUNDOS)
+# - Fontes: 77, 490 (Recursos a Classificar) e 90, 491 (Recursos Diversos)
+# - Contas: 53 contas específicas já filtradas no TG
+# - Filtros TG: Orçam. Fiscal = PERTENCE
+# =============================================================================
+```
