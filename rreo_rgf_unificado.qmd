@@ -1,0 +1,1847 @@
+---
+title: "📊 RREO & RGF - Relatórios Fiscais"
+subtitle: "Sistema Unificado de Relatórios Fiscais do Governo Federal"
+author: "Governo Federal"
+date: today
+execute:
+  warning: false
+  message: false
+  cache: true
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-summary: "Mostrar código"
+    fig-width: 10
+    fig-height: 6
+---
+
+# 📚 Carregamento de Bibliotecas e Configurações {#sec-setup}
+
+```{r setup}
+#| include: false
+
+# Bibliotecas principais
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(readxl)
+library(janitor)
+library(purrr)
+library(forcats)
+library(DT)
+library(knitr)
+library(kableExtra)
+
+# Configurações globais
+options(OutDec = ",")
+options(scipen = 999)
+
+# Configurações DT
+options(DT.options = 
+  list(
+    pageLength = 20,
+    lengthMenu = c(5, 10, 25, 50, 100),
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')
+  )
+)
+
+# Operadores customizados
+`%notin%` <- Negate(`%in%`)
+`%||%` <- function(x, y) if(is.null(x) || length(x) == 0 || is.na(x)) y else x
+
+print("✅ Bibliotecas carregadas com sucesso!")
+```
+
+## 🔧 Variáveis Globais
+
+```{r variaveis_globais}
+# Filtro principal do mês
+mes_filtro <- "JUN/2025"
+
+print(paste("📅 Mês de referência definido:", mes_filtro))
+```
+
+# 📥 Importação dos Dados {#sec-dados}
+
+## 🧾 Dados de Receita
+
+```{r dados_receita}
+#| echo: true
+#| eval: true
+
+dados_receita <- read_excel("data/tg_receita.xlsx") %>% 
+  clean_names() %>% 
+  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
+
+# Criar variáveis derivadas
+dados_receita <- dados_receita %>% 
+  mutate(
+    tipo_modalidade = ifelse(
+      nre1_categoria_economica_codigo %in% c(7, 8), 
+      "intra", 
+      "exceto intra"
+    ),
+    refinanciamento = ifelse(
+      natureza_receita_codigo_completo %in% c(81110201, 21110201, 21210201), 
+      "sim", 
+      "nao"
+    )
+  )
+
+print(paste("✅ Dados de receita carregados:", nrow(dados_receita), "registros"))
+```
+
+## 💰 Dados de Despesa
+
+```{r dados_despesa}
+#| echo: true
+#| eval: true
+
+# Buscar todos os arquivos de despesa
+arq_despesa <- list.files(path = "data/", pattern = 'tg_despesa', full.names = TRUE)
+
+dados_despesa <- map_df(arq_despesa, read_excel) %>%
+  clean_names() %>%
+  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
+
+# Criar variáveis derivadas
+dados_despesa <- dados_despesa %>%
+  mutate(
+    tipo_modalidade = ifelse(
+      modalidade_aplicacao_codigo == 91,
+      "intra",
+      "exceto intra"
+    ),
+    refinanciamento = case_when(
+      grupo_despesa_codigo_grupo == 6 &
+        elemento_despesa_codigo %in% c(76, 77) &
+        subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) &
+        fonte_recursos_codigo == "443" ~ "sim",
+      !(grupo_despesa_codigo_grupo == 6 &
+        elemento_despesa_codigo %in% c(76, 77) &
+        subfuncao_governo_codigo %in% c(841, 842, 843, 844, 846) &
+        fonte_recursos_codigo == "443") ~ "nao",
+      TRUE ~ "escape"
+    ),
+    poder = case_when(
+      orgao_uge_orgao_maximo_codigo %in% c(59000) ~ "MINISTÉRIO PÚBLICO DA UNIÃO",
+      orgao_uge_orgao_maximo_codigo %in% c(29000) ~ "DEFENSORIA PÚBLICA",
+      TRUE ~ orgao_uge_poder_nome
+    )
+  )
+
+print(paste("✅ Dados de despesa carregados:", nrow(dados_despesa), "registros"))
+```
+
+## 📋 Dados de Restos a Pagar
+
+```{r dados_rp}
+#| echo: true
+#| eval: true
+
+# RP Anexo 07
+dados_rp_anexo_07 <- read_excel("data/tg_rp_anexo_07.xlsx") %>% 
+  clean_names()
+
+dados_rp_anexo_07 <- dados_rp_anexo_07 %>%  
+  mutate(
+    tipo_modalidade = ifelse(
+      modalidade_aplicacao_codigo == 91, 
+      "intra", 
+      "exceto intra"
+    ),
+    poder = case_when(
+      orgao_uge_orgao_maximo_codigo %in% c(59000) ~ "MINISTÉRIO PÚBLICO DA UNIÃO",
+      orgao_uge_orgao_maximo_codigo %in% c(29000) ~ "DEFENSORIA PÚBLICA",
+      TRUE ~ orgao_uge_poder_nome
+    )
+  )
+
+# RP Anexo 12
+dados_rp_anexo_12 <- read_excel("data/tg_rp_anexo_12.xlsx") %>% 
+  clean_names()
+
+# RP Anexo 08
+dados_rp_anexo_08 <- read_excel("data/tg_rp_anexo_08.xlsx") %>% 
+  clean_names()
+
+print("✅ Dados de Restos a Pagar carregados:")
+print(paste("   - Anexo 07:", nrow(dados_rp_anexo_07), "registros"))
+print(paste("   - Anexo 12:", nrow(dados_rp_anexo_12), "registros"))
+print(paste("   - Anexo 08:", nrow(dados_rp_anexo_08), "registros"))
+```
+
+## 🏦 Dados Contábeis e Específicos
+
+```{r dados_contabeis}
+#| echo: true
+#| eval: true
+
+# Tabela 04 - Contas Contábeis
+dados_tabela_04 <- read_excel("data/dados_conta_contabil_tabela_04_claude_conta_contabil.xlsx") %>% 
+  clean_names()
+
+dados_tabela_04_170600 <- read_excel("data/dados_conta_contabil_tabela_04_claude_conta_contabil_170600.xlsx") %>% 
+  clean_names() %>% 
+  mutate(ug = "170600")
+
+dados_tabela_04_filtro_rreo <- read_excel("data/dados_conta_contabil_tabela_04_claude_conta_contabil_filtro_rreo.xlsx") %>% 
+  clean_names() %>% 
+  mutate(ug = "demais")
+
+# Anexo 06 - NDD e Categoria/Grupo
+dados_ndd <- read_excel("data/tg_anexo_06_rreo_despesas_primarias_ndd.xlsx") %>% 
+  clean_names()
+
+dados_categoria_grupo <- read_excel("data/tg_anexo_06_rreo_despesas_primarias_categoria_grupo.xlsx") %>% 
+  clean_names()
+
+# RPN - Juros e Disponibilidades
+tg_RPN_juros <- read_excel("data/tg_RPN_juros.xlsx") %>% 
+  clean_names()
+
+tg_RPN_disponibilidades <- read_excel("data/tg_RPN_disponibilidades.xlsx") %>% 
+  clean_names()
+
+print("✅ Dados contábeis carregados:")
+print(paste("   - Tabela 04:", nrow(dados_tabela_04), "registros"))
+print(paste("   - Tabela 04 (170600):", nrow(dados_tabela_04_170600), "registros"))
+print(paste("   - NDD:", nrow(dados_ndd), "registros"))
+print(paste("   - RPN Juros:", nrow(tg_RPN_juros), "registros"))
+```
+
+## ⚙️ Metodologia e Filtros
+
+```{r metodologia}
+#| echo: true
+#| eval: true
+
+# Filtros de metodologia
+filtros_metodologia <- read_excel("data/filtros.xlsx", sheet = "metodologia")
+atributos_metodologia <- read_excel("data/filtros.xlsx", sheet = "metodologia")
+
+print("✅ Metodologia carregada:")
+print(paste("   - Filtros:", nrow(filtros_metodologia), "registros"))
+print(paste("   - Atributos:", nrow(atributos_metodologia), "registros"))
+```
+
+## 📊 Resumo dos Dados Carregados
+
+```{r resumo_dados}
+#| echo: false
+
+# Criar tabela resumo
+resumo_dados <- data.frame(
+  Dataset = c(
+    "Receita", "Despesa", "RP Anexo 07", "RP Anexo 12", "RP Anexo 08",
+    "Tabela 04", "Tabela 04 (170600)", "Tabela 04 (RREO)", 
+    "NDD", "Categoria/Grupo", "RPN Juros", "RPN Disponibilidades",
+    "Filtros Metodologia"
+  ),
+  Registros = c(
+    nrow(dados_receita), nrow(dados_despesa), nrow(dados_rp_anexo_07),
+    nrow(dados_rp_anexo_12), nrow(dados_rp_anexo_08),
+    nrow(dados_tabela_04), nrow(dados_tabela_04_170600), nrow(dados_tabela_04_filtro_rreo),
+    nrow(dados_ndd), nrow(dados_categoria_grupo), nrow(tg_RPN_juros), 
+    nrow(tg_RPN_disponibilidades), nrow(filtros_metodologia)
+  ),
+  Status = rep("✅ Carregado", 13)
+)
+
+kable(resumo_dados, 
+      caption = "📋 Resumo dos Datasets Carregados",
+      format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = TRUE, background = "#f8f9fa")
+```
+
+# 🔧 Funções Auxiliares {#sec-funcoes-aux}
+
+## 🔢 Funções de Formatação
+
+### Formatação de Números
+
+```{r formatar_numero}
+#| echo: true
+#| eval: true
+
+#' Formatar números para exibição brasileira
+#' @param x Vetor numérico a ser formatado
+#' @return String formatada com ponto como separador de milhares e vírgula como decimal
+formatar_numero <- function(x) {
+  format(x, big.mark = ".", decimal.mark = ",", scientific = FALSE, nsmall = 2)
+}
+
+# Teste da função
+exemplo_numero <- 1234567.89
+print(paste("Número original:", exemplo_numero))
+print(paste("Número formatado:", formatar_numero(exemplo_numero)))
+```
+
+### Formatação de Tabelas
+
+```{r dt_formatada}
+#| echo: true
+#| eval: true
+
+#' Criar tabela DT formatada com totais
+#' @param df Data frame a ser formatado
+#' @param grupo Vetor com nomes das colunas de agrupamento (não numéricas)
+#' @return Objeto DT formatado
+dt_formatada <- function(df, grupo) {
+  library(DT)
+  library(janitor)
+  
+  datatable(
+    df %>% adorn_totals("row"), 
+    rownames = FALSE,
+    extensions = 'Buttons',
+    options = list(
+      lengthMenu = c(5, 10, 25, 50, 100),
+      dom = 'Bfrtip',
+      buttons = list('excel')
+    )
+  ) %>% 
+  formatRound(
+    setdiff(df %>% colnames(), grupo), 
+    2, 
+    mark = ".", 
+    dec.mark = ","
+  ) %>% 
+  DT::formatStyle(
+    columns = colnames(.$x$data), 
+    fontSize = '75%'
+  )
+}
+
+print("✅ Função dt_formatada definida")
+```
+
+## 🔄 Funções de Transformação
+
+### Tabela Pivotada
+
+```{r tabela_pivotada}
+#| echo: true
+#| eval: true
+
+#' Pivotar tabela a partir dos itens de informação
+#' @param df Data frame com dados
+#' @param grupo Vetor com nomes das colunas de agrupamento
+#' @return Data frame pivotado e sumarizado
+tabela_pivotada <- function(df, grupo) {
+  library(dplyr)
+  library(tidyr)
+  
+  # Obter itens únicos de informação
+  itens <- df$item_informacao_nome %>% unique() %>% na.omit()
+  
+  # Verificar se a coluna principal existe
+  if (!"saldo_r_item_informacao" %in% names(df)) {
+    stop("Coluna 'saldo_r_item_informacao' não encontrada no data frame")
+  }
+  
+  # Pivotar e sumarizar apenas a coluna numérica
+  df %>% 
+    group_by(!!!syms(grupo)) %>% 
+    pivot_wider(
+      names_from = item_informacao_nome, 
+      values_from = saldo_r_item_informacao,
+      values_fill = 0
+    ) %>% 
+    # Sumarizar apenas as colunas que correspondem aos itens (numéricas)
+    summarise(
+      across(all_of(itens), ~ sum(.x, na.rm = TRUE)),
+      .groups = "drop"
+    )
+}
+
+print("✅ Função tabela_pivotada definida")
+
+#' Debug de estrutura de dados
+#' @param df Data frame para debug
+#' @param nome Nome do data frame
+debug_estrutura <- function(df, nome = "DataFrame") {
+  cat("\n=== DEBUG:", nome, "===\n")
+  cat("Dimensões:", nrow(df), "linhas x", ncol(df), "colunas\n")
+  cat("Colunas:", paste(names(df), collapse = ", "), "\n")
+  
+  # Mostrar tipos de colunas
+  cat("Tipos de colunas:\n")
+  tipos <- sapply(df, class)
+  for(i in seq_along(tipos)) {
+    cat(" -", names(tipos)[i], ":", tipos[i], "\n")
+  }
+  
+  # Mostrar amostras de cada coluna
+  cat("Amostras (primeiras 3 linhas):\n")
+  print(head(df, 3))
+  
+  cat("========================\n\n")
+}
+
+print("✅ Função debug_estrutura definida")
+```
+
+## 🧩 Funções de Desmembramento
+
+### Desmembrar Código
+
+```{r desmembrar_codigo}
+#| echo: true
+#| eval: true
+
+#' Desmembrar código no formato MMM/AAAXXX[A|T]##[A-Za-z0-9]{0,10}
+#' @param codigo String no formato especificado
+#' @return Lista com componentes: mes_lancamento, demonstrativo, anexo, parte
+desmembrar_codigo <- function(codigo) {
+  library(stringr)
+  
+  # Validar formato
+  if (!str_detect(codigo, "^[A-Z]{3}/\\d{4}[A-Za-z0-9]{3}[AT]\\d{2}[A-Za-z0-9]{0,10}$")) {
+    stop("Código inválido. Deve seguir o formato: MMM/AAAXXX[A|T]##[A-Za-z0-9]{0,10}")
+  }
+  
+  # Extrair componentes
+  mes_lancamento <- str_sub(codigo, 1, 8)   # Ex.: "JUN/2025"
+  demonstrativo <- str_sub(codigo, 9, 11)   # Ex.: "RGF" ou "REO"
+  anexo <- str_sub(codigo, 12, 14)          # Ex.: "A08"
+  parte <- str_sub(codigo, 15, -1)          # Ex.: "despesa" ou ""
+  
+  # Validar mes_lancamento
+  if (!str_detect(mes_lancamento, "^[A-Z]{3}/\\d{4}$")) {
+    stop("Formato de mes_lancamento inválido. Deve ser MMM/AAAA")
+  }
+  
+  # Validar mês
+  meses_validos <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                     "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+  mes_letras <- str_sub(mes_lancamento, 1, 3)
+  if (!(mes_letras %in% meses_validos)) {
+    stop(paste("Mês inválido:", mes_letras))
+  }
+  
+  # Validar demonstrativo
+  if (!str_detect(demonstrativo, "^[A-Za-z0-9]{3}$")) {
+    stop("Demonstrativo deve ter exatamente 3 caracteres alfanuméricos")
+  }
+  
+  # Validar anexo
+  if (!str_detect(anexo, "^[AT]\\d{2}$")) {
+    stop("Anexo deve ser A ou T seguido por 2 dígitos")
+  }
+  
+  # Definir parte como NA se vazio
+  parte <- ifelse(parte == "", NA_character_, parte)
+  
+  list(
+    mes_lancamento = mes_lancamento,
+    demonstrativo = demonstrativo,
+    anexo = anexo,
+    parte = parte
+  )
+}
+
+# Teste da função
+codigo_teste <- "JUN/2025RGFA07"
+resultado_teste <- desmembrar_codigo(codigo_teste)
+print("Teste de desmembramento:")
+print(resultado_teste)
+```
+
+### Agrupar e Combinar Dados
+
+```{r agrupar_combinar}
+#| echo: true
+#| eval: true
+
+#' Agrupar, combinar e adicionar colunas com base no código
+#' @param df Data frame de entrada
+#' @param criterios Lista de critérios por categoria
+#' @param codigo Código a ser desmembrado
+#' @return Data frame processado e classificado
+agrupar_e_combinar_dados <- function(df, criterios, codigo) {
+  library(dplyr)
+  library(purrr)
+  library(forcats)
+  library(stringr)
+  
+  # Desmembrar código
+  params <- desmembrar_codigo(codigo)
+  
+  # Filtrar por mês se coluna existir
+  if ("mes_lancamento" %in% colnames(df)) {
+    df <- df %>% filter(mes_lancamento == params$mes_lancamento)
+  } else {
+    warning("Coluna 'mes_lancamento' não encontrada. Ignorando filtro por mês.")
+  }
+  
+  # Processar cada categoria
+  processar_categoria <- function(categoria, crit) {
+    tryCatch({
+      # Avaliar condição
+      condicao_expr <- eval(parse(text = crit$criterio), envir = df)
+      
+      df %>%
+        filter(condicao_expr) %>%
+        group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
+        summarise(
+          saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE), 
+          .groups = "drop"
+        ) %>%
+        mutate(
+          categoria = categoria,
+          mes_lancamento = params$mes_lancamento,
+          demonstrativo = params$demonstrativo,
+          anexo = params$anexo,
+          parte = params$parte
+        ) %>%
+        # Reordenar por código
+        mutate(item_informacao_nome = fct_reorder(item_informacao_nome, item_informacao_codigo))
+    }, error = function(e) {
+      warning(paste("Erro ao processar categoria", categoria, ":", e$message))
+      return(data.frame())
+    })
+  }
+  
+  # Aplicar critérios
+  resultado <- map_df(names(criterios), ~ processar_categoria(.x, criterios[[.x]]))
+  
+  # Criar objeto no ambiente global
+  assign(codigo, resultado, envir = .GlobalEnv)
+  
+  return(resultado)
+}
+
+print("✅ Função agrupar_e_combinar_dados definida")
+```
+
+## 🛠️ Utilitários Diversos
+
+### Função de Validação
+
+```{r validacao}
+#| echo: true
+#| eval: true
+
+#' Validar se data frame possui colunas obrigatórias
+#' @param df Data frame a ser validado
+#' @param colunas_obrigatorias Vetor com nomes das colunas obrigatórias
+#' @return TRUE se válido, erro se inválido
+validar_colunas <- function(df, colunas_obrigatorias) {
+  colunas_presentes <- names(df)
+  colunas_ausentes <- setdiff(colunas_obrigatorias, colunas_presentes)
+  
+  if (length(colunas_ausentes) > 0) {
+    stop(paste("Colunas ausentes:", paste(colunas_ausentes, collapse = ", ")))
+  }
+  
+  return(TRUE)
+}
+
+print("✅ Função validar_colunas definida")
+```
+
+# 📊 Funções de Análise {#sec-funcoes-analise}
+
+## 💰 Funções para DCL (Dívida Consolidada Líquida)
+
+### Tratamento de Valores NA
+
+```{r tratar_na}
+#| echo: true
+#| eval: true
+
+#' Tratar valores NA e nulos
+#' @param x Valor a ser tratado
+#' @return Valor tratado (0 se NA/NULL)
+tratar_na <- function(x) {
+  ifelse(is.na(x) | length(x) == 0, 0, x)
+}
+
+print("✅ Função tratar_na definida")
+```
+
+## 🧮 Funções de Cálculo Geral
+
+### Cálculo de Percentuais
+
+```{r calcular_percentuais}
+#| echo: true
+#| eval: true
+
+#' Calcular percentuais com tratamento de divisão por zero
+#' @param valor_numerador Valor do numerador
+#' @param valor_denominador Valor do denominador
+#' @param casas_decimais Número de casas decimais
+#' @return Percentual calculado
+calcular_percentual <- function(valor_numerador, valor_denominador, casas_decimais = 2) {
+  if (is.na(valor_denominador) || valor_denominador == 0) {
+    return(0)
+  }
+  
+  percentual <- (valor_numerador / valor_denominador) * 100
+  round(percentual, casas_decimais)
+}
+
+# Teste da função
+teste_perc <- calcular_percentual(25, 100)
+print(paste("Teste percentual 25/100:", teste_perc, "%"))
+```
+
+# 📋 RREO Anexo 07 - Restos a Pagar {#sec-anexo-07}
+
+## 📝 Descrição
+
+Este anexo apresenta os Restos a Pagar classificados por:
+
+-   **Tipo de Modalidade**: Intragovernamental vs Exceto Intragovernamental
+-   **Órgão**: Máximo da estrutura organizacional
+-   **Situação**: Processados e Não Processados
+
+## 🎯 Processamento dos Dados
+
+### Validação dos Dados
+
+```{r validacao_anexo_07}
+#| echo: true
+
+# Verificar se os dados existem
+if (!exists("dados_rp_anexo_07")) {
+  stop("❌ Dados do Anexo 07 não encontrados. Execute a seção de importação primeiro.")
+}
+
+# Validar colunas necessárias
+colunas_necessarias <- c(
+  "tipo_modalidade",
+  "orgao_uge_orgao_maximo_codigo", 
+  "orgao_uge_orgao_maximo_nome",
+  "item_informacao_nome",
+  "saldo_r_item_informacao"
+)
+
+# Validação usando função centralizada
+validar_colunas(dados_rp_anexo_07, colunas_necessarias)
+
+print(paste("✅ Dados validados:", nrow(dados_rp_anexo_07), "registros"))
+print(paste("✅ Colunas verificadas:", length(colunas_necessarias), "de", length(colunas_necessarias)))
+```
+
+### Definição dos Agrupamentos
+
+```{r agrupamentos_anexo_07}
+#| echo: true
+
+# Definir colunas de agrupamento
+agrupado_despesa_tipo_modalidade_orgao <- c(
+  "tipo_modalidade", 
+  "orgao_uge_orgao_maximo_codigo", 
+  "orgao_uge_orgao_maximo_nome"
+)
+
+print("✅ Agrupamentos definidos:")
+print(agrupado_despesa_tipo_modalidade_orgao)
+```
+
+## 📈 Tabela Principal - Restos a Pagar por Modalidade e Órgão
+
+```{r tabela_anexo_07}
+#| echo: true
+#| eval: true
+
+# Processar e exibir tabela principal usando funções centralizadas
+dt_formatada(
+  tabela_pivotada(dados_rp_anexo_07 %>% filter(mes_lancamento == mes_filtro), agrupado_despesa_tipo_modalidade_orgao), 
+  agrupado_despesa_tipo_modalidade_orgao
+)
+```
+
+## 📊 Análises Complementares
+
+### Resumo por Tipo de Modalidade
+
+```{r resumo_modalidade_anexo_07}
+#| echo: true
+#| eval: true
+
+resumo_modalidade <- dados_rp_anexo_07 %>%
+  group_by(tipo_modalidade) %>%
+  summarise(
+    total_saldo = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    percentual = calcular_percentual(total_saldo, sum(total_saldo)),
+    total_saldo_formatado = formatar_numero(total_saldo)
+  )
+
+kable(resumo_modalidade, 
+      caption = "💰 Resumo de Restos a Pagar por Tipo de Modalidade",
+      col.names = c("Tipo de Modalidade", "Total (R$)", "Percentual (%)", "Total Formatado"),
+      format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = TRUE, background = "#f8f9fa")
+```
+
+### Top 10 Órgãos com Maiores Valores
+
+```{r top_10_orgaos_anexo_07}
+#| echo: true
+#| eval: true
+
+top_10_orgaos <- dados_rp_anexo_07 %>%
+  group_by(orgao_uge_orgao_maximo_codigo, orgao_uge_orgao_maximo_nome) %>%
+  summarise(
+    total_saldo = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total_saldo)) %>%
+  head(10) %>%
+  mutate(
+    posicao = row_number(),
+    total_saldo_formatado = formatar_numero(total_saldo)
+  )
+
+kable(top_10_orgaos, 
+      caption = "🏆 Top 10 Órgãos com Maiores Valores de Restos a Pagar",
+      col.names = c("Código", "Nome do Órgão", "Total (R$)", "Posição", "Total Formatado"),
+      format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = TRUE, background = "#f8f9fa") %>%
+  column_spec(4, bold = TRUE, color = "white", background = "#007bff")
+```
+
+## 📈 Indicadores-Chave Anexo 07
+
+```{r indicadores_anexo_07}
+#| echo: false
+
+# Calcular indicadores principais
+total_geral <- sum(dados_rp_anexo_07$saldo_r_item_informacao, na.rm = TRUE)
+total_intra <- sum(dados_rp_anexo_07$saldo_r_item_informacao[dados_rp_anexo_07$tipo_modalidade == "intra"], na.rm = TRUE)
+total_exceto_intra <- sum(dados_rp_anexo_07$saldo_r_item_informacao[dados_rp_anexo_07$tipo_modalidade == "exceto intra"], na.rm = TRUE)
+qtd_orgaos <- length(unique(dados_rp_anexo_07$orgao_uge_orgao_maximo_codigo))
+
+indicadores_principais <- data.frame(
+  Indicador = c(
+    "💰 Total Geral de Restos a Pagar",
+    "🔄 Total Intragovernamental", 
+    "🏛️ Total Exceto Intragovernamental",
+    "📊 Quantidade de Órgãos",
+    "📅 Período de Referência"
+  ),
+  Valor = c(
+    formatar_numero(total_geral),
+    formatar_numero(total_intra),
+    formatar_numero(total_exceto_intra),
+    as.character(qtd_orgaos),
+    mes_filtro
+  )
+)
+
+kable(indicadores_principais, 
+      caption = "🎯 Indicadores-Chave do Anexo 07",
+      format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = TRUE, background = "#f8f9fa") %>%
+  column_spec(1, bold = TRUE, color = "#007bff")
+```
+
+# 📚 RREO Anexo 08 - MDE {#sec-anexo-08}
+
+## 📝 Descrição
+
+Este anexo apresenta as **Receitas e Despesas com Manutenção e Desenvolvimento do Ensino (MDE)**, incluindo:
+
+-   📊 **Classificação por categoria** conforme critérios específicos
+-   💰 **Cálculo da RLI** (Receita Líquida de Impostos)
+-   🎯 **Percentual de aplicação** em MDE
+-   📋 **Análise de transferências constitucionais**
+
+## 🎯 Definição dos Critérios
+
+### Critérios de Educação
+
+```{r criterios_educacao}
+#| echo: true
+
+# Definir a lista de critérios para classificação das despesas MDE
+criterios_educacao <- list(
+  `01 - COMPLEMENTAÇÃO DA UNIÃO AO FUNDEB` = list(
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36')"
+  ),
+  `03 - EDUCAÇÃO BÁSICA` = list(
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134', '213', '242') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '368'"
+  ),
+  `04 - ENSINO SUPERIOR` = list(
+    criterio = "fonte_recursos_codigo %notin% c(157, 175, 193, 109, 134, 181) & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo %in% c('364')"
+  ),
+  `05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR` = list(
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '363'"
+  ),
+  `06 - OUTRAS` = list(
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & !subfuncao_governo_codigo %in% c('363', '364', '368') & acao_governo_codigo %notin% c('00SB', '0E36')"
+  ),
+  `08 - COMPLEMENTAÇÃO DA UNIÃO - VAAT` = list(
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212') & plano_orcamentario_codigo_po == '0001'"
+  ),
+  `09 - COMPLEMENTAÇÃO DA UNIÃO - VAAT` = list(
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212') & plano_orcamentario_codigo_po %in% c('0002')"
+  ),
+  `09b - VAAT po 26298 12 847 5111 00SB 0003` = list(
+    criterio = "fonte_recursos_codigo %notin% c('008') & plano_orcamentario_codigo_po %in% c('0003') & funcao_governo_codigo == '12' & subfuncao_governo_codigo == '847' & programa_governo_codigo == 5111 & acao_governo_codigo == '00SB' & unidade_orcamentaria_codigo == '26298'"
+  ),
+  `11 - DESPESAS CUSTEADAS COM A CONTRIBUIÇÃO SOCIAL DO SALÁRIO-EDUCAÇÃO` = list(
+    criterio = "fonte_recursos_codigo %in% c('133', '134', '213', '008', '035', '212') & iduso_codigo == 8 & acao_governo_codigo %notin% c('00SB', '0E36')"
+  ),
+  `12 - DESPESAS COM O FUNDO CONSTITUCIONAL DO DISTRITO FEDERAL - FCDF` = list(
+    criterio = "acao_governo_codigo %in% c('0312') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212')"
+  ),
+  `13 - DESPESAS CUSTEADAS COM RECEITAS DE ROYALTIES DE EXPLORAÇÃO DO PRÉ-SAL` = list(
+    criterio = "fonte_recursos_codigo %in% c('242') & iduso_codigo == 8 & elemento_despesa_codigo %in% c('01', '03', '59')"
+  ),
+  `14 - DEMAIS DESPESAS COM EDUCAÇÃO` = list(
+    criterio = "iduso_codigo == 8 & fonte_recursos_codigo %in% c('008', '035', '133', '134', '213', '050', '000') & elemento_despesa_codigo %in% c('01', '03', '59') & acao_governo_codigo %notin% c('00SB', '0312', '0E36')"
+  )
+)
+
+print("✅ Critérios de educação definidos:")
+print(names(criterios_educacao))
+```
+
+## 📊 Processamento dos Dados
+
+### Validação dos Dados
+
+```{r validacao_anexo_08}
+#| echo: true
+
+# Verificar se os dados existem
+datasets_necessarios <- c("dados_despesa", "dados_receita", "dados_rp_anexo_08")
+
+for(dataset in datasets_necessarios) {
+  if (!exists(dataset)) {
+    stop(paste("❌", dataset, "não encontrado. Execute a seção de importação primeiro."))
+  }
+}
+
+print("✅ Todos os datasets necessários estão disponíveis")
+print(paste("✅ dados_despesa:", nrow(dados_despesa), "registros"))
+print(paste("✅ dados_receita:", nrow(dados_receita), "registros")) 
+print(paste("✅ dados_rp_anexo_08:", nrow(dados_rp_anexo_08), "registros"))
+```
+
+### Aplicar Critérios de Educação
+
+```{r aplicar_criterios_anexo_08}
+#| echo: true
+#| eval: true
+
+# Gerar dados classificados usando a função de agrupamento
+codigo_anexo08 <- paste0(mes_filtro, "REO", "A08", "despesa")
+
+print(paste("🔍 Código gerado:", codigo_anexo08))
+print(paste("📊 Dados de entrada:", nrow(dados_despesa), "registros"))
+
+anexo_08 <- agrupar_e_combinar_dados(
+  dados_despesa, 
+  criterios_educacao, 
+  codigo_anexo08
+)
+
+print(paste("✅ Dados do Anexo 08 processados:", nrow(anexo_08), "registros"))
+
+print("✅ Categorias criadas:")
+print(unique(anexo_08$categoria))
+```
+
+## 📈 Tabela Principal - Despesas por Categoria MDE
+
+```{r tabela_principal_anexo_08}
+#| echo: true
+#| eval: true
+
+# Definir agrupamento por categoria
+agrupamento_mde <- c("categoria")
+
+# Criar tabela principal com função robusta
+if (nrow(anexo_08) > 0) {
+  # Função pivotagem específica para MDE
+  tabela_mde <- anexo_08 %>%
+    # Garantir que temos apenas dados numéricos para saldo
+    filter(!is.na(saldo_r_item_informacao)) %>%
+    # Agrupar por categoria
+    group_by(categoria, item_informacao_nome) %>%
+    # Sumarizar valores
+    summarise(
+      total = sum(saldo_r_item_informacao, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    # Pivotar para formato de tabela
+    pivot_wider(
+      names_from = item_informacao_nome,
+      values_from = total,
+      values_fill = 0
+    )
+  
+  # Exibir tabela formatada
+  dt_formatada(tabela_mde, agrupamento_mde)
+  
+} else {
+  print("❌ Nenhum dado encontrado no anexo_08")
+  
+  # Tabela vazia para exibição
+  tabela_vazia <- data.frame(
+    categoria = "Nenhum dado encontrado",
+    observacao = "Verificar critérios e dados de entrada"
+  )
+  
+  kable(tabela_vazia, 
+        caption = "⚠️ Tabela MDE - Sem Dados",
+        format = "html") %>%
+    kable_styling(bootstrap_options = c("striped", "hover"))
+}
+```
+
+## 💰 Cálculo da Receita Líquida de Impostos (RLI)
+
+### Receitas Base para RLI
+
+```{r receitas_rli}
+#| echo: true
+#| eval: true
+
+# Receitas que compõem a base da RLI (impostos)
+receitas_base_rli <- dados_receita %>% 
+  filter(
+    item_informacao_codigo == "5",
+    startsWith(natureza_receita_codigo_completo, '711') | 
+    startsWith(natureza_receita_codigo_completo, "111")
+  ) %>% 
+  group_by(mes_lancamento) %>% 
+  summarise(
+    receita = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+kable(receitas_base_rli, 
+      caption = "💰 Receitas Base para RLI por Mês",
+      col.names = c("Mês", "Receita (R$)"),
+      format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+### Transferências Constitucionais
+
+```{r transferencias_anexo_08}
+#| echo: true
+#| eval: true
+
+# Classificar transferências constitucionais
+rli_transf <- dados_despesa %>% 
+  filter(item_informacao_codigo == "56") %>% 
+  mutate(
+    transferencia = case_when(
+      acao_governo_codigo == "0044" ~ "FPE",
+      acao_governo_codigo == "0045" ~ "FPM", 
+      acao_governo_codigo == "0046" ~ "IPI_repasse",
+      acao_governo_codigo == "0C33" ~ "FUNDEB",
+      acao_governo_codigo == "00H6" ~ "IOF_repasse",
+      acao_governo_codigo == "006M" ~ "ITR_repasse",
+      .default = "demais"
+    )
+  ) %>% 
+  group_by(transferencia, mes_lancamento) %>%  
+  summarise(
+    valor_transferencia = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Mostrar transferências por tipo
+transferencias_resumo <- rli_transf %>%
+  group_by(transferencia) %>%
+  summarise(
+    total = sum(valor_transferencia, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(total)) %>%
+  mutate(total_formatado = formatar_numero(total))
+
+# Exibir com DT::datatable
+DT::datatable(
+  transferencias_resumo,
+  colnames = c("Tipo de Transferência", "Total (R$)", "Total Formatado"),
+  caption = "🔄 Transferências Constitucionais por Tipo",
+  rownames = FALSE,
+  options = list(
+    pageLength = 10,
+    dom = 'ft',
+    columnDefs = list(
+      list(className = 'dt-left', targets = 0),      # Tipo à esquerda
+      list(className = 'dt-right', targets = c(1,2)) # Valores à direita
+    ),
+    language = list(
+      url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json'
+    )
+  )
+) %>%
+  DT::formatStyle(
+    columns = "transferencia",
+    fontWeight = 'bold'
+  ) %>%
+  DT::formatStyle(
+    columns = c("total", "total_formatado"),
+    textAlign = 'right'
+  )
+```
+
+### Cálculo da RLI Mensal
+
+```{r rli_mensal}
+#| echo: true
+#| eval: true
+
+# Consolidar transferências (exceto "demais")
+transferencias_consolidadas <- rli_transf %>% 
+  filter(transferencia != "demais") %>% 
+  group_by(mes_lancamento) %>% 
+  summarise(
+    transferencia_total = sum(valor_transferencia, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Calcular RLI mensal
+rli_mensal <- full_join(
+  receitas_base_rli, 
+  transferencias_consolidadas, 
+  by = "mes_lancamento"
+) %>%
+  mutate(
+    transferencia_total = ifelse(is.na(transferencia_total), 0, transferencia_total),
+    receita = ifelse(is.na(receita), 0, receita),
+    rli = (receita - transferencia_total) * 0.18
+  ) %>%
+  # Ordenar por mês corretamente
+  mutate(
+    mes_ordenacao = case_when(
+      str_detect(mes_lancamento, "JAN") ~ 1,
+      str_detect(mes_lancamento, "FEV") ~ 2,
+      str_detect(mes_lancamento, "MAR") ~ 3,
+      str_detect(mes_lancamento, "ABR") ~ 4,
+      str_detect(mes_lancamento, "MAI") ~ 5,
+      str_detect(mes_lancamento, "JUN") ~ 6,
+      str_detect(mes_lancamento, "JUL") ~ 7,
+      str_detect(mes_lancamento, "AGO") ~ 8,
+      str_detect(mes_lancamento, "SET") ~ 9,
+      str_detect(mes_lancamento, "OUT") ~ 10,
+      str_detect(mes_lancamento, "NOV") ~ 11,
+      str_detect(mes_lancamento, "DEZ") ~ 12,
+      TRUE ~ 99
+    )
+  ) %>%
+  arrange(mes_ordenacao) %>%
+  select(-mes_ordenacao) %>%
+  mutate(
+    receita_formatada = formatar_numero(receita),
+    transferencia_formatada = formatar_numero(transferencia_total),
+    rli_formatado = formatar_numero(rli)
+  )
+
+# Exibir com DT::datatable
+DT::datatable(
+  rli_mensal %>% 
+    select(mes_lancamento, receita_formatada, transferencia_formatada, rli_formatado),
+  colnames = c("Mês", "Receita Base", "Transferências", "RLI (18%)"),
+  caption = "📊 Receita Líquida de Impostos (RLI) Mensal",
+  rownames = FALSE,
+  options = list(
+    pageLength = 15,
+    dom = 'ft',
+    columnDefs = list(
+      list(className = 'dt-left', targets = "_all")  # Alinhar tudo à esquerda
+    ),
+    language = list(
+      url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json'
+    )
+  )
+) %>%
+  DT::formatStyle(
+    columns = c("receita_formatada", "transferencia_formatada", "rli_formatado"),
+    textAlign = 'right'  # Números à direita
+  ) %>%
+  DT::formatStyle(
+    columns = "mes_lancamento",
+    textAlign = 'left',   # Mês à esquerda
+    fontWeight = 'bold'
+  )
+```
+
+## 🎯 Aplicação Mínima em MDE
+
+### RLI do Período de Referência
+
+```{r rli_periodo}
+#| echo: true
+#| eval: true
+
+# RLI específica do mês de referência
+rli_maio <- rli_mensal %>% 
+  filter(mes_lancamento == mes_filtro) %>% 
+  summarise(minimo_mde = sum(rli, na.rm = TRUE)) %>%
+  pull(minimo_mde)
+
+print(paste("📅 RLI para", mes_filtro, ":", formatar_numero(rli_maio)))
+```
+
+### Despesas MDE do Período
+
+```{r despesas_mde}
+#| echo: true
+#| eval: true
+
+# Despesas MDE das categorias principais (02, 03, 04, 05, 06)
+despesa_mde <- anexo_08 %>% 
+  filter(
+    item_informacao_codigo == 25, 
+    categoria %in% c(
+      "03 - EDUCAÇÃO BÁSICA",
+      "04 - ENSINO SUPERIOR", 
+      "05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR",
+      "06 - OUTRAS"
+    )
+  ) %>% 
+  summarise(saldo_mde = sum(saldo_r_item_informacao, na.rm = TRUE)) %>%
+  pull(saldo_mde)
+
+print(paste("💰 Despesas MDE principais:", formatar_numero(despesa_mde)))
+```
+
+### Complementação FUNDEB
+
+```{r complementacao_fundeb}
+#| echo: true
+#| eval: true
+
+# Complementação FUNDEB (30% da complementação da União)
+complementacao_fundeb <- dados_despesa %>% 
+  filter(
+    item_informacao_codigo == 25, 
+    mes_lancamento == mes_filtro,
+    fonte_recursos_codigo %in% c('000',  '014', '130'), 
+    acao_governo_codigo %in% c('0E36', '00SB')
+  ) %>% 
+  summarise(comp_fundeb = sum(saldo_r_item_informacao, na.rm = TRUE) * 0.3) %>%
+  pull(comp_fundeb)
+
+print(paste("🎯 Complementação FUNDEB (30%):", formatar_numero(complementacao_fundeb)))
+```
+
+### Restos a Pagar MDE
+
+```{r rp_mde}
+#| echo: true
+#| eval: true
+
+# AJUSTADO: Agrupado por item de informação
+despesa_mde_rp_detalhado <- dados_rp_anexo_08 %>%
+  filter(
+    mes_lancamento == mes_filtro,  
+    !elemento_despesa_codigo %in% c('01', '03'),
+    (
+      (fonte_recursos_codigo %in% c('000', '012', '00', '12') & 
+       (iduso_codigo == 8 | lei_calmon_s_n == 'SIM')) |
+      (ne_c_cor_ano_emissao >= 2020 & 
+       !fonte_recursos_codigo %in% c('133', '134', '213', '08', '13', '93') & 
+       iduso_codigo == 8)
+    )
+  ) %>%
+  group_by(item_informacao_codigo, item_informacao_nome) %>%
+  summarise(
+    valor = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(item_informacao_codigo)
+
+# Total consolidado para cálculos
+despesa_mde_rp <- sum(despesa_mde_rp_detalhado$valor, na.rm = TRUE)
+
+print("📋 Restos a Pagar MDE por Item de Informação:")
+print(despesa_mde_rp_detalhado)
+print(paste("📋 Total RP MDE:", formatar_numero(despesa_mde_rp)))
+```
+
+## 📊 Cálculo do Percentual de Aplicação
+
+```{r percentual_aplicacao}
+#| echo: true
+#| eval: true
+
+# Cálculo do percentual total aplicado em MDE
+total_despesas_mde <- despesa_mde + complementacao_fundeb 
+percentual_aplicacao <- (total_despesas_mde / rli_maio) * 100
+
+# Tabela resumo
+resumo_aplicacao <- data.frame(
+  Item = c(
+    "💰 Despesas MDE Principais",
+    "🎯 Complementação FUNDEB (30%)",
+    "📋 Restos a Pagar MDE",
+    "📊 Total Despesas MDE",
+    "📈 RLI (Base de Cálculo)",
+    "🎯 Percentual Aplicado",
+    "✅ Mínimo Constitucional"
+  ),
+  Valor = c(
+    formatar_numero(despesa_mde),
+    formatar_numero(complementacao_fundeb),
+    formatar_numero(despesa_mde_rp),
+    formatar_numero(total_despesas_mde),
+    formatar_numero(rli_maio),
+    paste0(round(percentual_aplicacao, 2), "%"),
+    "18,00%"
+  ),
+  Status = c(
+    "✅ Calculado",
+    "✅ Calculado", 
+    "✅ Calculado",
+    "✅ Consolidado",
+    "✅ Base",
+    ifelse(percentual_aplicacao >= 18, "✅ Atendido", "❌ Não Atendido"),
+    "📋 Referência"
+  )
+)
+
+kable(resumo_aplicacao, 
+      caption = "🎯 Resumo da Aplicação em MDE",
+      format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(0, bold = TRUE, background = "#f8f9fa") %>%
+  row_spec(6, bold = TRUE, 
+           background = ifelse(percentual_aplicacao >= 18, "#d4edda", "#f8d7da"),
+           color = ifelse(percentual_aplicacao >= 18, "#155724", "#721c24"))
+```
+
+# 📋 RREO Anexo 12 - Saúde.
+
+## 📋 Introdução
+
+O **Anexo 12 do RREO** apresenta o demonstrativo das receitas e despesas com ações e serviços públicos de saúde do Governo Federal, conforme estabelecido pela Emenda Constitucional nº 29/2000 e regulamentado pela Lei Complementar nº 141/2012.
+
+Este relatório consolida informações sobre: - **Despesas Computadas**: Aplicações diretas e transferências nas subfunções específicas de saúde - **Despesas Não Computadas**: Despesas do Ministério da Saúde não computadas para o limite constitucional - **Análise por Modalidade**: Separação entre aplicação direta e transferências - **Indicadores de Cumprimento**: Verificação do atendimento aos limites constitucionais
+
+## 🏥 Processamento das Despesas com Saúde
+
+### 1. Despesas Computadas - Subfunções Específicas
+
+```{r despesas-saude-especificas}
+# Filtrar despesas das subfunções específicas de saúde (301-306)
+despesas_saude <- dados_despesa %>% 
+  filter(
+    mes_lancamento == mes_filtro, 
+    iduso_codigo == 6, 
+    item_informacao_codigo == 25, 
+    subfuncao_governo_codigo %in% c(301, 302, 303, 304, 305, 306)
+  ) %>% 
+  group_by(
+    subfuncao_governo_codigo, 
+    subfuncao_governo_nome, 
+    categoria_economica_despesa_codigo,
+    categoria_economica_despesa_nome, 
+    modalidade_aplicacao_codigo
+  ) %>% 
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao), .groups = "drop")
+
+# Classificar por tipo de aplicação
+despesas_saude <- despesas_saude %>% 
+  mutate(
+    transferencia = ifelse(
+      modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46'), 
+      "_transferencia", 
+      "aplicacao_direta"
+    )
+  )
+
+# Criar tabela consolidada INCLUINDO LINHAS COM ZERO
+tabela_saude_especificas <- despesas_saude %>% 
+  group_by(
+    subfuncao_governo_codigo, 
+    subfuncao_governo_nome,
+    categoria_economica_despesa_codigo, 
+    categoria_economica_despesa_nome, 
+    transferencia
+  ) %>% 
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao), .groups = "drop") %>%
+  # MANTER TODAS AS LINHAS, incluindo as com valor zero
+  filter(TRUE)  # Não filtrar valores zero
+
+# Exibir tabela
+DT::datatable(
+  tabela_saude_especificas,
+  caption = "Despesas com Saúde - Subfunções Específicas (301-306) - Incluindo Valores Zero",
+  options = list(
+    pageLength = 20,  # Aumentar para mostrar mais linhas
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  )
+) %>%
+  DT::formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = ",")
+
+# Calcular total das subfunções específicas
+total_subfuncoes_especificas <- sum(despesas_saude$saldo_r_item_informacao)
+cat("\n💰 **Total das Subfunções Específicas de Saúde:** R$", 
+    format(total_subfuncoes_especificas, big.mark = ".", decimal.mark = ","), "\n")
+```
+
+### 2. Despesas em Outras Subfunções (Demais)
+
+```{r despesas-saude-demais}
+# Calcular despesas em outras subfunções
+despesas_saude_demais <- as.numeric(
+  dados_despesa %>% 
+  filter(
+    mes_lancamento == mes_filtro, 
+    iduso_codigo == 6, 
+    item_informacao_codigo == 25, 
+    subfuncao_governo_codigo %notin% c(301, 302, 303, 304, 305, 306)
+  ) %>% 
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao))
+)
+
+cat("💰 **Total das Demais Subfunções de Saúde:** R$", 
+    format(despesas_saude_demais, big.mark = ".", decimal.mark = ","), "\n")
+
+# Total geral das despesas computadas
+total_despesas_computadas <- total_subfuncoes_especificas + despesas_saude_demais
+cat("💰 **Total Geral das Despesas Computadas:** R$", 
+    format(total_despesas_computadas, big.mark = ".", decimal.mark = ","), "\n\n")
+```
+
+### 3. Análise Consolidada de Todas as Despesas
+
+```{r despesas-saude-consolidada}
+# Processar todas as despesas de saúde com agrupamento
+despesas_saude_completa <- dados_despesa %>% 
+  filter(
+    mes_lancamento == mes_filtro, 
+    iduso_codigo == 6, 
+    item_informacao_codigo == 25
+  ) %>% 
+  group_by(
+    subfuncao_governo_codigo, 
+    subfuncao_governo_nome, 
+    categoria_economica_despesa_codigo,
+    categoria_economica_despesa_nome, 
+    modalidade_aplicacao_codigo
+  ) %>% 
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao), .groups = "drop")
+
+# Reclassificar subfunções e modalidades
+despesas_saude_completa <- despesas_saude_completa %>% 
+  mutate(
+    subfuncao_governo_codigo = case_when(
+      subfuncao_governo_codigo %in% c(301, 302, 303, 304, 305, 306) ~ as.character(subfuncao_governo_codigo),
+      TRUE ~ "demais"
+    ),
+    subfuncao_governo_nome = case_when(
+      subfuncao_governo_codigo %in% c("301", "302", "303", "304", "305", "306") ~ subfuncao_governo_nome,
+      TRUE ~ "demais"
+    ),
+    transferencia = ifelse(
+      modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46'), 
+      "_transferencia", 
+      "aplicacao_direta"
+    )
+  )
+
+# Criar tabela consolidada final INCLUINDO VALORES ZERO
+tabela_consolidada <- despesas_saude_completa %>% 
+  group_by(
+    subfuncao_governo_codigo, 
+    subfuncao_governo_nome,
+    categoria_economica_despesa_codigo, 
+    categoria_economica_despesa_nome, 
+    transferencia
+  ) %>% 
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao), .groups = "drop") %>%
+  # MANTER TODAS AS LINHAS, incluindo as com valor zero
+  arrange(subfuncao_governo_codigo, categoria_economica_despesa_codigo, transferencia)
+
+# Exibir tabela consolidada
+DT::datatable(
+  tabela_consolidada,
+  caption = "Despesas com Saúde - Análise Consolidada (Incluindo Valores Zero)",
+  options = list(
+    pageLength = 25,  # Aumentar para mostrar mais linhas
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  )
+) %>%
+  DT::formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = ",")
+
+# Total consolidado em milhares
+total_consolidado <- sum(despesas_saude_completa$saldo_r_item_informacao) / 1000
+cat("\n💰 **Total Consolidado das Despesas com Saúde:** R$", 
+    format(total_consolidado, big.mark = ".", decimal.mark = ","), "mil\n")
+```
+
+## 🚫 Despesas Não Computadas
+
+### Despesas do Ministério da Saúde Não Computadas
+
+```{r despesas-nao-computadas}
+# Filtrar despesas não computadas do Ministério da Saúde
+despesa_saude_nao_computadas <- dados_despesa %>% 
+  filter(
+    mes_lancamento == mes_filtro, 
+    iduso_codigo != 6, 
+    item_informacao_codigo == 25,
+    uo_orgao_superior_codigo == "36000", 
+    unidade_orcamentaria_codigo != "74202"
+  ) %>% 
+  group_by(
+    subfuncao_governo_codigo, 
+    subfuncao_governo_nome, 
+    categoria_economica_despesa_codigo,
+    categoria_economica_despesa_nome, 
+    modalidade_aplicacao_codigo
+  ) %>%  
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao), .groups = "drop")
+
+# Reclassificar para análise
+despesa_saude_nao_computadas <- despesa_saude_nao_computadas %>% 
+  mutate(
+    subfuncao_governo_codigo = case_when(
+      subfuncao_governo_codigo %in% c(301, 302, 303, 304, 305, 306) ~ as.character(subfuncao_governo_codigo),
+      TRUE ~ "demais"
+    ),
+    subfuncao_governo_nome = case_when(
+      subfuncao_governo_codigo %in% c("301", "302", "303", "304", "305", "306") ~ subfuncao_governo_nome,
+      TRUE ~ "demais"
+    ),
+    transferencia = ifelse(
+      modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46'), 
+      "_transferencia", 
+      "aplicacao_direta"
+    )
+  )
+
+# Tabela das despesas não computadas INCLUINDO VALORES ZERO
+tabela_nao_computadas <- despesa_saude_nao_computadas %>% 
+  group_by(
+    subfuncao_governo_codigo, 
+    subfuncao_governo_nome,
+    categoria_economica_despesa_codigo, 
+    categoria_economica_despesa_nome, 
+    transferencia
+  ) %>% 
+  summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao), .groups = "drop") %>%
+  # MANTER TODAS AS LINHAS, incluindo as com valor zero
+  arrange(subfuncao_governo_codigo, categoria_economica_despesa_codigo, transferencia)
+
+# Exibir tabela
+DT::datatable(
+  tabela_nao_computadas,
+  caption = "Despesas do Ministério da Saúde NÃO Computadas para o Limite (Incluindo Valores Zero)",
+  options = list(
+    pageLength = 20,  # Aumentar para mostrar mais linhas
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  )
+) %>%
+  DT::formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = ",")
+```
+
+## ✅ Validação dos Resultados
+
+### Comparação com Dados Oficiais
+
+```{r validacao-resultados}
+# Validar totais por subfunção específica
+validacao_subfuncoes <- despesas_saude_completa %>%
+  filter(subfuncao_governo_codigo %in% c("301", "302", "303", "304", "305", "306")) %>%
+  group_by(subfuncao_governo_codigo, subfuncao_governo_nome) %>%
+  summarise(
+    nosso_total = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    # Dados oficiais para comparação (valores em milhares, multiplicando por 1000)
+    oficial_total = case_when(
+      subfuncao_governo_codigo == "301" ~ 22060304 * 1000,
+      subfuncao_governo_codigo == "302" ~ 38151320 * 1000,
+      subfuncao_governo_codigo == "303" ~ 8449894 * 1000,
+      subfuncao_governo_codigo == "304" ~ 38550 * 1000,
+      subfuncao_governo_codigo == "305" ~ 5020346 * 1000,
+      subfuncao_governo_codigo == "306" ~ 196 * 1000,
+      TRUE ~ 0
+    ),
+    diferenca = nosso_total - oficial_total,
+    status = ifelse(abs(diferenca) < 1, "✅ MATCH", "❌ DIVERGÊNCIA")
+  )
+
+# Exibir tabela de validação
+DT::datatable(
+  validacao_subfuncoes,
+  caption = "Validação: Nossos Resultados vs Dados Oficiais",
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  )
+) %>%
+  DT::formatRound(c("nosso_total", "oficial_total", "diferenca"), 0, mark = ".", dec.mark = ",")
+
+# Calcular total das subfunções específicas
+total_subfuncoes_validacao <- sum(validacao_subfuncoes$nosso_total)
+total_oficial_subfuncoes <- 84798771 * 1000  # Total oficial em milhares, convertendo para reais
+
+cat("\n🎯 **Resumo da Validação:**\n")
+cat("- Total Subfunções Específicas (Nosso):", format(total_subfuncoes_validacao, big.mark = "."), "\n")
+cat("- Total Oficial (todas as despesas):", format(total_oficial_subfuncoes, big.mark = "."), "\n")
+cat("- Outras Subfunções (Oficial):", format(11078161 * 1000, big.mark = "."), "\n")
+```
+
+## 📊 Resumo Executivo e Indicadores
+
+### Totais Consolidados
+
+```{r resumo-executivo}
+# Calcular totais principais
+total_computadas <- sum(despesas_saude_completa$saldo_r_item_informacao, na.rm = TRUE)
+total_nao_computadas <- sum(despesa_saude_nao_computadas$saldo_r_item_informacao, na.rm = TRUE)
+total_geral_saude <- total_computadas + total_nao_computadas
+
+# Criar tabela resumo
+resumo_saude <- data.frame(
+  Categoria = c(
+    "Despesas Computadas para o Limite",
+    "Despesas NÃO Computadas",
+    "Total Geral das Despesas com Saúde"
+  ),
+  `Valor (R$)` = c(
+    total_computadas,
+    total_nao_computadas,
+    total_geral_saude
+  ),
+  `Valor (R$ Milhões)` = c(
+    total_computadas / 1000000,
+    total_nao_computadas / 1000000,
+    total_geral_saude / 1000000
+  ),
+  `Percentual` = c(
+    (total_computadas / total_geral_saude) * 100,
+    (total_nao_computadas / total_geral_saude) * 100,
+    100
+  )
+)
+
+# Exibir tabela resumo
+knitr::kable(
+  resumo_saude,
+  caption = "**Resumo Executivo - Despesas com Saúde**",
+  format.args = list(big.mark = ".", decimal.mark = ",", digits = 2),
+  align = c("l", "r", "r", "r")
+) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE
+  ) %>%
+  kableExtra::row_spec(3, bold = TRUE, background = "#e8f5e8")
+```
+
+### Indicadores Principais
+
+```{r indicadores-saude}
+# Calcular indicadores
+percentual_computadas <- (total_computadas / total_geral_saude) * 100
+percentual_nao_computadas <- (total_nao_computadas / total_geral_saude) * 100
+
+cat("### 🎯 Indicadores Principais\n\n")
+cat("💚 **Despesas Computadas para o Limite:** ", 
+    format(round(percentual_computadas, 2), decimal.mark = ","), "%\n\n")
+cat("❌ **Despesas NÃO Computadas:** ", 
+    format(round(percentual_nao_computadas, 2), decimal.mark = ","), "%\n\n")
+cat("💰 **Total de Despesas Computadas:** R$ ", 
+    format(round(total_computadas / 1000000, 2), big.mark = ".", decimal.mark = ","), 
+    " milhões\n\n")
+cat("📊 **Total Geral com Saúde:** R$ ", 
+    format(round(total_geral_saude / 1000000, 2), big.mark = ".", decimal.mark = ","), 
+    " milhões\n\n")
+```
+
+## 📈 Visualizações
+
+### Gráfico Comparativo: Computadas vs Não Computadas
+
+```{r grafico-comparativo}
+# Preparar dados para o gráfico
+dados_grafico <- data.frame(
+  Categoria = c("Despesas Computadas", "Despesas NÃO Computadas"),
+  Valor = c(
+    total_computadas / 1000000,
+    total_nao_computadas / 1000000
+  ),
+  Tipo = c("Computadas", "Não Computadas")
+)
+
+# Criar gráfico
+library(ggplot2)
+ggplot(dados_grafico, aes(x = Categoria, y = Valor, fill = Tipo)) +
+  geom_col(alpha = 0.8) +
+  geom_text(aes(label = paste0("R$ ", format(round(Valor, 1), big.mark = ".", decimal.mark = ","))), 
+            vjust = -0.5, 
+            size = 4) +
+  scale_fill_manual(values = c("Computadas" = "#228B22", "Não Computadas" = "#DC143C")) +
+  labs(
+    title = "Despesas com Saúde - Computadas vs Não Computadas",
+    subtitle = paste0("Mês de Referência: ", mes_filtro),
+    x = "Categoria",
+    y = "Valor (R$ Milhões)",
+    fill = "Tipo",
+    caption = "Fonte: Tesouro Gerencial"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.text.x = element_text(size = 11),
+    legend.position = "bottom"
+  )
+```
+
+### Distribuição por Subfunção de Governo
+
+```{r grafico-subfuncoes-saude}
+# Preparar dados das despesas por subfunção (apenas computadas)
+despesas_por_subfuncao <- tabela_consolidada %>%
+  filter(subfuncao_governo_codigo != "demais") %>%
+  group_by(subfuncao_governo_nome) %>%
+  summarise(
+    valor_total = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(valor_total)) %>%
+  mutate(
+    valor_milhoes = valor_total / 1000000,
+    percentual = (valor_total / sum(valor_total)) * 100
+  )
+
+# Criar gráfico de barras
+ggplot(despesas_por_subfuncao, aes(x = reorder(subfuncao_governo_nome, valor_milhoes), y = valor_milhoes)) +
+  geom_col(fill = "#4682B4", alpha = 0.8) +
+  geom_text(aes(label = paste0("R$ ", format(round(valor_milhoes, 1), big.mark = ".", decimal.mark = ","))), 
+            hjust = -0.1, size = 3.5) +
+  coord_flip() +
+  labs(
+    title = "Despesas com Saúde por Subfunção de Governo",
+    subtitle = "Subfunções Específicas de Saúde (301-306)",
+    x = "Subfunção",
+    y = "Valor (R$ Milhões)",
+    caption = "Fonte: Tesouro Gerencial"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.text.y = element_text(size = 10)
+  )
+```
+
+### Análise por Tipo de Aplicação
+
+```{r grafico-modalidade-aplicacao}
+# Preparar dados por modalidade de aplicação
+despesas_por_modalidade <- tabela_consolidada %>%
+  group_by(transferencia) %>%
+  summarise(
+    valor_total = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    valor_milhoes = valor_total / 1000000,
+    percentual = (valor_total / sum(valor_total)) * 100,
+    tipo_limpo = case_when(
+      transferencia == "aplicacao_direta" ~ "Aplicação Direta",
+      transferencia == "_transferencia" ~ "Transferências",
+      TRUE ~ transferencia
+    )
+  )
+
+# Criar gráfico de pizza
+library(plotly)
+plot_ly(
+  despesas_por_modalidade,
+  labels = ~tipo_limpo,
+  values = ~valor_milhoes,
+  type = 'pie',
+  textposition = 'inside',
+  textinfo = 'label+percent',
+  hovertemplate = paste(
+    '<b>%{label}</b><br>',
+    'Valor: R$ %{value:.1f} milhões<br>',
+    'Percentual: %{percent}<br>',
+    '<extra></extra>'
+  )
+) %>%
+  layout(
+    title = list(
+      text = "Distribuição das Despesas com Saúde por Modalidade de Aplicação",
+      font = list(size = 16)
+    ),
+    showlegend = TRUE,
+    legend = list(
+      orientation = "v",
+      x = 1.02,
+      y = 0.5
+    )
+  )
+```
+
+## 📋 Considerações Metodológicas
+
+### Critérios de Classificação
+
+```{r metodologia-saude}
+cat("### 🔍 Metodologia Aplicada\n\n")
+cat("**Despesas Computadas para o Limite Constitucional:**\n")
+cat("- ID de USO: Saúde (6)\n")
+cat("- Item de Informação: Pago (25)\n")
+cat("- Subfunções Específicas: 301, 302, 303, 304, 305, 306\n")
+cat("- Base Legal: LC nº 141/2012\n\n")
+
+cat("**Despesas NÃO Computadas:**\n")
+cat("- ID de USO: Diferente de Saúde (≠ 6)\n")
+cat("- Órgão Superior: Ministério da Saúde (36000)\n")
+cat("- Exclusão: UO 74202 (conforme critérios específicos)\n")
+cat("- Incluem: despesas administrativas, aposentadorias, etc.\n\n")
+
+cat("**Modalidades de Aplicação:**\n")
+cat("  - **Aplicação Direta:** 20, 22, 71, 72, 75, 76, 91, 93, 94, 95, 96, 97, 99\n")
+cat("  - **Transferências:** 30, 31, 32, 35, 36, 40, 41, 42, 45, 46\n\n")
+
+cat("**Subfunções Específicas de Saúde:**\n")
+cat("- 301: Atenção Básica\n")
+cat("- 302: Assistência Hospitalar e Ambulatorial\n")
+cat("- 303: Suporte Profilático e Terapêutico\n")
+cat("- 304: Vigilância Sanitária\n")
+cat("- 305: Vigilância Epidemiológica\n")
+cat("- 306: Alimentação e Nutrição\n\n")
+
+cat("**Período de Referência:**\n")
+cat("- Mês: ", mes_filtro, "\n")
+cat("- Base de dados: Tesouro Gerencial (SIAFI)\n\n")
+```
+
+## 📄 Observações Finais
+
+```{r observacoes-saude}
+cat("### ⚠️ Observações Importantes\n\n")
+cat("1. **Limite Constitucional:** União deve aplicar mínimo de 15% da RCL em saúde\n")
+cat("2. **Periodicidade:** Relatório com periodicidade bimestral, conforme LRF\n")
+cat("3. **Abrangência:** Dados consolidados do Governo Federal\n")
+cat("4. **Legislação:** EC nº 29/2000, LC nº 141/2012, e demais normas aplicáveis\n")
+cat("5. **Metodologia:** Segue as normas da STN e critérios do Ministério da Saúde\n\n")
+
+# Informações técnicas do processamento
+cat("### 📊 Informações Técnicas\n\n")
+cat("- **Data de Processamento:** ", format(Sys.time(), "%d/%m/%Y %H:%M:%S"), "\n")
+cat("- **Total de Registros Processados:** ", nrow(dados_despesa), "\n")
+cat("- **Registros de Despesas Computadas:** ", nrow(despesas_saude_completa), "\n")
+cat("- **Registros de Despesas NÃO Computadas:** ", nrow(despesa_saude_nao_computadas), "\n")
+### Análise das "Demais" Subfunções
+
+# Analisar quais subfunções estão sendo classificadas como "demais"
+demais_subfuncoes_detalhado <- dados_despesa %>% 
+  filter(
+    mes_lancamento == mes_filtro, 
+    iduso_codigo == 6, 
+    item_informacao_codigo == 25,
+    subfuncao_governo_codigo %notin% c(301, 302, 303, 304, 305, 306)
+  ) %>%
+  group_by(subfuncao_governo_codigo, subfuncao_governo_nome) %>%
+  summarise(
+    valor_total = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(valor_total)) %>%
+  mutate(valor_milhares = valor_total / 1000)
+
+# Exibir detalhamento das "demais" subfunções
+DT::datatable(
+  demais_subfuncoes_detalhado,
+  caption = "Detalhamento das 'Demais' Subfunções de Saúde",
+  options = list(
+    pageLength = 15,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  )
+) %>%
+  DT::formatRound(c("valor_total", "valor_milhares"), 2, mark = ".", dec.mark = ",")
+
+# Total das demais subfunções
+total_demais_detalhado <- sum(demais_subfuncoes_detalhado$valor_total)
+cat("\n💰 **Total Detalhado das 'Demais' Subfunções:** R$", 
+    format(total_demais_detalhado, big.mark = ".", decimal.mark = ","), "\n")
+cat("💰 **Valor Oficial 'Outras Subfunções':** R$", 
+    format(11078161 * 1000, big.mark = ".", decimal.mark = ","), "\n")
+cat("📊 **Diferença:** R$", 
+    format(total_demais_detalhado - (11078161 * 1000), big.mark = ".", decimal.mark = ","), "\n")
+```
+
+\`\`\`
+
+------------------------------------------------------------------------
+
+# 📝 Observações Metodológicas {#sec-metodologia}
+
+## Critérios de Classificação
+
+### RREO Anexo 07
+
+-   **Intragovernamental**: Modalidade de Aplicação = 91
+-   **Exceto Intragovernamental**: Demais modalidades de aplicação
+-   **Órgão Máximo**: Maior nível hierárquico da estrutura organizacional
+
+### RREO Anexo 08 - MDE
+
+-   **MDE**: Despesas que se qualificam como Manutenção e Desenvolvimento do Ensino
+-   **RLI**: 18% das receitas de impostos líquidas de transferências constitucionais
+-   **FUNDEB**: 30% da complementação da União é considerada para MDE
+
+## Base Legal
+
+-   **Art. 212 da CF/88**: Mínimo de 18% da RLI em MDE
+-   **Lei nº 14.113/2020**: Novo FUNDEB
+-   **Portaria STN**: Metodologia de cálculo
+
+## Dados de Origem
+
+-   **Fonte**: Sistema Tesouro Gerencial
+-   **Período**: `r mes_filtro`
+-   **Registros Processados**:
+-   Receita: `r nrow(dados_receita)`
+-   Despesa: `r nrow(dados_despesa)`
+-   RP Anexo 07: `r nrow(dados_rp_anexo_07)`
+-   RP Anexo 08: `r nrow(dados_rp_anexo_08)`
+
+------------------------------------------------------------------------
+
+**📅 Gerado em**: `r Sys.time()`\
+**📊 Mês de referência**: `r mes_filtro`\
+**✅ Status**: Relatórios processados com sucesso!
+
+## 📚 Referências
+
+-   **Emenda Constitucional nº 29/2000** - Assegura recursos mínimos para saúde
+-   **Lei Complementar nº 141/2012** - Regulamenta a EC 29/2000
+-   **Lei Complementar nº 101/2000** - Lei de Responsabilidade Fiscal
+-   **Manual de Demonstrativos Fiscais** - Secretaria do Tesouro Nacional
+-   **Sistema Tesouro Gerencial** - Fonte dos dados utilizados
+
+------------------------------------------------------------------------
+
+*Documento gerado automaticamente pelo sistema de relatórios fiscais baseado em dados do Tesouro Gerencial.*
