@@ -453,11 +453,25 @@ print("Teste de desmembramento:")
 print(resultado_teste)
 ```
 
+Melhorias:
+
+Ajustar o código para mudar o padrão do nome das lista de critérios.
+
+Utilizar algo do tipo criterios_rreo_A08_mde_despesa\_\@\@\@\@\@\@
+
+desmebrar o nome da lista e levar os detalhes para o df quando aplicar a funcao agrupar
+
+levar para o df agrupada o nome da df de origem, por exemplo, dados_despesa e o nome do arquivo em xlsx.
+
+no futuro, capturar os detalhes dos filtros do relatório do TG e a data de execução do mesmo.
+
 ### Agrupar e Combinar Dados
 
 ```{r agrupar_combinar}
 #| echo: true
 #| eval: true
+
+
 
 #' Agrupar, combinar e adicionar colunas com base no código
 #' @param df Data frame de entrada
@@ -593,7 +607,388 @@ teste_perc <- calcular_percentual(25, 100)
 print(paste("Teste percentual 25/100:", teste_perc, "%"))
 ```
 
-# 📋 RREO Anexo 07 - Restos a Pagar {#sec-anexo-07}
+# 📋 RREO Anexo 03 - RCL {#sec-anexo-07}
+
+criar linha para RP cancelado. Criar relatório no TG
+
+|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+|  | RP Cancelados de Transferências Constitucionais e Legais |  | 1,40 |  | 138.967,82 |  | 5.326,15 |  | 0,00 |  | 0,00 |  | 0,00 |  |
+|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+
+```{r criterios-receitas}
+#| code-fold: false
+
+# ===============================================================================
+# CRITÉRIOS PARA RECEITAS - ANEXO 3 RCL
+# ===============================================================================
+
+criterios_receitas_anexo3_rcl <- list(
+  
+  # === RECEITAS CORRENTES POR ORIGEM (01-09) ===
+  
+  # IMPOSTOS, TAXAS E CONTRIBUIÇÕES DE MELHORIA
+  `01  Impostos, Taxas e Contribuições de Melhoria` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 1"
+  ),
+  
+  # RECEITA DE CONTRIBUIÇÕES
+  `02  Receita de Contribuições` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2"
+  ),
+  
+  # RECEITA PATRIMONIAL
+  `03  Receita Patrimonial` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 3"
+  ),
+  
+  # RECEITA AGROPECUÁRIA
+  `04  Receita Agropecuária` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 4"
+  ),
+  
+  # RECEITA INDUSTRIAL
+  `05  Receita Industrial` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 5"
+  ),
+  
+  # RECEITA DE SERVIÇOS
+  `06  Receita de Serviços` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 6"
+  ),
+  
+  # TRANSFERÊNCIAS CORRENTES
+  `07  Transferências Correntes` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7"
+  ),
+  
+  # RECEITAS CORRENTES A CLASSIFICAR
+  `08  Receitas Correntes a Classificar` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 8"
+  ),
+  
+  # OUTRAS RECEITAS CORRENTES
+  `09  Outras Receitas Correntes` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9"
+  ),
+  
+  # === ITENS ESPECÍFICOS PARA CÁLCULO DA RCL ===
+  
+  # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
+  `10  Transferências Constitucionais e Legais` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7 & (
+      grepl('FPE|FPM|CONSTITUCIONAL|LEGAL', natureza_receita_nome, ignore.case = TRUE) |
+      grepl('^172[0-9]', natureza_receita_codigo_completo) |
+      grepl('^171[0-9]', natureza_receita_codigo_completo)
+    )
+    "
+  ),
+  
+  # CONTRIB. EMPREGADORES E TRAB. PARA SEG. SOCIAL
+  `11  Contrib. Empregadores e Trabalhadores para Seguridade Social` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & fonte_recursos_codigo == '054' & 
+    !natureza_receita_codigo_completo %in% c(
+      '19900300', '19900310', '19900311', '19900312', '19900313', '19900314',
+      '19990300', '19990301', '19990302', '19990303', '19990304'
+    )
+    "
+  ),
+  
+  # CONTRIB. DO SERVIDOR PARA O PLANO DE PREVIDÊNCIA
+  `12  Contrib. Plano Seguridade Social do Servidor` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      fonte_recursos_codigo %in% c('055', '056') |
+      natureza_receita_codigo_completo == '12150116'
+    )
+    "
+  ),
+  
+  # COMPENSAÇÃO FINANC. ENTRE REGIMES PREVIDÊNCIA
+  `13  Compensação Financeira entre Regimes RPPS` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & natureza_receita_codigo_completo %in% c(
+      '19900300', '19900310', '19900311', '19900312', '19900313', '19900314',
+      '19990300', '19990301', '19990302', '19990303', '19990304'
+    )
+    "
+  ),
+  
+  # CONTRIB. DOS MILITARES PARA O CUSTEIO DAS PENSÕES
+  `14  Contrib. para Custeio Pensões Militares` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      grepl('^1210051', natureza_receita_codigo_completo) |
+      grepl('^1215041', natureza_receita_codigo_completo) |
+      grepl('^121911', natureza_receita_codigo_completo)
+    )
+    "
+  ),
+  
+  # CONTRIBUIÇÕES PARA PIS/PASEP
+  `15  Contribuição para PIS/PASEP` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      (grepl('^1210091|^1212', natureza_receita_codigo_completo) & 
+       !fonte_recursos_codigo %in% c('055', '056', '054')) |
+      (!grepl('^1210091|^1212', natureza_receita_codigo_completo) & 
+       fonte_recursos_codigo %in% c('040', '041'))
+    )
+    "
+  ),
+  
+  # DEDUÇÕES DAS RECEITAS
+  `16  Deduções das Receitas` = list(
+    criterio = "
+    (grepl('^1212', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('031', '032', '040', '041')) |
+    (grepl('^1214', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1215', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('023', '032', '055', '056')) |
+    (grepl('^1219', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1911', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1922', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('040', '054', '056')) |
+    (grepl('^1923', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1999', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054')
+    "
+  )
+)
+```
+
+```{r criterios-despesas}
+
+# ===============================================================================
+# CRITÉRIOS PARA DESPESAS (DEDUÇÕES) - ANEXO 3 RCL
+# ===============================================================================
+
+criterios_despesas_anexo3_rcl <- list(
+  
+  # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (DESPESAS)
+  `01  Transferências Constitucionais e Legais` = list(
+    criterio = "
+    acao_governo_codigo %in% c('0E36', '00SB') | 
+    grepl('^28846090900RX', programa_governo_codigo) | 
+    (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+     modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+     acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', 
+                                '00G6', '0169', '0223', '0369', '0546', '0547', '0999', 
+                                '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', 
+                                '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))
+    "
+  ),
+  
+  # OUTRAS DEDUÇÕES (DESPESAS)
+  `02  Outras Deduções` = list(
+    criterio = "
+    acao_governo_codigo %in% c('0E36', '00SB') | 
+    grepl('^28846090900RX', programa_governo_codigo) | 
+    (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+     modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+     acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', 
+                                '00G6', '0169', '0223', '0369', '0546', '0547', '0999', 
+                                '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', 
+                                '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))
+    "
+  )
+)
+```
+
+## 🔄 Processamento dos Dados
+
+```{r processamento}
+#| message: false
+#| warning: false
+
+# Parâmetros
+codigo_relatorio <- "JUN/2025REOA03rcl"
+
+# Processamento das receitas
+receitas_anexo3_rcl <- agrupar_e_combinar_dados(
+  df = dados_receita %>% filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE"),
+  criterios = criterios_receitas_anexo3_rcl,
+  codigo = codigo_relatorio
+)
+
+receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
+  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
+  filter(mes_lancamento == mes_filtro) %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+
+# Processamento das despesas
+despesas_anexo3_rcl <- agrupar_e_combinar_dados(
+  df = dados_despesa %>% unique(),
+  criterios = criterios_despesas_anexo3_rcl,
+  codigo = codigo_relatorio
+)
+
+despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
+  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+
+DT_despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
+  filter(mes_lancamento == mes_filtro) %>%
+  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+```
+
+## 📊 Demonstrativo da Receita Corrente Líquida
+
+```{r tabela-rcl}
+#| echo: false
+
+# Criar tabela no formato oficial
+criar_tabela_rcl_oficial <- function(receitas_dt, despesas_dt) {
+  
+  # Função para buscar valor ou retornar 0
+  buscar_valor <- function(dt, ordem_num, coluna = "RECEITA ORCAMENTARIA (LIQUIDA)") {
+    if (coluna %in% names(dt)) {
+      valor <- dt %>% 
+        filter(ordem == sprintf("%02d", ordem_num)) %>% 
+        pull(!!sym(coluna))
+      return(ifelse(length(valor) > 0 && !is.na(valor), valor, 0))
+    }
+    return(0)
+  }
+  
+  # Buscar valores das receitas (apenas se existirem)
+  receitas_valores <- sapply(1:9, function(i) buscar_valor(receitas_dt, i))
+  total_receitas <- sum(receitas_valores, na.rm = TRUE)
+  
+  # === CÁLCULOS INTERMEDIÁRIOS (NÃO APARECEM NA TABELA) ===
+  # Buscar valores das deduções específicas
+  contrib_emp_trab <- buscar_valor(receitas_dt, 11)      # Contrib. Emp. e Trab. p/ Seg. Social
+  contrib_servidor <- buscar_valor(receitas_dt, 12)      # Contrib. Plano Seg. Social do Servidor
+  compensacao_rpps <- buscar_valor(receitas_dt, 13)      # Compensação Financeira entre Regimes RPPS
+  contrib_militares <- buscar_valor(receitas_dt, 14)     # Contrib. p/ Custeio Pensões Militares
+  contrib_pis_pasep <- buscar_valor(receitas_dt, 15)     # Contribuição p/ PIS/PASEP
+  deducoes_receitas <- buscar_valor(receitas_dt, 16)     # Deduções das Receitas (INTERMEDIÁRIO)
+  
+  # Transferências Constitucionais e Legais - usar DESPESAS LIQUIDADAS (item informação 25)
+  transf_constitucionais <- buscar_valor(despesas_dt, 1, "DESPESAS LIQUIDADAS")
+  
+  # Total de deduções (para o cálculo da RCL)
+  total_deducoes <- transf_constitucionais + contrib_emp_trab + contrib_servidor + 
+                   compensacao_rpps + contrib_militares + contrib_pis_pasep
+  
+  # RCL final
+  rcl_final <- total_receitas - total_deducoes
+  
+  # === CRIAR TABELA FINAL (APENAS LINHAS QUE APARECEM NO RELATÓRIO OFICIAL) ===
+  especificacao <- c()
+  valores <- c()
+  
+  # RECEITA CORRENTE (I)
+  especificacao <- c(especificacao, "RECEITA CORRENTE (I)")
+  valores <- c(valores, total_receitas)
+  
+  # Adicionar apenas linhas com valores > 0
+  nomes_receitas <- c(
+    "    Impostos, Taxas e Contribuições de Melhoria",
+    "    Receita de Contribuições", 
+    "    Receita Patrimonial",
+    "    Receita Agropecuária",
+    "    Receita Industrial",
+    "    Receita de Serviços",
+    "    Transferências Correntes",
+    "    Receitas Correntes a Classificar",
+    "    Outras Receitas Correntes"
+  )
+  
+  for(i in 1:9) {
+    if(receitas_valores[i] > 0) {
+      especificacao <- c(especificacao, nomes_receitas[i])
+      valores <- c(valores, receitas_valores[i])
+    }
+  }
+  
+  # DEDUÇÕES (II)
+  if(total_deducoes > 0) {
+    especificacao <- c(especificacao, "DEDUÇÕES (II)")
+    valores <- c(valores, total_deducoes)
+    
+    # Apenas as linhas que aparecem no relatório oficial
+    if(transf_constitucionais > 0) {
+      especificacao <- c(especificacao, "    Transf. Constitucionais e Legais")
+      valores <- c(valores, transf_constitucionais)
+    }
+    
+    if(contrib_emp_trab > 0) {
+      especificacao <- c(especificacao, "    Contrib. Emp. e Trab. p/ Seg. Social")
+      valores <- c(valores, contrib_emp_trab)
+    }
+    
+    if(contrib_servidor > 0) {
+      especificacao <- c(especificacao, "    Contrib. Plano Seg. Social do Servidor")
+      valores <- c(valores, contrib_servidor)
+    }
+    
+    if(compensacao_rpps > 0) {
+      especificacao <- c(especificacao, "    Compensação Financeira RGPS/RPPS")
+      valores <- c(valores, compensacao_rpps)
+    }
+    
+    if(contrib_militares > 0) {
+      especificacao <- c(especificacao, "    Contrib. p/ Custeio Pensões Militares")
+      valores <- c(valores, contrib_militares)
+    }
+    
+    if(contrib_pis_pasep > 0) {
+      especificacao <- c(especificacao, "    Contribuição p/ PIS/PASEP")
+      valores <- c(valores, contrib_pis_pasep)
+    }
+  }
+  
+  # RECEITA CORRENTE LÍQUIDA
+  especificacao <- c(especificacao, "RECEITA CORRENTE LÍQUIDA (III) = (I - II)")
+  valores <- c(valores, rcl_final)
+  
+  # Criar data frame final
+  tabela_final <- data.frame(
+    ESPECIFICACAO = especificacao,
+    `R$ (milhares)` = formatC(valores / 1000, format = "f", digits = 0, big.mark = ".", decimal.mark = ","),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  
+  return(tabela_final)
+}
+
+# Gerar e exibir tabela
+tabela_rcl <- criar_tabela_rcl_oficial(DT_receitas_anexo3_rcl, DT_despesas_anexo3_rcl)
+
+# Exibir com formatação
+tabela_rcl %>%
+  kable(
+    caption = paste("DEMONSTRATIVO DA RECEITA CORRENTE LÍQUIDA - MÊS", toupper(month.name[mes_filtro]), "2025"),
+    align = c("l", "r"),
+    escape = FALSE
+  ) %>%
+  kableExtra::kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed"),
+    full_width = FALSE,
+    position = "left"
+  ) %>%
+  # Destacar linhas principais
+  kableExtra::row_spec(which(grepl("^RECEITA CORRENTE \\(I\\)", tabela_rcl$ESPECIFICACAO)), 
+                       bold = TRUE, background = "#E3F2FD") %>%
+  kableExtra::row_spec(which(grepl("^DEDUÇÕES \\(II\\)", tabela_rcl$ESPECIFICACAO)), 
+                       bold = TRUE, background = "#FFEBEE") %>%
+  kableExtra::row_spec(which(grepl("RECEITA CORRENTE LÍQUIDA", tabela_rcl$ESPECIFICACAO)), 
+                       bold = TRUE, background = "#E8F5E8")
+```
+
+------------------------------------------------------------------------
+
+*📊 Relatório gerado automaticamente em `r format(Sys.time(), "%d/%m/%Y às %H:%M")`*
+
+# 📋 RREO Anexo 07 - Restos a Pagar
 
 ## 📝 Descrição
 
