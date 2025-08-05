@@ -607,7 +607,22 @@ teste_perc <- calcular_percentual(25, 100)
 print(paste("Teste percentual 25/100:", teste_perc, "%"))
 ```
 
-# 📋 RREO Anexo 03 - RCL {#sec-anexo-07}
+# 📋 RREO Anexo 01 - Balanço Orçamentário {#sec-anexo-07}
+
+```{r}
+datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao_nome == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+  colnames = c("refinanciamento", "Grupo código", "Grupo Nome", "Despesa empenhada"))%>% formatRound("despesa_empenhada", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
+```
+
+```{r}
+agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo <- c( "tipo_modalidade"  ,"refinanciamento","categoria_economica_despesa_codigo", "categoria_economica_despesa_nome", "grupo_despesa_codigo_grupo", "grupo_despesa_nome")
+
+
+dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == mes_filtro), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)
+```
+
+# 📋 RREO Anexo 03 - RCL
 
 criar linha para RP cancelado. Criar relatório no TG
 
@@ -989,10 +1004,7 @@ tabela_rcl %>%
 
 *📊 Relatório gerado automaticamente em `r format(Sys.time(), "%d/%m/%Y às %H:%M")`*
 
-
-
-
-# 📋 RREO Anexo 4 Previdência
+# 📋 RREO Anexo 04 Previdência
 
 O **Anexo 04** apresenta o demonstrativo das receitas e despesas previdenciárias do Governo Federal, segregado em três sistemas:
 
@@ -1185,30 +1197,30 @@ datatable(
 ```{r criterios-receitas-rpps}
 criterios_receitas_rpps <- list(
   
-  # CIVIS - RECEITA SEGURADOS - Ativo
-  `01  CIVIS - RECEITA SEGURADOS - Ativo` = list(
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100431', '12104211', '12104221', '12104231', '12104411', '12104421', '12104431', '12104611', '12104621', '12104631') | startsWith(natureza_receita_codigo_completo, '1215011') | startsWith(natureza_receita_codigo_completo, '1215014') | startsWith(natureza_receita_codigo_completo, '121503'))"
-  ),
-  
-  # CIVIS - RECEITA SEGURADOS - Inativos
-  `02  CIVIS - RECEITA SEGURADOS - Inativos` = list(
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12104311', '12104321', '12104331', '12104341', '12104711') | startsWith(natureza_receita_codigo_completo, '1215012') | startsWith(natureza_receita_codigo_completo, '1215015'))"
-  ),
-  
-  # CIVIS - RECEITAS SEGURADOS - Pensionistas
-  `03  CIVIS - RECEITAS SEGURADOS - Pensionistas` = list(
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12104811', '12104411', '12104421', '12104431', '12104441') | startsWith(natureza_receita_codigo_completo, '1215013') | startsWith(natureza_receita_codigo_completo, '1215016'))"
-  ),
-  
-  # CIVIS - RECEITA PATRONAL - Ativo
-  `04  CIVIS - RECEITA PATRONAL - Ativo` = list(
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12104111', '12104131', '12104121', '12104141', '72104111', '72104121', '72104131', '72104141', '72104511', '72104521', '72104531', '72104541') | startsWith(natureza_receita_codigo_completo, '121502') | startsWith(natureza_receita_codigo_completo, '721502'))"
-  ),
-  
-  # CIVIS - RECEITA PATRONAL - Inativos e Pensionistas - vinculada
-  `05  CIVIS - RECEITA PATRONAL - Inativos e Pensionistas - vinculada` = list(
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & natureza_receita_codigo_completo %in% c('72104411')"
-  ),
+ # CIVIS - RECEITA SEGURADOS - Ativo (CORRIGIDO)
+`01  CIVIS - RECEITA SEGURADOS - Ativo` = list(
+  criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100423', '12100421', '12100422', '12100424', '12100461', '12100462', '12100463', '12100464') | startsWith(natureza_receita_codigo_completo, '1215011') | startsWith(natureza_receita_codigo_completo, '1215014') | startsWith(natureza_receita_codigo_completo, '121503'))"
+),
+
+# CIVIS - RECEITA SEGURADOS - Inativos (CORRIGIDO)
+`02  CIVIS - RECEITA SEGURADOS - Inativos` = list(
+  criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100431', '12100433', '12100432', '12100434', '12100471') | startsWith(natureza_receita_codigo_completo, '1215012') | startsWith(natureza_receita_codigo_completo, '1215015'))"
+),
+
+# CIVIS - RECEITAS SEGURADOS - Pensionistas (CORRIGIDO) 
+`03  CIVIS - RECEITAS SEGURADOS - Pensionistas` = list(
+  criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100481', '12100441', '12100442', '12100443', '12100444') | startsWith(natureza_receita_codigo_completo, '1215013') | startsWith(natureza_receita_codigo_completo, '1215016'))"
+),
+
+# CIVIS - RECEITA PATRONAL - Ativo (CORRIGIDO)
+`04  CIVIS - RECEITA PATRONAL - Ativo` = list(
+  criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100411', '12100413', '12100412', '12100414', '72100411', '72100413', '72100414', '72100451', '72100452', '12100452', '12100453', '12100454') | startsWith(natureza_receita_codigo_completo, '121502') | startsWith(natureza_receita_codigo_completo, '721502'))"
+),
+
+# CIVIS - RECEITA PATRONAL - Inativos e Pensionistas (JÁ CORRETO)
+`05  CIVIS - RECEITA PATRONAL - Inativos e Pensionistas - vinculada` = list(
+  criterio = "fonte_recursos_codigo %notin% c('00', '000') & natureza_receita_codigo_completo %in% c('72100441')"
+),
   
   # DRU - FCDF
   `06  DRU - FCDF` = list(
@@ -1217,13 +1229,15 @@ criterios_receitas_rpps <- list(
   
   # MILITARES - RECEITAS - Segurados
   `07  MILITARES - RECEITAS - Segurados` = list(
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12105111', '12105121', '12105131', '12105141', '12150411', '12150412', '12150421', '12150431', '12150441') | startsWith(natureza_receita_codigo_completo, '121911'))"
-  ),
-  
-  # Total das Receitas RPPS
-  `08  Total das Receitas RPPS` = list(
-    criterio = "unidade_orcamentaria_codigo %notin% c('33904', '40904') & fonte_recursos_codigo %notin% c('54', '00', '000', '054') & (grepl('PENSOES MILIT|PENS.MIL|RPPS|CPSS|CIV', natureza_receita_nome, ignore.case = TRUE) | startsWith(natureza_receita_codigo_completo, '1215') | startsWith(natureza_receita_codigo_completo, '7215'))"
+    criterio = "fonte_recursos_codigo %notin% c('00', '000') & 
+(natureza_receita_codigo_completo %in% c('12100511', '12100512', '12100513', '12105141', '12150411', '12150412', '12150421', '12150043', '12150044') | 
+startsWith(natureza_receita_codigo_completo, '121911'))"
   )
+  
+  # # Total das Receitas RPPS
+  # `08  Total das Receitas RPPS` = list(
+  #   criterio = "unidade_orcamentaria_codigo %notin% c('33904', '40904') & fonte_recursos_codigo %notin% c('54', '00', '000', '054') & (grepl('PENSOES MILIT|PENS.MIL|RPPS|CPSS|CIV', natureza_receita_nome, ignore.case = TRUE) | startsWith(natureza_receita_codigo_completo, '1215') | startsWith(natureza_receita_codigo_completo, '7215'))"
+  # )
 )
 ```
 
@@ -1249,7 +1263,7 @@ criterios_despesas_rpps <- list(
   
   # CIVIS - DESPESAS - Outros Benefícios Previdenciários
   `04  CIVIS - DESPESAS - Outros Benefícios Previdenciários` = list(
-    criterio = "subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %notin% c('00', '01', '03') & (acao_governo_codigo %in% c('0053', '0181', '0005', '0625') & funcao_governo_codigo %notin% c('10', '08') | acao_governo_codigo %in% c('0397'))"
+    criterio = "esfera_orcamentaria_codigo %in% c(2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845', '846') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %notin% c('00', '01', '03') & (acao_governo_codigo %in% c('0053', '0181', '0005', '0625') & funcao_governo_codigo %notin% c('10', '08') | acao_governo_codigo %in% c('0397'))"
   ),
   
   # MILITARES - DESPESAS - A Detalhar Pensões
@@ -1259,22 +1273,30 @@ criterios_despesas_rpps <- list(
   
   # MILITARES - DESPESAS - Pensões
   `06  MILITARES - DESPESAS - Pensões` = list(
-    criterio = "esfera_orcamentaria_codigo %in% c(2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & acao_governo_codigo %in% c('0179', '000Q') & elemento_despesa_codigo %in% c('03')"
+    criterio = "esfera_orcamentaria_codigo %in% c(2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845', '846') & grupo_despesa_codigo_grupo %in% c(1) & acao_governo_codigo %in% c('0179', '00QD') & elemento_despesa_codigo %in% c('03')"
   ),
   
-  # MILITARES - DESPESAS - A Detalhar Inativos
-  `07  MILITARES - DESPESAS - A Detalhar Inativos` = list(
+  # MILITARES - DESPESAS - Outros Benefícios Pensionistas
+  `07  MILITARES - DESPESAS - Outros Benefícios Pensionistas` = list(
+    criterio = "esfera_orcamentaria_codigo %in% c(2) & acao_governo_codigo %in% c('214H', '218K', '0179', '00QD') & elemento_despesa_codigo %notin% c('00', '01', '03') & grupo_despesa_codigo_grupo %in% c(1)"
+  ),
+  
+  
+    # MILITARES - DESPESAS - A Detalhar Inativos
+  `08  MILITARES - DESPESAS - A Detalhar Inativos` = list(
     criterio = "grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('00') & acao_governo_codigo %in% c('214H', '218K')"
   ),
   
   # MILITARES - DESPESAS - Inativos
-  `08  MILITARES - DESPESAS - Inativos` = list(
+  `09  MILITARES - DESPESAS - Inativos` = list(
     criterio = "grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('01') & acao_governo_codigo %in% c('214H', '218K')"
   ),
   
-  # MILITARES - DESPESAS - Outros Benefícios
-  `09  MILITARES - DESPESAS - Outros Benefícios` = list(
-    criterio = "acao_governo_codigo %in% c('214H', '218K', '0179', '000Q') & elemento_despesa_codigo %notin% c('00', '01', '03') & grupo_despesa_codigo_grupo %in% c(1)"
+
+  
+   # MILITARES - DESPESAS - Outros Outros Benefícios Inativos
+  `10  MILITARES - DESPESAS - Outros Outros Benefícios Inativos` = list(
+    criterio = "grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %notin% c( '00', '01') & acao_governo_codigo %in% c('214H', '218K')"
   )
 )
 ```
@@ -1303,6 +1325,8 @@ DT_receita_rpps <- receita_rpps %>%
   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
+
+verificar linha 08 Total das Receitas RPPS.
 
 ```{r tabela-rpps-receitas}
 # Exibir tabela de receitas RPPS
@@ -1657,12 +1681,6 @@ cat("
 ------------------------------------------------------------------------
 
 *📊 Relatório gerado automaticamente pelo sistema de Relatórios Fiscais RREO & RGF*
-
-
-
-
-
-
 
 # 📋 RREO Anexo 07 - Restos a Pagar
 
@@ -3271,7 +3289,7 @@ datatable(
   )
 ```
 
-# 📋 RREO Tabela 2
+# 📋 RREO Tabela 02
 
 A **Tabela 02** apresenta o demonstrativo das despesas por função de governo, discriminando por tipo de administração (Direta e Indireta), fornecendo uma visão detalhada da aplicação dos recursos públicos.
 
