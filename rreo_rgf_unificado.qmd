@@ -321,6 +321,23 @@ dt_formatada <- function(df, grupo) {
 print("✅ Função dt_formatada definida")
 ```
 
+```{r dt_criterios}
+
+processar_dt_criterios <- function(df) {
+  df %>% 
+    separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>% 
+    filter(mes_lancamento == mes_filtro) %>%
+    group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+    summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+    complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+    pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+}
+
+# Exemplo de uso:
+# resultado <- processar_receita_rpps(receita_rpps, mes_filtro)
+
+```
+
 ## 🔄 Funções de Transformação
 
 ### Tabela Pivotada
@@ -467,68 +484,28 @@ no futuro, capturar os detalhes dos filtros do relatório do TG e a data de exec
 
 ### Agrupar e Combinar Dados
 
-```{r agrupar_combinar}
-#| echo: true
-#| eval: true
+```         
+```
 
-
-
-#' Agrupar, combinar e adicionar colunas com base no código
-#' @param df Data frame de entrada
-#' @param criterios Lista de critérios por categoria
-#' @param codigo Código a ser desmembrado
-#' @return Data frame processado e classificado
-agrupar_e_combinar_dados <- function(df, criterios, codigo) {
-  library(dplyr)
-  library(purrr)
-  library(forcats)
-  library(stringr)
+```{r}
+agrupar_e_combinar_dados <- function(df, criterios) {
   
-  # Desmembrar código
-  params <- desmembrar_codigo(codigo)
-  
-  # Filtrar por mês se coluna existir
-  if ("mes_lancamento" %in% colnames(df)) {
-    df <- df %>% filter(mes_lancamento == params$mes_lancamento)
-  } else {
-    warning("Coluna 'mes_lancamento' não encontrada. Ignorando filtro por mês.")
-  }
-  
-  # Processar cada categoria
-  processar_categoria <- function(categoria, crit) {
-    tryCatch({
-      # Avaliar condição
-      condicao_expr <- eval(parse(text = crit$criterio), envir = df)
-      
-      df %>%
-        filter(condicao_expr) %>%
-        group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
-        summarise(
-          saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE), 
-          .groups = "drop"
-        ) %>%
-        mutate(
-          categoria = categoria,
-          mes_lancamento = params$mes_lancamento,
-          demonstrativo = params$demonstrativo,
-          anexo = params$anexo,
-          parte = params$parte
-        ) %>%
-        # Reordenar por código
-        mutate(item_informacao_nome = fct_reorder(item_informacao_nome, item_informacao_codigo))
-    }, error = function(e) {
-      warning(paste("Erro ao processar categoria", categoria, ":", e$message))
-      return(data.frame())
-    })
-  }
-  
-  # Aplicar critérios
-  resultado <- map_df(names(criterios), ~ processar_categoria(.x, criterios[[.x]]))
-  
-  # Criar objeto no ambiente global
-  assign(codigo, resultado, envir = .GlobalEnv)
-  
-  return(resultado)
+  # Aplicar critérios - esta é a parte fundamental
+  map_df(names(criterios), function(categoria) {
+    crit <- criterios[[categoria]]
+    
+    # Avaliar condição
+    condicao_expr <- eval(parse(text = crit$criterio), envir = df)
+    
+    df %>%
+      filter(condicao_expr) %>%
+      group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
+      summarise(
+        saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE), 
+        .groups = "drop"
+      ) %>%
+      mutate(categoria = categoria)
+  })
 }
 
 print("✅ Função agrupar_e_combinar_dados definida")
@@ -816,42 +793,43 @@ criterios_despesas_anexo3_rcl <- list(
 #| message: false
 #| warning: false
 
-# Parâmetros
-codigo_relatorio <- "JUN/2025REOA03rcl"
+
 
 # Processamento das receitas
 receitas_anexo3_rcl <- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE"),
-  criterios = criterios_receitas_anexo3_rcl,
-  codigo = codigo_relatorio
+  criterios = criterios_receitas_anexo3_rcl
+  
 )
 
-receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
-
-DT_receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
+#   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+# 
+# DT_receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
+#   filter(mes_lancamento == mes_filtro) %>%
+#   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+#   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+#   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+#   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# 
+# 
+# processar_dt_criterios(receitas_anexo3_rcl)
 
 # Processamento das despesas
 despesas_anexo3_rcl <- agrupar_e_combinar_dados(
   df = dados_despesa %>% unique(),
-  criterios = criterios_despesas_anexo3_rcl,
-  codigo = codigo_relatorio
+  criterios = criterios_despesas_anexo3_rcl
 )
 
-despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
-
-DT_despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+# despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
+#   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+# 
+# DT_despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
+#   filter(mes_lancamento == mes_filtro) %>%
+#   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
+#   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
+#   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
+#   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ## 📊 Demonstrativo da Receita Corrente Líquida
@@ -977,7 +955,7 @@ criar_tabela_rcl_oficial <- function(receitas_dt, despesas_dt) {
 }
 
 # Gerar e exibir tabela
-tabela_rcl <- criar_tabela_rcl_oficial(DT_receitas_anexo3_rcl, DT_despesas_anexo3_rcl)
+tabela_rcl <- criar_tabela_rcl_oficial(processar_dt_criterios(despesas_anexo3_rcl), processar_dt_criterios(receitas_anexo3_rcl))
 
 # Exibir com formatação
 tabela_rcl %>%
@@ -1115,25 +1093,15 @@ receita_rgps <- agrupar_e_combinar_dados(
       unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917) | 
       natureza_receita_codigo_completo == 79900211
     ),
-  criterios = criterios_receitas_rgps,
-  codigo = "JUN/2025REOA04rgpsrec"
+  criterios = criterios_receitas_rgps
 )
 
-receita_rgps <- receita_rgps %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_receita_rgps <- receita_rgps %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ```{r tabela-rgps-receitas}
-# Exibir tabela de receitas RGPS
 datatable(
-  DT_receita_rgps,
+  processar_dt_criterios(receita_rgps),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -1142,7 +1110,7 @@ datatable(
   caption = "RGPS - Receitas Previdenciárias"
 ) %>%
   formatRound(
-    which(sapply(DT_receita_rgps, is.numeric)), 
+    which(sapply(processar_dt_criterios(receita_rgps), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -1156,25 +1124,16 @@ datatable(
 despesa_rgps <- agrupar_e_combinar_dados(
   df = dados_despesa %>% 
     filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917)),
-  criterios = criterios_despesas_rgps,
-  codigo = "JUN/2025REOA04rgpsdesp"
+  criterios = criterios_despesas_rgps
 )
 
-despesa_rgps <- despesa_rgps %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
-
-DT_despesa_rgps <- despesa_rgps %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+ 
 ```
 
 ```{r tabela-rgps-despesas}
 # Exibir tabela de despesas RGPS
 datatable(
-  DT_despesa_rgps,
+   processar_dt_criterios( despesa_rgps),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -1183,7 +1142,7 @@ datatable(
   caption = "RGPS - Despesas Previdenciárias"
 ) %>%
   formatRound(
-    which(sapply(DT_despesa_rgps, is.numeric)), 
+    which(sapply(processar_dt_criterios( despesa_rgps), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -1311,19 +1270,10 @@ receita_rpps <- agrupar_e_combinar_dados(
       unidade_orcamentaria_codigo %notin% c(73901),
       fonte_recursos_codigo %notin% c('054')
     ),
-  criterios = criterios_receitas_rpps,
-  codigo = "JUN/2025REOA04rppsrec"
+  criterios = criterios_receitas_rpps
 )
 
-receita_rpps <- receita_rpps %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_receita_rpps <- receita_rpps %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 verificar linha 08 Total das Receitas RPPS.
@@ -1331,7 +1281,7 @@ verificar linha 08 Total das Receitas RPPS.
 ```{r tabela-rpps-receitas}
 # Exibir tabela de receitas RPPS
 datatable(
-  DT_receita_rpps,
+  processar_dt_criterios( receita_rpps),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -1340,7 +1290,7 @@ datatable(
   caption = "RPPS - Receitas Previdenciárias (Civil e Militar)"
 ) %>%
   formatRound(
-    which(sapply(DT_receita_rpps, is.numeric)), 
+    which(sapply(processar_dt_criterios( receita_rpps), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -1358,25 +1308,16 @@ despesa_rpps <- agrupar_e_combinar_dados(
       elemento_despesa_codigo %notin% c('04', '07', '11', '13', '16', '39', '67', '96'),
       acao_governo_codigo != '09HB'
     ),
-  criterios = criterios_despesas_rpps,
-  codigo = "JUN/2025REOA04rppsdesp"
+  criterios = criterios_despesas_rpps
 )
 
-despesa_rpps <- despesa_rpps %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_despesa_rpps <- despesa_rpps %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ```{r tabela-rpps-despesas}
 # Exibir tabela de despesas RPPS
 datatable(
-  DT_despesa_rpps,
+  processar_dt_criterios( despesa_rpps),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -1385,7 +1326,7 @@ datatable(
   caption = "RPPS - Despesas Previdenciárias (Civil e Militar)"
 ) %>%
   formatRound(
-    which(sapply(DT_despesa_rpps, is.numeric)), 
+    which(sapply(processar_dt_criterios( despesa_rpps), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -1470,25 +1411,16 @@ criterios_despesas_fcdf <- list(
 receita_rpps_fcdf <- agrupar_e_combinar_dados(
   df = dados_receita %>% 
     filter(unidade_orcamentaria_codigo %in% c(73901)),
-  criterios = criterios_receitas_fcdf,
-  codigo = "JUN/2025REOA04fcdf"
+  criterios = criterios_receitas_fcdf
 )
 
-receita_rpps_fcdf <- receita_rpps_fcdf %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_receita_rpps_fcdf <- receita_rpps_fcdf %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ```{r tabela-fcdf-receitas}
 # Exibir tabela de receitas FCDF
 datatable(
-  DT_receita_rpps_fcdf,
+  processar_dt_criterios( receita_rpps_fcdf),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -1497,7 +1429,7 @@ datatable(
   caption = "RPPS FCDF - Receitas Previdenciárias"
 ) %>%
   formatRound(
-    which(sapply(DT_receita_rpps_fcdf, is.numeric)), 
+    which(sapply(processar_dt_criterios( receita_rpps_fcdf), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -1515,25 +1447,16 @@ despesa_rpps_fcdf <- agrupar_e_combinar_dados(
       elemento_despesa_codigo %notin% c('04', '07', '11', '13', '16', '39', '67', '96'),
       acao_governo_codigo != '09HB'
     ),
-  criterios = criterios_despesas_fcdf,
-  codigo = "JUN/2025REOA04fcdfdesp"
+  criterios = criterios_despesas_fcdf
 )
 
-despesa_rpps_fcdf <- despesa_rpps_fcdf %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_despesa_rpps_fcdf <- despesa_rpps_fcdf %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ```{r tabela-fcdf-despesas}
 # Exibir tabela de despesas FCDF
 datatable(
-  DT_despesa_rpps_fcdf,
+  processar_dt_criterios( despesa_rpps_fcdf),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -1542,7 +1465,7 @@ datatable(
   caption = "RPPS FCDF - Despesas Previdenciárias"
 ) %>%
   formatRound(
-    which(sapply(DT_despesa_rpps_fcdf, is.numeric)), 
+    which(sapply(processar_dt_criterios( despesa_rpps_fcdf), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -1576,9 +1499,9 @@ calcular_total_sistema <- function(df_receitas, df_despesas, nome_sistema) {
 
 # Consolidar indicadores
 indicadores_consolidados <- bind_rows(
-  calcular_total_sistema(DT_receita_rgps, DT_despesa_rgps, "RGPS"),
-  calcular_total_sistema(DT_receita_rpps, DT_despesa_rpps, "RPPS"),
-  calcular_total_sistema(DT_receita_rpps_fcdf, DT_despesa_rpps_fcdf, "RPPS FCDF")
+  calcular_total_sistema(processar_dt_criterios( receita_rgps), processar_dt_criterios(despesa_rgps), "RGPS"),
+  calcular_total_sistema(processar_dt_criterios( receita_rpps), processar_dt_criterios( despesa_rpps), "RPPS"),
+  calcular_total_sistema(processar_dt_criterios( receita_rpps_fcdf), processar_dt_criterios( despesa_rpps_fcdf), "RPPS FCDF")
 )
 
 # Exibir tabela consolidada
@@ -1593,6 +1516,8 @@ kable(indicadores_consolidados,
 ### 📈 Análise de Sustentabilidade
 
 ```{r analise-sustentabilidade}
+#| echo: false
+#| eval: false
 # Calcular ratios de sustentabilidade
 analise_sustentabilidade <- indicadores_consolidados %>%
   mutate(
@@ -1754,8 +1679,8 @@ dt_formatada(
 ### Resumo por Tipo de Modalidade
 
 ```{r resumo_modalidade_anexo_07}
-#| echo: true
-#| eval: true
+#| echo: false
+#| eval: false
 
 resumo_modalidade <- dados_rp_anexo_07 %>%
   group_by(tipo_modalidade) %>%
@@ -1779,8 +1704,8 @@ kable(resumo_modalidade,
 ### Top 10 Órgãos com Maiores Valores
 
 ```{r top_10_orgaos_anexo_07}
-#| echo: true
-#| eval: true
+#| echo: false
+#| eval: false
 
 top_10_orgaos <- dados_rp_anexo_07 %>%
   group_by(orgao_uge_orgao_maximo_codigo, orgao_uge_orgao_maximo_nome) %>%
@@ -1927,8 +1852,8 @@ print(paste("✅ dados_rp_anexo_08:", nrow(dados_rp_anexo_08), "registros"))
 ### Aplicar Critérios de Educação
 
 ```{r aplicar_criterios_anexo_08}
-#| echo: true
-#| eval: true
+#| echo: false
+#| eval: false
 
 # Gerar dados classificados usando a função de agrupamento
 codigo_anexo08 <- paste0(mes_filtro, "REO", "A08", "despesa")
@@ -1938,8 +1863,7 @@ print(paste("📊 Dados de entrada:", nrow(dados_despesa), "registros"))
 
 anexo_08 <- agrupar_e_combinar_dados(
   dados_despesa, 
-  criterios_educacao, 
-  codigo_anexo08
+  criterios_educacao
 )
 
 print(paste("✅ Dados do Anexo 08 processados:", nrow(anexo_08), "registros"))
@@ -2017,11 +1941,11 @@ receitas_base_rli <- dados_receita %>%
     .groups = "drop"
   )
 
-kable(receitas_base_rli, 
-      caption = "💰 Receitas Base para RLI por Mês",
-      col.names = c("Mês", "Receita (R$)"),
-      format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+# kable(receitas_base_rli, 
+#       caption = "💰 Receitas Base para RLI por Mês",
+#       col.names = c("Mês", "Receita (R$)"),
+#       format = "html") %>%
+#   kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
 ```
 
 ### Transferências Constitucionais
@@ -2061,31 +1985,31 @@ transferencias_resumo <- rli_transf %>%
   mutate(total_formatado = formatar_numero(total))
 
 # Exibir com DT::datatable
-DT::datatable(
-  transferencias_resumo,
-  colnames = c("Tipo de Transferência", "Total (R$)", "Total Formatado"),
-  caption = "🔄 Transferências Constitucionais por Tipo",
-  rownames = FALSE,
-  options = list(
-    pageLength = 10,
-    dom = 'ft',
-    columnDefs = list(
-      list(className = 'dt-left', targets = 0),      # Tipo à esquerda
-      list(className = 'dt-right', targets = c(1,2)) # Valores à direita
-    ),
-    language = list(
-      url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json'
-    )
-  )
-) %>%
-  DT::formatStyle(
-    columns = "transferencia",
-    fontWeight = 'bold'
-  ) %>%
-  DT::formatStyle(
-    columns = c("total", "total_formatado"),
-    textAlign = 'right'
-  )
+# DT::datatable(
+#   transferencias_resumo,
+#   colnames = c("Tipo de Transferência", "Total (R$)", "Total Formatado"),
+#   caption = "🔄 Transferências Constitucionais por Tipo",
+#   rownames = FALSE,
+#   options = list(
+#     pageLength = 10,
+#     dom = 'ft',
+#     columnDefs = list(
+#       list(className = 'dt-left', targets = 0),      # Tipo à esquerda
+#       list(className = 'dt-right', targets = c(1,2)) # Valores à direita
+#     ),
+#     language = list(
+#       url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json'
+#     )
+#   )
+# ) %>%
+#   DT::formatStyle(
+#     columns = "transferencia",
+#     fontWeight = 'bold'
+#   ) %>%
+#   DT::formatStyle(
+#     columns = c("total", "total_formatado"),
+#     textAlign = 'right'
+#   )
 ```
 
 ### Cálculo da RLI Mensal
@@ -2178,12 +2102,12 @@ DT::datatable(
 #| eval: true
 
 # RLI específica do mês de referência
-rli_maio <- rli_mensal %>% 
+rli_atual <- rli_mensal %>% 
   filter(mes_lancamento == mes_filtro) %>% 
   summarise(minimo_mde = sum(rli, na.rm = TRUE)) %>%
   pull(minimo_mde)
 
-print(paste("📅 RLI para", mes_filtro, ":", formatar_numero(rli_maio)))
+print(paste("📅 RLI para", mes_filtro, ":", formatar_numero(rli_atual)))
 ```
 
 ### Despesas MDE do Período
@@ -2271,7 +2195,7 @@ print(paste("📋 Total RP MDE:", formatar_numero(despesa_mde_rp)))
 
 # Cálculo do percentual total aplicado em MDE
 total_despesas_mde <- despesa_mde + complementacao_fundeb 
-percentual_aplicacao <- (total_despesas_mde / rli_maio) * 100
+percentual_aplicacao <- (total_despesas_mde / rli_atual) * 100
 
 # Tabela resumo
 resumo_aplicacao <- data.frame(
@@ -2289,7 +2213,7 @@ resumo_aplicacao <- data.frame(
     formatar_numero(complementacao_fundeb),
     formatar_numero(despesa_mde_rp),
     formatar_numero(total_despesas_mde),
-    formatar_numero(rli_maio),
+    formatar_numero(rli_atual),
     paste0(round(percentual_aplicacao, 2), "%"),
     "18,00%"
   ),
@@ -2544,54 +2468,7 @@ DT::datatable(
   DT::formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = ",")
 ```
 
-## ✅ Validação dos Resultados
-
-### Comparação com Dados Oficiais
-
-```{r validacao-resultados}
-# Validar totais por subfunção específica
-validacao_subfuncoes <- despesas_saude_completa %>%
-  filter(subfuncao_governo_codigo %in% c("301", "302", "303", "304", "305", "306")) %>%
-  group_by(subfuncao_governo_codigo, subfuncao_governo_nome) %>%
-  summarise(
-    nosso_total = sum(saldo_r_item_informacao, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    # Dados oficiais para comparação (valores em milhares, multiplicando por 1000)
-    oficial_total = case_when(
-      subfuncao_governo_codigo == "301" ~ 22060304 * 1000,
-      subfuncao_governo_codigo == "302" ~ 38151320 * 1000,
-      subfuncao_governo_codigo == "303" ~ 8449894 * 1000,
-      subfuncao_governo_codigo == "304" ~ 38550 * 1000,
-      subfuncao_governo_codigo == "305" ~ 5020346 * 1000,
-      subfuncao_governo_codigo == "306" ~ 196 * 1000,
-      TRUE ~ 0
-    ),
-    diferenca = nosso_total - oficial_total,
-    status = ifelse(abs(diferenca) < 1, "✅ MATCH", "❌ DIVERGÊNCIA")
-  )
-
-# Exibir tabela de validação
-DT::datatable(
-  validacao_subfuncoes,
-  caption = "Validação: Nossos Resultados vs Dados Oficiais",
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  )
-) %>%
-  DT::formatRound(c("nosso_total", "oficial_total", "diferenca"), 0, mark = ".", dec.mark = ",")
-
-# Calcular total das subfunções específicas
-total_subfuncoes_validacao <- sum(validacao_subfuncoes$nosso_total)
-total_oficial_subfuncoes <- 84798771 * 1000  # Total oficial em milhares, convertendo para reais
-
-cat("\n🎯 **Resumo da Validação:**\n")
-cat("- Total Subfunções Específicas (Nosso):", format(total_subfuncoes_validacao, big.mark = "."), "\n")
-cat("- Total Oficial (todas as despesas):", format(total_oficial_subfuncoes, big.mark = "."), "\n")
-cat("- Outras Subfunções (Oficial):", format(11078161 * 1000, big.mark = "."), "\n")
+```{}
 ```
 
 ## 📊 Resumo Executivo e Indicadores
@@ -2667,6 +2544,8 @@ cat("📊 **Total Geral com Saúde:** R$ ",
 ### Gráfico Comparativo: Computadas vs Não Computadas
 
 ```{r grafico-comparativo}
+#| echo: false
+#| eval: false
 # Preparar dados para o gráfico
 dados_grafico <- data.frame(
   Categoria = c("Despesas Computadas", "Despesas NÃO Computadas"),
@@ -2705,6 +2584,8 @@ ggplot(dados_grafico, aes(x = Categoria, y = Valor, fill = Tipo)) +
 ### Distribuição por Subfunção de Governo
 
 ```{r grafico-subfuncoes-saude}
+#| echo: false
+#| eval: false
 # Preparar dados das despesas por subfunção (apenas computadas)
 despesas_por_subfuncao <- tabela_consolidada %>%
   filter(subfuncao_governo_codigo != "demais") %>%
@@ -2743,6 +2624,8 @@ ggplot(despesas_por_subfuncao, aes(x = reorder(subfuncao_governo_nome, valor_mil
 ### Análise por Tipo de Aplicação
 
 ```{r grafico-modalidade-aplicacao}
+#| echo: false
+#| eval: false
 # Preparar dados por modalidade de aplicação
 despesas_por_modalidade <- tabela_consolidada %>%
   group_by(transferencia) %>%
@@ -2828,6 +2711,8 @@ cat("- Base de dados: Tesouro Gerencial (SIAFI)\n\n")
 ## 📄 Observações Finais
 
 ```{r observacoes-saude}
+#| echo: false
+#| eval: false
 cat("### ⚠️ Observações Importantes\n\n")
 cat("1. **Limite Constitucional:** União deve aplicar mínimo de 15% da RCL em saúde\n")
 cat("2. **Periodicidade:** Relatório com periodicidade bimestral, conforme LRF\n")
@@ -2980,21 +2865,10 @@ criterios_tabela1_receitas <- list(
 # Processar dados de receitas
 tabela1_receitas <- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela1_receitas,
-  codigo = "JUN/2025REOT01receitas"
+  criterios = criterios_tabela1_receitas
 )
 
-# Separar ordem e nome
-tabela1_receitas <- tabela1_receitas %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-# Criar tabela final de receitas
-DT_tabela1_receitas <- tabela1_receitas %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ## 📊 Demonstrativo das Receitas
@@ -3002,7 +2876,7 @@ DT_tabela1_receitas <- tabela1_receitas %>%
 ```{r tabela-receitas}
 # Exibir tabela de receitas
 datatable(
-  DT_tabela1_receitas,
+  processar_dt_criterios( tabela1_receitas),
   options = list(
     pageLength = 15,
     scrollX = TRUE,
@@ -3011,7 +2885,7 @@ datatable(
   caption = "Tabela 01 - Demonstrativo das Receitas Orçamentárias"
 ) %>%
   formatRound(
-    which(sapply(DT_tabela1_receitas, is.numeric)), 
+    which(sapply(processar_dt_criterios( tabela1_receitas), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -3096,21 +2970,10 @@ criterios_tabela1_despesas <- list(
 # Processar dados de despesas
 tabela1_despesas <- agrupar_e_combinar_dados(
   df = dados_despesa %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela1_despesas,
-  codigo = "JUN/2025REOT01desp"
+  criterios = criterios_tabela1_despesas
 )
 
-# Separar ordem e nome
-tabela1_despesas <- tabela1_despesas %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-# Criar tabela final de despesas
-DT_tabela1_despesas <- tabela1_despesas %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ## 📊 Demonstrativo das Despesas
@@ -3118,7 +2981,7 @@ DT_tabela1_despesas <- tabela1_despesas %>%
 ```{r tabela-despesas}
 # Exibir tabela de despesas
 datatable(
-  DT_tabela1_despesas,
+  processar_dt_criterios( tabela1_despesas),
   options = list(
     pageLength = 15,
     scrollX = TRUE,
@@ -3127,7 +2990,7 @@ datatable(
   caption = "Tabela 01 - Demonstrativo das Despesas Orçamentárias"
 ) %>%
   formatRound(
-    which(sapply(DT_tabela1_despesas, is.numeric)), 
+    which(sapply(processar_dt_criterios( tabela1_despesas), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -3184,25 +3047,16 @@ criterios_tabela1a_colunas <- list(
 # Processar Tabela 01A
 tabela_01A_receitas <- agrupar_e_combinar_dados(
   df = dados_receita %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela1a_colunas,
-  codigo = "JUN/2025REOT01Arecseg"
+  criterios = criterios_tabela1a_colunas
 )
 
-tabela_01A_receitas <- tabela_01A_receitas %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_tabela_01A_receitas <- tabela_01A_receitas %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ```{r exibir-tabela1a}
 # Exibir Tabela 01A
 datatable(
-  DT_tabela_01A_receitas,
+  processar_dt_criterios( tabela_01A_receitas),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -3211,7 +3065,7 @@ datatable(
   caption = "Tabela 01A - Detalhamento das Receitas por Período"
 ) %>%
   formatRound(
-    which(sapply(DT_tabela_01A_receitas, is.numeric)), 
+    which(sapply(processar_dt_criterios( tabela_01A_receitas), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
@@ -3255,25 +3109,16 @@ criterios_tabela_1b_seguridade <- list(
 # Processar dados da Seguridade Social
 tabela_1b_seguridade <- agrupar_e_combinar_dados(
   df = dados_despesa %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela_1b_seguridade,
-  codigo = "JUN/2025REOT01Adespseg"
+  criterios = criterios_tabela_1b_seguridade
 )
 
-tabela_1b_seguridade <- tabela_1b_seguridade %>% 
-  separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
-DT_tabela_1b_seguridade <- tabela_1b_seguridade %>% 
-  filter(mes_lancamento == mes_filtro) %>%
-  group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-  summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-  complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-  pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
 ```{r exibir-seguridade}
 # Exibir tabela da Seguridade Social
 datatable(
-  DT_tabela_1b_seguridade,
+  processar_dt_criterios( tabela_1b_seguridade),
   options = list(
     pageLength = 10,
     scrollX = TRUE,
@@ -3282,7 +3127,7 @@ datatable(
   caption = "Despesas da Seguridade Social"
 ) %>%
   formatRound(
-    which(sapply(DT_tabela_1b_seguridade, is.numeric)), 
+    which(sapply(processar_dt_criterios( tabela_1b_seguridade), is.numeric)), 
     digits = 2, 
     mark = ".", 
     dec.mark = ","
