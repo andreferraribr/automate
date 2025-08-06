@@ -106,7 +106,7 @@ arq_despesa <- list.files(path = "data/", pattern = 'tg_despesa', full.names = T
 
 dados_despesa <- map_df(arq_despesa, read_excel) %>%
   clean_names() %>%
-  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
+  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE", mes_lacamento == mes_filtro)
 
 # Criar variáveis derivadas
 dados_despesa <- dados_despesa %>%
@@ -169,10 +169,17 @@ dados_rp_anexo_12 <- read_excel("data/tg_rp_anexo_12.xlsx") %>%
 dados_rp_anexo_08 <- read_excel("data/tg_rp_anexo_08.xlsx") %>% 
   clean_names()
 
+
+dados_rp_anexo_03_rcl <- read_excel("data/tg_rp_anexo_03_rcl.xlsx") %>% 
+  clean_names()
+
+
+
 print("✅ Dados de Restos a Pagar carregados:")
 print(paste("   - Anexo 07:", nrow(dados_rp_anexo_07), "registros"))
 print(paste("   - Anexo 12:", nrow(dados_rp_anexo_12), "registros"))
 print(paste("   - Anexo 08:", nrow(dados_rp_anexo_08), "registros"))
+print(paste("   - Anexo 03 RCL:", nrow(dados_rp_anexo_03_rcl), "registros"))
 ```
 
 ## 🏦 Dados Contábeis e Específicos
@@ -487,7 +494,9 @@ no futuro, capturar os detalhes dos filtros do relatório do TG e a data de exec
 ```         
 ```
 
-```{r}
+```{r agrupar_e_combinar_dados}
+#| echo: false
+#| eval: false
 agrupar_e_combinar_dados <- function(df, criterios) {
   
   # Aplicar critérios - esta é a parte fundamental
@@ -509,6 +518,49 @@ agrupar_e_combinar_dados <- function(df, criterios) {
 }
 
 print("✅ Função agrupar_e_combinar_dados definida")
+```
+
+```{r}
+agrupar_e_combinar_dados <- function(df, criterios, metrica = "saldo_r_item_informacao") {
+  
+  # Verificar se a métrica existe no dataframe
+  if (!metrica %in% names(df)) {
+    stop(paste("A métrica", metrica, "não foi encontrada no dataframe."))
+  }
+  
+  # Aplicar critérios - esta é a parte fundamental
+  map_df(names(criterios), function(categoria) {
+    crit <- criterios[[categoria]]
+    
+    # Avaliar condição
+    condicao_expr <- eval(parse(text = crit$criterio), envir = df)
+    
+    df %>%
+      filter(condicao_expr) %>%
+      group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
+      summarise(
+        # Usar a métrica especificada dinamicamente
+        valor = sum(.data[[metrica]], na.rm = TRUE), 
+        .groups = "drop"
+      ) %>%
+      mutate(categoria = categoria) %>%
+      # Renomear a coluna valor para o nome da métrica original
+      rename(!!metrica := valor)
+  })
+}
+
+# Exemplos de uso:
+
+# Uso padrão (saldo item informação)
+# resultado_saldo <- agrupar_e_combinar_dados(df, criterios)
+
+# Usando movimento líquido
+# resultado_movimento <- agrupar_e_combinar_dados(df, criterios, 
+#                                               metrica = "movimento_liquido_r_item_informacao")
+
+# Usando saldo conta contábil  
+# resultado_conta <- agrupar_e_combinar_dados(df, criterios, 
+                                           # metrica = "saldo_r_conta_contabil")
 ```
 
 ## 🛠️ Utilitários Diversos
@@ -787,6 +839,33 @@ criterios_despesas_anexo3_rcl <- list(
 )
 ```
 
+```{r criterio_rp_cancelados_transferencias}
+# Filtro para RREO Anexo 3 - Receita Corrente Líquida
+# RP Cancelados de Transferências Constitucionais e Legais
+
+criterio_rp_cancelados_transferencias <- list(
+  
+  # RP CANCELADOS DE TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
+  `01 RP Cancelados de Transferências Constitucionais e Legais` = list(
+    criterio = "
+    # CONDIÇÃO 1: Ações específicas visualizadas no print
+    acao_governo_codigo %in% c('0044', '0045', '006M', '0A53', '0C33') |
+    
+    # CONDIÇÃO 2: Programa que começa com código específico (do SQL original)
+    grepl('^28846090900RX', programa_governo_codigo) |
+    
+    # CONDIÇÃO 3: Combinação de critérios do SQL original
+    (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+     modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+     acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', 
+                                '00G6', '0169', '0223', '0369', '0546', '0547', '0999', 
+                                '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', 
+                                '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))
+    "
+  )
+)
+```
+
 ## 🔄 Processamento dos Dados
 
 ```{r processamento}
@@ -821,6 +900,13 @@ despesas_anexo3_rcl <- agrupar_e_combinar_dados(
   criterios = criterios_despesas_anexo3_rcl
 )
 
+
+rp_cancelados_anexo3_rcl <- agrupar_e_combinar_dados(
+  df = dados_rp_anexo_03_rcl %>% unique(),
+  criterios = criterio_rp_cancelados_transferencias
+)
+
+
 # despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
 #   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 # 
@@ -832,10 +918,29 @@ despesas_anexo3_rcl <- agrupar_e_combinar_dados(
 #   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
+```{r}
+datatable(
+   processar_dt_criterios( rp_cancelados_anexo3_rcl),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "rp_cancelados_anexo3_rcl"
+) %>%
+  formatRound(
+    which(sapply(processar_dt_criterios( rp_cancelados_anexo3_rcl), is.numeric)), 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+```
+
 ## 📊 Demonstrativo da Receita Corrente Líquida
 
 ```{r tabela-rcl}
 #| echo: false
+#| eval: false
 
 # Criar tabela no formato oficial
 criar_tabela_rcl_oficial <- function(receitas_dt, despesas_dt) {
@@ -1852,8 +1957,8 @@ print(paste("✅ dados_rp_anexo_08:", nrow(dados_rp_anexo_08), "registros"))
 ### Aplicar Critérios de Educação
 
 ```{r aplicar_criterios_anexo_08}
-#| echo: false
-#| eval: false
+#| echo: true
+#| eval: true
 
 # Gerar dados classificados usando a função de agrupamento
 codigo_anexo08 <- paste0(mes_filtro, "REO", "A08", "despesa")
@@ -2113,8 +2218,6 @@ print(paste("📅 RLI para", mes_filtro, ":", formatar_numero(rli_atual)))
 ### Despesas MDE do Período
 
 ```{r despesas_mde}
-#| echo: true
-#| eval: true
 
 # Despesas MDE das categorias principais (02, 03, 04, 05, 06)
 despesa_mde <- anexo_08 %>% 
@@ -2468,7 +2571,7 @@ DT::datatable(
   DT::formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = ",")
 ```
 
-```{}
+```         
 ```
 
 ## 📊 Resumo Executivo e Indicadores
@@ -3479,7 +3582,7 @@ validacao_militar <- dados_despesa %>%
   filter(
     grupo_despesa_codigo_grupo == 1,
     mes_lancamento == mes_filtro,
-    item_informacao_codigo == "13"
+    item_informacao_codigo == "9"
   ) %>% 
   filter(
     (elemento_despesa_codigo %in% c('12', '17')) |
@@ -3508,7 +3611,7 @@ validacao_civil <- dados_despesa %>%
   filter(
     grupo_despesa_codigo_grupo == 1,
     mes_lancamento == mes_filtro,
-    item_informacao_codigo == "13"
+    item_informacao_codigo == "9"
   ) %>% 
   filter(
     # Condições específicas para Pessoal Civil
@@ -3768,3 +3871,343 @@ cat("
 ------------------------------------------------------------------------
 
 *Documento gerado automaticamente pelo sistema de relatórios fiscais baseado em dados do Tesouro Gerencial.*
+
+```{r}
+# Estrutura unificada de critérios para relatórios fiscais
+criterios_relatorios_fiscais <- list(
+  
+  # ===== RREO ANEXO 3 - RCL (DESPESAS) =====
+  rreo_a03_rcl_desp_01 = list(
+    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
+    base_dados = "dados_despesa", linha_nome = "Transferências Constitucionais e Legais",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas com transferências constitucionais e legais para dedução da RCL",
+    data_atualizacao = Sys.Date(),
+    criterio = "acao_governo_codigo %in% c('0E36', '00SB') | grepl('^28846090900RX', programa_governo_codigo) | (programa_governo_codigo %in% c('0903', '2030', '2080') & modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))"
+  ),
+  rreo_a03_rcl_desp_02 = list(
+    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
+    base_dados = "dados_despesa", linha_nome = "Outras Deduções",
+    linha_codigo = "02", metrica = "saldo_r_item_informacao",
+    observacao = "Outras deduções para cálculo da RCL",
+    data_atualizacao = Sys.Date(),
+    criterio = "acao_governo_codigo %in% c('0E36', '00SB') | grepl('^28846090900RX', programa_governo_codigo) | (programa_governo_codigo %in% c('0903', '2030', '2080') & modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))"
+  ),
+  
+  # ===== RREO ANEXO 3 - RCL (RECEITAS) =====
+  rreo_a03_rcl_rec_01 = list(
+    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
+    base_dados = "dados_receita", linha_nome = "Impostos, Taxas e Contribuições de Melhoria",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Receitas tributárias para cálculo da RCL",
+    data_atualizacao = Sys.Date(),
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 1"
+  ),
+  rreo_a03_rcl_rec_02 = list(
+    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
+    base_dados = "dados_receita", linha_nome = "Receita de Contribuições",
+    linha_codigo = "02", metrica = "saldo_r_item_informacao",
+    observacao = "Receitas de contribuições para cálculo da RCL",
+    data_atualizacao = Sys.Date(),
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2"
+  ),
+  rreo_a03_rcl_rec_10 = list(
+    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
+    base_dados = "dados_receita", linha_nome = "Transferências Constitucionais e Legais",
+    linha_codigo = "10", metrica = "saldo_r_item_informacao",
+    observacao = "Receitas de transferências constitucionais e legais",
+    data_atualizacao = Sys.Date(),
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7 & (grepl('FPE|FPM|CONSTITUCIONAL|LEGAL', natureza_receita_nome, ignore.case = TRUE) | grepl('^172[0-9]', natureza_receita_codigo_completo) | grepl('^171[0-9]', natureza_receita_codigo_completo))"
+  ),
+  
+  # ===== RREO ANEXO 4 - RPPS (DESPESAS) =====
+  rreo_a04_rpps_desp_01 = list(
+    relatorio = "RREO", anexo_nome = "RPPS", anexo_codigo = "A04",
+    base_dados = "dados_despesa", linha_nome = "CIVIS - DESPESAS - A detalhar",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas RPPS Civil - A detalhar",
+    data_atualizacao = Sys.Date(),
+    criterio = "esfera_orcamentaria_codigo %in% c(2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('00') & acao_governo_codigo %in% c('0053', '0181') & funcao_governo_codigo %notin% c('10', '08')"
+  ),
+  rreo_a04_rpps_desp_02 = list(
+    relatorio = "RREO", anexo_nome = "RPPS", anexo_codigo = "A04",
+    base_dados = "dados_despesa", linha_nome = "CIVIS - DESPESAS - Aposentadorias",
+    linha_codigo = "02", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas RPPS Civil - Aposentadorias",
+    data_atualizacao = Sys.Date(),
+    criterio = "esfera_orcamentaria_codigo %in% c(2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('01') & acao_governo_codigo %in% c('0053', '0181')"
+  ),
+  
+  # ===== RREO ANEXO 4 - RPPS (RECEITAS) =====
+  rreo_a04_rpps_rec_01 = list(
+    relatorio = "RREO", anexo_nome = "RPPS", anexo_codigo = "A04",
+    base_dados = "dados_receita", linha_nome = "CIVIS - RECEITA SEGURADOS - Ativo",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Receitas RPPS Civil - Segurados Ativos",
+    data_atualizacao = Sys.Date(),
+    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100423', '12100421', '12100422', '12100424', '12100461', '12100462', '12100463', '12100464') | startsWith(natureza_receita_codigo_completo, '1215011') | startsWith(natureza_receita_codigo_completo, '1215014') | startsWith(natureza_receita_codigo_completo, '121503'))"
+  ),
+  
+  # ===== RREO ANEXO 8 - MDE =====
+  rreo_a08_mde_01 = list(
+    relatorio = "RREO", anexo_nome = "Manutenção e Desenvolvimento do Ensino", anexo_codigo = "A08",
+    base_dados = "dados_despesa", linha_nome = "COMPLEMENTAÇÃO DA UNIÃO AO FUNDEB",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas com complementação da União ao FUNDEB",
+    data_atualizacao = Sys.Date(),
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36')"
+  ),
+  rreo_a08_mde_03 = list(
+    relatorio = "RREO", anexo_nome = "Manutenção e Desenvolvimento do Ensino", anexo_codigo = "A08",
+    base_dados = "dados_despesa", linha_nome = "EDUCAÇÃO BÁSICA",
+    linha_codigo = "03", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas com educação básica",
+    data_atualizacao = Sys.Date(),
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134', '213', '242') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '368'"
+  ),
+  
+  # ===== RREO TABELA 01 - RECEITAS =====
+  rreo_t01_rec_01 = list(
+    relatorio = "RREO", anexo_nome = "Demonstrativo da Receita", anexo_codigo = "T01",
+    base_dados = "dados_receita", linha_nome = "Receita Tributária",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Receitas tributárias ordinárias e intra",
+    data_atualizacao = Sys.Date(),
+    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 1) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 1)"
+  ),
+  
+  # ===== RREO TABELA 02 - DESPESAS =====
+  rreo_t02_desp_01 = list(
+    relatorio = "RREO", anexo_nome = "Demonstrativo da Despesa", anexo_codigo = "T02",
+    base_dados = "dados_despesa", linha_nome = "Pessoal e Encargos Sociais",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas com pessoal e encargos sociais",
+    data_atualizacao = Sys.Date(),
+    criterio = "grupo_despesa_codigo_grupo == '1'"
+  ),
+  
+  # ===== RREO TABELA 04 - RESTOS A PAGAR =====
+  rreo_t04_rp_02 = list(
+    relatorio = "RREO", anexo_nome = "Restos a Pagar", anexo_codigo = "T04",
+    base_dados = "dados_rp", linha_nome = "A Detalhar",
+    linha_codigo = "02", metrica = "saldo_r_item_informacao",
+    observacao = "Restos a pagar - A detalhar",
+    data_atualizacao = Sys.Date(),
+    criterio = "elemento_despesa_codigo %in% c('00')"
+  ),
+  
+  # ===== RGF TABELA 04 - OPERAÇÕES DE CRÉDITO =====
+  rgf_t04_oper_01 = list(
+    relatorio = "RGF", anexo_nome = "Operações de Crédito", anexo_codigo = "T04",
+    base_dados = "dados_receita", linha_nome = "Operações de Crédito",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Receitas de operações de crédito ordinárias e intra",
+    data_atualizacao = Sys.Date(),
+    criterio = "(nre1_categoria_economica_codigo == 2 & nre2_origem_receita_codigo_origem == 1) | (nre1_categoria_economica_codigo == 8 & nre2_origem_receita_codigo_origem == 1)"
+  ),
+  
+  # ===== RREO TABELA 1B - SEGURIDADE =====
+  rreo_t1b_seg_01 = list(
+    relatorio = "RREO", anexo_nome = "Seguridade Social", anexo_codigo = "T1B",
+    base_dados = "dados_despesa", linha_nome = "Saúde",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas com saúde",
+    data_atualizacao = Sys.Date(),
+    criterio = "iduso_codigo %in% c('6') & funcao_governo_codigo %notin% c('08')"
+  ),
+  
+  # ===== ESPECIAIS - RGPS =====
+  especial_rgps_01 = list(
+    relatorio = "ESPECIAL", anexo_nome = "RGPS", anexo_codigo = "RGPS",
+    base_dados = "dados_despesa", linha_nome = "Aposentadorias",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas RGPS - Aposentadorias",
+    data_atualizacao = Sys.Date(),
+    criterio = "elemento_despesa_codigo %in% c('53', '54') & grupo_despesa_codigo_grupo %in% c(3) & modalidade_aplicacao_codigo %notin% c('91')"
+  ),
+  
+  # ===== ESPECIAIS - FCDF =====
+  especial_fcdf_desp_01 = list(
+    relatorio = "ESPECIAL", anexo_nome = "FCDF", anexo_codigo = "FCDF",
+    base_dados = "dados_despesa", linha_nome = "FCDF - DESPESAS - A detalhar",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Despesas FCDF - A detalhar",
+    data_atualizacao = Sys.Date(),
+    criterio = "esfera_orcamentaria_codigo %in% c(1, 2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('00') & acao_governo_codigo %in% c('00Q2', '00QN', '00NS')"
+  ),
+  especial_fcdf_rec_01 = list(
+    relatorio = "ESPECIAL", anexo_nome = "FCDF", anexo_codigo = "FCDF",
+    base_dados = "dados_receita", linha_nome = "FCDF - RECEITA SEGURADOS - Ativo",
+    linha_codigo = "01", metrica = "saldo_r_item_informacao",
+    observacao = "Receitas FCDF - Segurados Ativos",
+    data_atualizacao = Sys.Date(),
+    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100431', '12104211', '12104221', '12104231', '12104411', '12104421', '12104431', '12104611', '12104621', '12104631', '12191111', '12191321', '12191411') | startsWith(natureza_receita_codigo_completo, '121503') | startsWith(natureza_receita_codigo_completo, '1215011') | startsWith(natureza_receita_codigo_completo, '1215014'))"
+  )
+)
+
+# Funções para trabalhar com a estrutura unificada
+
+# 1. Filtrar critérios por relatório
+filtrar_por_relatorio <- function(lista_criterios, relatorio) {
+  lista_criterios[sapply(lista_criterios, function(x) x$relatorio == relatorio)]
+}
+
+# 2. Filtrar critérios por anexo
+filtrar_por_anexo <- function(lista_criterios, anexo_codigo) {
+  lista_criterios[sapply(lista_criterios, function(x) x$anexo_codigo == anexo_codigo)]
+}
+
+# 3. Filtrar critérios por base de dados
+filtrar_por_base_dados <- function(lista_criterios, base_dados) {
+  lista_criterios[sapply(lista_criterios, function(x) x$base_dados == base_dados)]
+}
+
+# 4. Listar todos os relatórios disponíveis
+listar_relatorios <- function(lista_criterios) {
+  unique(sapply(lista_criterios, function(x) x$relatorio))
+}
+
+# 5. Listar anexos por relatório
+listar_anexos <- function(lista_criterios, relatorio = NULL) {
+  if (!is.null(relatorio)) {
+    criterios_filtrados <- filtrar_por_relatorio(lista_criterios, relatorio)
+  } else {
+    criterios_filtrados <- lista_criterios
+  }
+  
+  data.frame(
+    anexo_codigo = sapply(criterios_filtrados, function(x) x$anexo_codigo),
+    anexo_nome = sapply(criterios_filtrados, function(x) x$anexo_nome),
+    relatorio = sapply(criterios_filtrados, function(x) x$relatorio),
+    base_dados = sapply(criterios_filtrados, function(x) x$base_dados)
+  ) %>% distinct()
+}
+
+# 6. Aplicar função em critérios específicos (versão melhorada)
+aplicar_criterios <- function(dados, lista_criterios, filtro_relatorio = NULL, 
+                             filtro_anexo = NULL, metrica_personalizada = NULL) {
+  
+  # Aplicar filtros se especificados
+  criterios_selecionados <- lista_criterios
+  
+  if (!is.null(filtro_relatorio)) {
+    criterios_selecionados <- filtrar_por_relatorio(criterios_selecionados, filtro_relatorio)
+  }
+  
+  if (!is.null(filtro_anexo)) {
+    criterios_selecionados <- filtrar_por_anexo(criterios_selecionados, filtro_anexo)
+  }
+  
+  # Aplicar os critérios
+  map_df(names(criterios_selecionados), function(nome_criterio) {
+    criterio <- criterios_selecionados[[nome_criterio]]
+    
+    # Usar métrica personalizada ou a padrão do critério
+    metrica_usar <- ifelse(!is.null(metrica_personalizada), 
+                          metrica_personalizada, 
+                          criterio$metrica)
+    
+    # Avaliar condição
+    condicao_expr <- eval(parse(text = criterio$criterio), envir = dados)
+    
+    dados %>%
+      filter(condicao_expr) %>%
+      group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
+      summarise(
+        valor = sum(.data[[metrica_usar]], na.rm = TRUE), 
+        .groups = "drop"
+      ) %>%
+      mutate(
+        categoria = paste0(criterio$linha_codigo, "  ", criterio$linha_nome),
+        relatorio = criterio$relatorio,
+        anexo_codigo = criterio$anexo_codigo,
+        anexo_nome = criterio$anexo_nome,
+        base_dados = criterio$base_dados,
+        metrica_utilizada = metrica_usar,
+        observacao = criterio$observacao
+      ) %>%
+      rename(!!metrica_usar := valor)
+  })
+}
+
+# 7. Função para converter listas antigas para estrutura unificada
+converter_lista_antiga <- function(lista_antiga, relatorio, anexo_nome, anexo_codigo, base_dados, metrica = "saldo_r_item_informacao") {
+  map(names(lista_antiga), function(nome_linha) {
+    # Extrair código da linha (primeiros 2 caracteres)
+    codigo_linha <- str_extract(nome_linha, "^\\d{2}")
+    if (is.na(codigo_linha)) codigo_linha <- "01"
+    
+    # Extrair nome da linha (depois do código)
+    nome_limpo <- str_trim(str_remove(nome_linha, "^\\d{2}\\s*"))
+    
+    list(
+      relatorio = relatorio,
+      anexo_nome = anexo_nome,
+      anexo_codigo = anexo_codigo,
+      base_dados = base_dados,
+      linha_nome = nome_limpo,
+      linha_codigo = codigo_linha,
+      metrica = metrica,
+      observacao = paste("Convertido automaticamente -", nome_limpo),
+      data_atualizacao = Sys.Date(),
+      criterio = str_trim(lista_antiga[[nome_linha]]$criterio)
+    )
+  })
+}
+
+# 8. Função para resumir critérios
+resumir_criterios <- function(lista_criterios) {
+  data.frame(
+    id = names(lista_criterios),
+    relatorio = sapply(lista_criterios, function(x) x$relatorio),
+    anexo = sapply(lista_criterios, function(x) x$anexo_codigo),
+    anexo_nome = sapply(lista_criterios, function(x) x$anexo_nome),
+    base_dados = sapply(lista_criterios, function(x) x$base_dados),
+    linha = sapply(lista_criterios, function(x) x$linha_codigo),
+    linha_nome = sapply(lista_criterios, function(x) x$linha_nome),
+    metrica = sapply(lista_criterios, function(x) x$metrica),
+    atualizado_em = sapply(lista_criterios, function(x) as.character(x$data_atualizacao))
+  ) %>%
+  arrange(relatorio, anexo, as.numeric(linha))
+}
+
+# Exemplos de uso:
+
+# Ver resumo de todos os critérios
+# resumir_criterios(criterios_relatorios_fiscais)
+
+# Ver todos os relatórios
+# listar_relatorios(criterios_relatorios_fiscais)
+
+# Ver anexos do RREO
+# listar_anexos(criterios_relatorios_fiscais, "RREO")
+
+# Aplicar só critérios do RREO
+# resultado_rreo <- aplicar_criterios(dados_despesa, criterios_relatorios_fiscais, filtro_relatorio = "RREO")
+
+# Aplicar só critérios do Anexo 3 (RCL)
+# resultado_rcl <- aplicar_criterios(dados_receita, criterios_relatorios_fiscais, filtro_anexo = "A03")
+
+# Converter uma lista antiga
+# nova_estrutura <- converter_lista_antiga(
+#   criterios_despesas_anexo3_rcl, 
+#   relatorio = "RREO", 
+#   anexo_nome = "RCL", 
+#   anexo_codigo = "A03", 
+#   base_dados = "dados_despesa"
+# )
+
+# Exemplos de uso:
+
+# Ver todos os relatórios
+# listar_relatorios(criterios_relatorios_fiscais)
+
+# Ver anexos do RREO
+# listar_anexos(criterios_relatorios_fiscais, "RREO")
+
+# Aplicar só critérios do RREO
+# resultado_rreo <- aplicar_criterios(dados, criterios_relatorios_fiscais, filtro_relatorio = "RREO")
+
+# Aplicar só critérios do Anexo 3 (RCL)
+# resultado_rcl <- aplicar_criterios(dados, criterios_relatorios_fiscais, filtro_anexo = "A03")
+```
