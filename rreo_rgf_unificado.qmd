@@ -35,6 +35,7 @@ library(forcats)
 library(DT)
 library(knitr)
 library(kableExtra)
+library(readr)
 
 # Configurações globais
 options(OutDec = ",")
@@ -4426,6 +4427,8 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(resultado_eof_codigo == 6)
 
 # 📋 RREO Tabela 4
 
+A coluna "demais_obrigacoes_new" foi criada a partir do reltatório do Tesouro Gerencial "dados_tabela_04_filtro_rreo".
+
 ```{r tabela_4}
 
 tabela_04 <- dados_tabela_04
@@ -4724,13 +4727,18 @@ if(!"linhas" %in% names(dados_tabela_04_filtro_rreo)) {
 
 
 
-# COLUNA: DEMAIS OBRIGAÇÕES FINANCEIRAS NEW
+# COLUNA: DEMAIS OBRIGAÇÕES FINANCEIRAS NEW (dados_tabela_04_filtro_rreo)
 demais_obrigacoes_new <- dados_tabela_04_filtro_rreo %>%
   group_by(linhas) %>%
   summarise(demais_obrigacoes_new = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
 
 
 
+
+
+```
+
+```{r}
 # =============================================================================
 # CONSOLIDAR TABELA FINAL
 # =============================================================================
@@ -4765,44 +4773,87 @@ tabela_04_final <- tabela_04_final %>%
 # VERIFICAÇÕES E VALIDAÇÕES
 # =============================================================================
 
-print("=== TABELA 4 RREO - VERSÃO FINAL CORRIGIDA ===")
 
-# Formatar para exibição
-tabela_04_formatada <- tabela_04_final %>%
-  mutate(across(where(is.numeric), formatar_numero))
 
-print(tabela_04_formatada)
 
-cat("\nDimensões da tabela:")
-cat("\nLinhas:", nrow(tabela_04_final))
-cat("\nColunas:", ncol(tabela_04_final))
+# obter saldo inicial
+disponibilidade_inicial <- read_excel("disponibilidade_inicial.xlsx")
 
-# Verificar total por critério
-cat("\n=== RESUMO POR CRITÉRIO ===")
-resumo_criterios <- tabela_04_final %>%
-  summarise(across(where(is.numeric), sum, na.rm = TRUE))
 
-print(resumo_criterios)
+#computar o saldo do TED, exceto para a linha 9_nao_classificados
+tabela_04_clean <-  tabela_04_final %>% mutate (
+  disponibilidade_bruta_clean = case_when(
+    linhas == "7_fundos_orgaos_programa" ~  disponibilidade_bruta_e + disponibilidade_ted_receber - obrigacoes_ted_liberar,
+                                                                                    linhas == "9_nao_classificados" ~  disponibilidade_bruta_e - deducoes_reclassificacao_e1,
+TRUE ~  disponibilidade_bruta_e))
 
-print("\n=== STATUS FINAL ===")
-print("✅ Código sem erros de sintaxe")
-print("✅ Baseado em dados reais do Excel")
-print("✅ 287 contas contábeis corretas")
-print("✅ Disponibilidade Líquida calculada")
-print("✅ Pronto para produção")
 
-cat("\n🎯 TABELA 4 RREO FINALIZADA COM SUCESSO!")
+# computar o saldo das demais obrigações para a linha 9_nao_classificados 
+# computar o salo do TED e demais obrigações para as outras linhas
+tabela_04_clean <- tabela_04_clean %>%  mutate(
+demais_obrigacoes_financeiras_1_clean = case_when(
+  linhas == "7_fundos_orgaos_programa" ~  demais_obrigacoes_new - demais_obrigacoes_subtracao,
+  TRUE ~ demais_obrigacoes_new - demais_obrigacoes_subtracao + obrigacoes_ted_liberar -disponibilidade_ted_receber
+  
+))
 
-datatable(tabela_04_final) %>% 
-    formatRound(tabela_04_final[2:20] %>% colnames(),
+tabela_04_clean <- left_join(tabela_04_clean, disponibilidade_inicial)
+
+tabela_04_clean <- tabela_04_clean %>%  mutate(
+demais_fluxos_clean = disponibilidade_inicial +receitas_b -despesas_c - disponibilidade_bruta_clean
+
+)
+
+tabela_04_clean <- tabela_04_clean %>%  mutate(
+disponibilidade_antes_insc_rp_clean = disponibilidade_bruta_clean - rpp_exercicios_anteriores_f - rpnp_exercicios_anteriores_g - rpp_exercicio_f1 - demais_obrigacoes_financeiras_1_clean)
+
+
+
+datatable(tabela_04_clean %>% filter( linhas != "outros") %>% select(linhas, disponibilidade_inicial, receitas_b, despesas_c, demais_fluxos_clean, disponibilidade_bruta_clean, rpp_exercicios_anteriores_f, rpp_exercicio_f1, rpnp_exercicios_anteriores_g, demais_obrigacoes_financeiras_1_clean, disponibilidade_antes_insc_rp_clean) %>% adorn_totals(where = "row")) %>% 
+    formatRound(c("disponibilidade_inicial", "receitas_b", "despesas_c", "demais_fluxos_clean" , "disponibilidade_bruta_clean", "rpp_exercicios_anteriores_f", "rpp_exercicio_f1", "rpnp_exercicios_anteriores_g", "demais_obrigacoes_financeiras_1_clean" , "disponibilidade_antes_insc_rp_clean") ,
          
         2, 
         mark = ".", 
         dec.mark = ","
     )
+```
 
-
-
+```{r}
+# print("=== TABELA 4 RREO - VERSÃO FINAL CORRIGIDA ===")
+# 
+# # Formatar para exibição
+# tabela_04_formatada <- tabela_04_final %>%
+#   mutate(across(where(is.numeric), formatar_numero))
+# 
+# print(tabela_04_formatada)
+# 
+# cat("\nDimensões da tabela:")
+# cat("\nLinhas:", nrow(tabela_04_final))
+# cat("\nColunas:", ncol(tabela_04_final))
+# 
+# # Verificar total por critério
+# cat("\n=== RESUMO POR CRITÉRIO ===")
+# resumo_criterios <- tabela_04_final %>%
+#   summarise(across(where(is.numeric), sum, na.rm = TRUE))
+# 
+# print(resumo_criterios)
+# 
+# print("\n=== STATUS FINAL ===")
+# print("✅ Código sem erros de sintaxe")
+# print("✅ Baseado em dados reais do Excel")
+# print("✅ 287 contas contábeis corretas")
+# print("✅ Disponibilidade Líquida calculada")
+# print("✅ Pronto para produção")
+# 
+# cat("\n🎯 TABELA 4 RREO FINALIZADA COM SUCESSO!")
+# 
+# datatable(tabela_04_final) %>% 
+#     formatRound(tabela_04_final[2:20] %>% colnames(),
+#          
+#         2, 
+#         mark = ".", 
+#         dec.mark = ","
+#     )
 ```
 
 ## 📋 Notas Metodológicas
@@ -5182,43 +5233,5 @@ resumir_criterios <- function(lista_criterios) {
   arrange(relatorio, anexo, as.numeric(linha))
 }
 
-# Exemplos de uso:
 
-# Ver resumo de todos os critérios
-# resumir_criterios(criterios_relatorios_fiscais)
-
-# Ver todos os relatórios
-# listar_relatorios(criterios_relatorios_fiscais)
-
-# Ver anexos do RREO
-# listar_anexos(criterios_relatorios_fiscais, "RREO")
-
-# Aplicar só critérios do RREO
-# resultado_rreo <- aplicar_criterios(dados_despesa, criterios_relatorios_fiscais, filtro_relatorio = "RREO")
-
-# Aplicar só critérios do Anexo 3 (RCL)
-# resultado_rcl <- aplicar_criterios(dados_receita, criterios_relatorios_fiscais, filtro_anexo = "A03")
-
-# Converter uma lista antiga
-# nova_estrutura <- converter_lista_antiga(
-#   criterios_despesas_anexo3_rcl, 
-#   relatorio = "RREO", 
-#   anexo_nome = "RCL", 
-#   anexo_codigo = "A03", 
-#   base_dados = "dados_despesa"
-# )
-
-# Exemplos de uso:
-
-# Ver todos os relatórios
-# listar_relatorios(criterios_relatorios_fiscais)
-
-# Ver anexos do RREO
-# listar_anexos(criterios_relatorios_fiscais, "RREO")
-
-# Aplicar só critérios do RREO
-# resultado_rreo <- aplicar_criterios(dados, criterios_relatorios_fiscais, filtro_relatorio = "RREO")
-
-# Aplicar só critérios do Anexo 3 (RCL)
-# resultado_rcl <- aplicar_criterios(dados, criterios_relatorios_fiscais, filtro_anexo = "A03")
 ```
