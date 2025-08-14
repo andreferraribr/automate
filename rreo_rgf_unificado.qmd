@@ -6,7 +6,7 @@ date: today
 execute:
   warning: false
   message: false
-  cache: true
+  cache: false
 format:
   html:
     theme: cosmo
@@ -36,6 +36,7 @@ library(DT)
 library(knitr)
 library(kableExtra)
 library(readr)
+library(scales)
 
 # Configurações globais
 options(OutDec = ",")
@@ -61,7 +62,7 @@ print("✅ Bibliotecas carregadas com sucesso!")
 
 ```{r variaveis_globais}
 # Filtro principal do mês
-mes_filtro <- "JUN/2025"
+mes_filtro <- "JUL/2025"
 
 print(paste("📅 Mês de referência definido:", mes_filtro))
 ```
@@ -74,9 +75,11 @@ print(paste("📅 Mês de referência definido:", mes_filtro))
 #| echo: true
 #| eval: true
 
-dados_receita <- read_excel("data/tg_receita.xlsx") %>% 
+dados_receita <- read_excel("data/tg_julho/tg_receita_julho_2025.xlsx") %>% 
   clean_names() %>% 
   filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
+dados_receita$mes_lancamento %>% unique() %>% fct_inorder()
+
 
 # Criar variáveis derivadas
 dados_receita <- dados_receita %>% 
@@ -103,11 +106,13 @@ print(paste("✅ Dados de receita carregados:", nrow(dados_receita), "registros"
 #| eval: true
 
 # Buscar todos os arquivos de despesa
-arq_despesa <- list.files(path = "data/", pattern = 'tg_despesa', full.names = TRUE)
+arq_despesa <- list.files(path = "data/tg_julho/", pattern = 'tg_despesa', full.names = TRUE)
 
 dados_despesa <- map_df(arq_despesa, read_excel) %>%
   clean_names() %>%
   filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
+dados_despesa$mes_lancamento %>% unique() %>% fct_inorder() 
+
 
 # Criar variáveis derivadas
 dados_despesa <- dados_despesa %>%
@@ -145,7 +150,7 @@ print(paste("✅ Dados de despesa carregados:", nrow(dados_despesa), "registros"
 #| eval: true
 
 # RP Anexo 07
-dados_rp_anexo_07 <- read_excel("data/tg_rp_anexo_07.xlsx") %>% 
+dados_rp_anexo_07 <- read_excel("data/tg_julho/tg_rp_anexo_07_julho_2025.xlsx") %>% 
   clean_names()
 
 dados_rp_anexo_07 <- dados_rp_anexo_07 %>%  
@@ -161,18 +166,20 @@ dados_rp_anexo_07 <- dados_rp_anexo_07 %>%
       TRUE ~ orgao_uge_poder_nome
     )
   )
+dados_rp_anexo_07$mes_lancamento %>% unique() %>% fct_inorder() 
 
 # RP Anexo 12
-dados_rp_anexo_12 <- read_excel("data/tg_rp_anexo_12.xlsx") %>% 
+dados_rp_anexo_12 <- read_excel("data/tg_julho/tg_rp_anexo_12_julho_2025.xlsx") %>% 
   clean_names()
 
 # RP Anexo 08
-dados_rp_anexo_08 <- read_excel("data/tg_rp_anexo_08.xlsx") %>% 
+dados_rp_anexo_08 <- read_excel("data/tg_julho/tg_rp_anexo_08_julho_2025.xlsx") %>% 
   clean_names()
 
 
-dados_rp_anexo_03_rcl <- read_excel("data/tg_rp_anexo_03_rcl.xlsx") %>% 
+dados_rp_anexo_03_rcl <- read_excel("data/tg_julho/tg_rp_anexo_03_rcl_julho_2025.xlsx") %>% 
   clean_names()
+dados_rp_anexo_03_rcl$mes_lancamento %>% unique() %>% fct_inorder() 
 
 
 
@@ -190,31 +197,35 @@ print(paste("   - Anexo 03 RCL:", nrow(dados_rp_anexo_03_rcl), "registros"))
 #| eval: true
 
 
-# Dados principais da tabela 04
-dados_tabela_04 <- read_excel("data/dados_conta_contabil_tabela_04_claude_conta_contabil.xlsx") %>% 
-  clean_names()
+# Buscar todos os arquivos de despesa
+arq_tabela_04<- list.files(path = "data/tg_julho/", pattern = 'tabela_04', full.names = TRUE)
+
+dados_tabela_04 <- map_df(arq_tabela_04, read_excel) %>%
+  clean_names() 
+
+
 
 # Dados específicos da UG 170600
-dados_tabela_04_170600 <- read_excel("data/dados_conta_contabil_tabela_04_claude_conta_contabil_170600.xlsx") %>% 
-  clean_names() %>% 
-  mutate(ug = "170600")
+# dados_tabela_04_170600 <- read_excel("data/tg_julho/dados_conta_contabil_tabela_04_claude_conta_contabil_170600.xlsx") %>% 
+#   clean_names() %>% 
+#   mutate(ug = "170600")
 
 # Dados filtro RREO - demais UGs
-dados_tabela_04_filtro_rreo <- read_excel("data/dados_conta_contabil_tabela_04_claude_conta_contabil_filtro_rreo.xlsx") %>% 
+dados_tabela_04_filtro_rreo <- read_excel("data/tg_julho/tg_rreo_tabela_04_filtro_rreo_julho_2025.xlsx") %>% 
   clean_names() %>% 
   mutate(ug = "demais")
 
 cat("📊 Tabela 04 - Dados principais:", nrow(dados_tabela_04), "registros\n")
-cat("📊 Tabela 04 - UG 170600:", nrow(dados_tabela_04_170600), "registros\n")
+# cat("📊 Tabela 04 - UG 170600:", nrow(dados_tabela_04_170600), "registros\n")
 cat("📊 Tabela 04 - Filtro RREO:", nrow(dados_tabela_04_filtro_rreo), "registros\n")
     
     
 # Dados NDD (Natureza de Despesa Detalhada)
-dados_ndd <- read_excel("data/tg_anexo_06_rreo_despesas_primarias_ndd.xlsx") %>% 
+dados_ndd <- read_excel("data/tg_julho/tg_anexo_06_rreo_despesas_primarias_ndd_julho_2025.xlsx") %>% 
   clean_names()
 
 # Dados Categoria/Grupo
-dados_categoria_grupo <- read_excel("data/tg_anexo_06_rreo_despesas_primarias_categoria_grupo.xlsx") %>% 
+dados_categoria_grupo <- read_excel("data/tg_julho/tg_anexo_06_rreo_despesas_primarias_categoria_grupo_julho_2025.xlsx") %>% 
   clean_names()
 
 cat("📊 Anexo 06 - NDD:", nrow(dados_ndd), "registros\n")
@@ -222,87 +233,95 @@ cat("📊 Anexo 06 - Categoria/Grupo:", nrow(dados_categoria_grupo), "registros\
 
 
 # RPN - Juros
-tg_RPN_juros <- read_excel("data/tg_RPN_juros.xlsx") %>% 
+tg_RPN_juros <- read_excel("data/tg_julho/tg_RPN_juros_julho_2025.xlsx") %>% 
   clean_names()
-
+dados_juros <- tg_RPN_juros
+dados_juros$mes_lancamento %>% unique() %>% fct_inorder()
 # RPN - Disponibilidades
-tg_RPN_disponibilidades <- read_excel("data/tg_RPN_disponibilidades.xlsx") %>% 
+tg_RPN_disponibilidades <- read_excel("data/tg_julho/tg_RPN_disponibilidades_julho_2025.xlsx") %>% 
   clean_names()
+tg_RPN_disponibilidades$mes_lancamento %>% unique() %>% fct_inorder()
+
+dados_ndd <- read_excel("data/tg_julho/tg_anexo_06_rreo_despesas_primarias_ndd_julho_2025.xlsx")%>% clean_names()
+
+dcl_1 <- read_excel("data/tg_julho/dcl_1_julho_2025.xlsx") %>% clean_names()
 
 
-dcl_1 <- read_excel("data/dcl_1.xlsx") %>% clean_names()
+dcl_2a <- read_excel("data/tg_julho/dcl_2a_julho_2025.xlsx") %>% clean_names()
 
 
-dcl_2a <- read_excel("data/dcl_2a.xlsx") %>% clean_names()
 
-dcl_2b <- read_excel("data/dcl_2b.xlsx") %>% clean_names()
+arq_dcl_2b<- list.files(path = "data/tg_julho/", pattern = 'dcl_2b', full.names = TRUE)
+
+dcl_2b <- map_df(arq_dcl_2b, read_excel) %>%
+  clean_names() 
+
+
+
 
 cat("📊 RPN - Juros:", nrow(tg_RPN_juros), "registros\n")
 cat("📊 RPN - Disponibilidades:", nrow(tg_RPN_disponibilidades), "registros\n")
 
 print("✅ Dados contábeis carregados:")
 print(paste("   - Tabela 04:", nrow(dados_tabela_04), "registros"))
-print(paste("   - Tabela 04 (170600):", nrow(dados_tabela_04_170600), "registros"))
+# print(paste("   - Tabela 04 (170600):", nrow(dados_tabela_04_170600), "registros"))
 print(paste("   - NDD:", nrow(dados_ndd), "registros"))
 print(paste("   - RPN Juros:", nrow(tg_RPN_juros), "registros"))
 ```
 
 ```{r}
 # Criar resumo dos dados importados
-resumo_importacao <- data.frame(
-  Base = c(
-    "dados_receita",
-    "dados_despesa", 
-    "dados_rp_anexo_07",
-    "dados_rp_anexo_12",
-    "dados_rp_anexo_08",
-    "dados_rp_anexo_03_rcl",
-    "dados_tabela_04",
-    "dados_tabela_04_170600",
-    "dados_tabela_04_filtro_rreo",
-    "dados_ndd",
-    "dados_categoria_grupo",
-    "tg_RPN_juros",
-    "tg_RPN_disponibilidades"
-  ),
-  Registros = c(
-    nrow(dados_receita),
-    nrow(dados_despesa),
-    nrow(dados_rp_anexo_07),
-    nrow(dados_rp_anexo_12),
-    nrow(dados_rp_anexo_08),
-    nrow(dados_rp_anexo_03_rcl),
-    nrow(dados_tabela_04),
-    nrow(dados_tabela_04_170600),
-    nrow(dados_tabela_04_filtro_rreo),
-    nrow(dados_ndd),
-    nrow(dados_categoria_grupo),
-    nrow(tg_RPN_juros),
-    nrow(tg_RPN_disponibilidades)
-  ),
-  Tipo = c(
-    "Receita",
-    "Despesa",
-    "Restos a Pagar",
-    "Restos a Pagar", 
-    "Restos a Pagar",
-    "Restos a Pagar",
-    "Conta Contábil",
-    "Conta Contábil",
-    "Conta Contábil",
-    "Anexo 06",
-    "Anexo 06",
-    "RPN",
-    "RPN"
-  )
-)
-
-# Exibir tabela resumo
-knitr::kable(
-  resumo_importacao,
-  caption = "Resumo dos Dados Importados",
-  format.args = list(big.mark = ".", decimal.mark = ",")
-)
+# resumo_importacao <- data.frame(
+#   Base = c(
+#     "dados_receita",
+#     "dados_despesa", 
+#     "dados_rp_anexo_07",
+#     "dados_rp_anexo_12",
+#     "dados_rp_anexo_08",
+#     "dados_rp_anexo_03_rcl",
+#     "dados_tabela_04",
+#     
+#     "dados_tabela_04_filtro_rreo",
+#     "dados_ndd",
+#     "dados_categoria_grupo",
+#     "tg_RPN_juros",
+#     "tg_RPN_disponibilidades"
+#   ),
+#   Registros = c(
+#     nrow(dados_receita),
+#     nrow(dados_despesa),
+#     nrow(dados_rp_anexo_07),
+#     nrow(dados_rp_anexo_12),
+#     nrow(dados_rp_anexo_08),
+#     nrow(dados_rp_anexo_03_rcl),
+#     nrow(dados_tabela_04),
+#     nrow(dados_ndd),
+#     nrow(dados_categoria_grupo),
+#     nrow(tg_RPN_juros),
+#     nrow(tg_RPN_disponibilidades)
+#   ),
+#   Tipo = c(
+#     "Receita",
+#     "Despesa",
+#     "Restos a Pagar",
+#     "Restos a Pagar", 
+#     "Restos a Pagar",
+#     "Restos a Pagar",
+#     "Conta Contábil",
+#     "Conta Contábil",
+#     "Anexo 06",
+#     "Anexo 06",
+#     "RPN",
+#     "RPN"
+#   )
+# )
+# 
+# # Exibir tabela resumo
+# knitr::kable(
+#   resumo_importacao,
+#   caption = "Resumo dos Dados Importados",
+#   format.args = list(big.mark = ".", decimal.mark = ",")
+# )
 ```
 
 ## ⚙️ Metodologia e Filtros
@@ -323,31 +342,7 @@ print(paste("   - Atributos:", nrow(atributos_metodologia), "registros"))
 ## 📊 Resumo dos Dados Carregados
 
 ```{r resumo_dados}
-#| echo: false
 
-# Criar tabela resumo
-resumo_dados <- data.frame(
-  Dataset = c(
-    "Receita", "Despesa", "RP Anexo 07", "RP Anexo 12", "RP Anexo 08",
-    "Tabela 04", "Tabela 04 (170600)", "Tabela 04 (RREO)", 
-    "NDD", "Categoria/Grupo", "RPN Juros", "RPN Disponibilidades",
-    "Filtros Metodologia"
-  ),
-  Registros = c(
-    nrow(dados_receita), nrow(dados_despesa), nrow(dados_rp_anexo_07),
-    nrow(dados_rp_anexo_12), nrow(dados_rp_anexo_08),
-    nrow(dados_tabela_04), nrow(dados_tabela_04_170600), nrow(dados_tabela_04_filtro_rreo),
-    nrow(dados_ndd), nrow(dados_categoria_grupo), nrow(tg_RPN_juros), 
-    nrow(tg_RPN_disponibilidades), nrow(filtros_metodologia)
-  ),
-  Status = rep("✅ Carregado", 13)
-)
-
-kable(resumo_dados, 
-      caption = "📋 Resumo dos Datasets Carregados",
-      format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  row_spec(0, bold = TRUE, background = "#f8f9fa")
 ```
 
 # 🔧 Funções Auxiliares {#sec-funcoes-aux}
@@ -384,8 +379,8 @@ print(paste("Número formatado:", formatar_numero(exemplo_numero)))
 #' @param grupo Vetor com nomes das colunas de agrupamento (não numéricas)
 #' @return Objeto DT formatado
 dt_formatada <- function(df, grupo) {
-  library(DT)
-  library(janitor)
+  # library(DT)
+  # library(janitor)
   
   datatable(
     df %>% adorn_totals("row"), 
@@ -424,6 +419,15 @@ processar_dt_criterios <- function(df) {
     pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 }
 
+
+processar_dt_criterios_conta_contabil <- function(df) {
+  df %>% 
+    separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>% 
+    filter(mes_lancamento == mes_filtro) %>%
+    group_by(ordem, nome, categoria) %>% 
+    summarise(saldo = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = "drop") %>%
+    complete(categoria, fill = list(saldo = 0)) 
+}
 # Exemplo de uso:
 # resultado <- processar_receita_rpps(receita_rpps, mes_filtro)
 
@@ -442,8 +446,8 @@ processar_dt_criterios <- function(df) {
 #' @param grupo Vetor com nomes das colunas de agrupamento
 #' @return Data frame pivotado e sumarizado
 tabela_pivotada <- function(df, grupo) {
-  library(dplyr)
-  library(tidyr)
+  # library(dplyr)
+  # library(tidyr)
   
   # Obter itens únicos de informação
   itens <- df$item_informacao_nome %>% unique() %>% na.omit()
@@ -507,7 +511,7 @@ print("✅ Função debug_estrutura definida")
 #' @param codigo String no formato especificado
 #' @return Lista com componentes: mes_lancamento, demonstrativo, anexo, parte
 desmembrar_codigo <- function(codigo) {
-  library(stringr)
+  # library(stringr)
   
   # Validar formato
   if (!str_detect(codigo, "^[A-Z]{3}/\\d{4}[A-Za-z0-9]{3}[AT]\\d{2}[A-Za-z0-9]{0,10}$")) {
@@ -555,10 +559,10 @@ desmembrar_codigo <- function(codigo) {
 }
 
 # Teste da função
-codigo_teste <- "JUN/2025RGFA07"
-resultado_teste <- desmembrar_codigo(codigo_teste)
-print("Teste de desmembramento:")
-print(resultado_teste)
+# codigo_teste <- "JUN/2025RGFA07"
+# resultado_teste <- desmembrar_codigo(codigo_teste)
+# print("Teste de desmembramento:")
+# print(resultado_teste)
 ```
 
 Melhorias:
@@ -622,6 +626,36 @@ agrupar_e_combinar_dados <- function(df, criterios, metrica = "saldo_r_item_info
     df %>%
       filter(condicao_expr) %>%
       group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
+      summarise(
+        # Usar a métrica especificada dinamicamente
+        valor = sum(.data[[metrica]], na.rm = TRUE), 
+        .groups = "drop"
+      ) %>%
+      mutate(categoria = categoria) %>%
+      # Renomear a coluna valor para o nome da métrica original
+      rename(!!metrica := valor)
+  })
+}
+
+
+
+agrupar_e_combinar_dados_conta_contabil <- function(df, criterios, metrica = "saldo_r_conta_contabil") {
+  
+  # Verificar se a métrica existe no dataframe
+  if (!metrica %in% names(df)) {
+    stop(paste("A métrica", metrica, "não foi encontrada no dataframe."))
+  }
+  
+  # Aplicar critérios - esta é a parte fundamental
+  map_df(names(criterios), function(categoria) {
+    crit <- criterios[[categoria]]
+    
+    # Avaliar condição
+    condicao_expr <- eval(parse(text = crit$criterio), envir = df)
+    
+    df %>%
+      filter(condicao_expr) %>%
+      group_by(mes_lancamento) %>%
       summarise(
         # Usar a métrica especificada dinamicamente
         valor = sum(.data[[metrica]], na.rm = TRUE), 
@@ -716,14 +750,14 @@ calcular_percentual <- function(valor_numerador, valor_denominador, casas_decima
 }
 
 # Teste da função
-teste_perc <- calcular_percentual(25, 100)
-print(paste("Teste percentual 25/100:", teste_perc, "%"))
+# teste_perc <- calcular_percentual(25, 100)
+# print(paste("Teste percentual 25/100:", teste_perc, "%"))
 ```
 
 # 📋 RREO Anexo 01 - Balanço Orçamentário {#sec-anexo-07}
 
 ```{r}
-datatable(dados_despesa %>% filter(tipo_modalidade != "intra", item_informacao_nome == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+datatable(dados_despesa %>% filter(mes_lancamento == mes_filtro, tipo_modalidade != "intra", item_informacao_nome == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
   colnames = c("refinanciamento", "Grupo código", "Grupo Nome", "Despesa empenhada"))%>% formatRound("despesa_empenhada", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
@@ -736,14 +770,6 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == mes_filt
 ```
 
 # 📋 RREO Anexo 03 - RCL
-
-criar linha para RP cancelado. Criar relatório no TG
-
-|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|
-|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-|  | RP Cancelados de Transferências Constitucionais e Legais |  | 1,40 |  | 138.967,82 |  | 5.326,15 |  | 0,00 |  | 0,00 |  | 0,00 |  |
-|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 
 ```{r criterios-receitas}
 #| code-fold: true
@@ -1002,7 +1028,53 @@ rp_cancelados_anexo3_rcl <- agrupar_e_combinar_dados(
 #   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
 ```
 
-```{r}
+```{r rcl_receita}
+
+
+datatable(
+   processar_dt_criterios( receitas_anexo3_rcl),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "receitas_anexo3_rcl"
+) %>%
+  formatRound(
+    which(sapply(processar_dt_criterios( receitas_anexo3_rcl), is.numeric)), 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+
+
+
+
+```
+
+```{r rcl_despesa}
+datatable(
+   processar_dt_criterios( despesas_anexo3_rcl),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "despesas_anexo3_rcl"
+) %>%
+  formatRound(
+    which(sapply(processar_dt_criterios( despesas_anexo3_rcl), is.numeric)), 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+```
+
+```{r rp_rcl}
+
+
+
+
 datatable(
    processar_dt_criterios( rp_cancelados_anexo3_rcl),
   options = list(
@@ -1018,6 +1090,12 @@ datatable(
     mark = ".", 
     dec.mark = ","
   )
+```
+
+```{r}
+
+formatar_numero((sum(receitas_anexo3_rcl$saldo_r_item_informacao)-sum(despesas_anexo3_rcl$saldo_r_item_informacao)- sum(rp_cancelados_anexo3_rcl$saldo_r_item_informacao))/1000)
+
 ```
 
 ## 📊 Demonstrativo da Receita Corrente Líquida
@@ -1796,7 +1874,9 @@ cat("
 
 *📊 Relatório gerado automaticamente pelo sistema de Relatórios Fiscais RREO & RGF*
 
-# 📋 RGF DCL base para o Anexo 6 (Resultado Primário)
+# 📋 RREO Anexo 06 (Resultado Primário)
+
+## Dados da DCL (RGF Anexo 02)
 
 ```{r dcl}
 # ANEXO 2 RGF - DCL (DÍVIDA CONSOLIDADA LÍQUIDA) - CÓDIGO R COMPLETO
@@ -1804,9 +1884,9 @@ cat("
 # Baseado nas consultas SQL reais do Tesouro Gerencial
 # Atualizado com consolidação de contas e correções de sinais
 
-library(dplyr)
-library(tidyr)
-library(stringr)
+# library(dplyr)
+# library(tidyr)
+# library(stringr)
 
 # =============================================================================
 # CONFIGURAR FORMATAÇÃO DE NÚMEROS
@@ -2290,9 +2370,9 @@ print("✅ Ordem exata do relatório oficial do Tesouro Gerencial")
 dcl_resultado <- dcl_final_formatado %>% 
   select(linha, componente, valor_formatado, sql_baseado)
 
-print(dcl_resultado)
+# print(dcl_resultado)
 
-print(paste("\n=== DCL TOTAL (Linha 27):", formatar_numero(dcl_total), "==="))
+# print(paste("\n=== DCL TOTAL (Linha 27):", formatar_numero(dcl_total), "==="))
 
 datatable(dcl_resultado)
 
@@ -2300,25 +2380,1468 @@ datatable(dcl_resultado)
 # RESUMO DE VALIDAÇÃO E MELHORIAS
 # =============================================================================
 
-print("\n=== RESUMO DAS MELHORIAS IMPLEMENTADAS ===")
-print("🔧 CONSOLIDAÇÃO:")
-print("   - Linha 4: Dívida Securitizada → apenas DCL_2B")
-print("   - Linha 20: Demais Dívidas Renegociadas → apenas DCL_2B") 
-print("   - Linha 21: Ajustes para Perdas → apenas DCL_2B")
-print("   - Linha 22: Outros Créditos Bancários → apenas DCL_2B")
-print("   - Linha 23: Outros Créditos Bancários - Ajustes → apenas DCL_2B")
+# print("\n=== RESUMO DAS MELHORIAS IMPLEMENTADAS ===")
+# print("🔧 CONSOLIDAÇÃO:")
+# print("   - Linha 4: Dívida Securitizada → apenas DCL_2B")
+# print("   - Linha 20: Demais Dívidas Renegociadas → apenas DCL_2B") 
+# print("   - Linha 21: Ajustes para Perdas → apenas DCL_2B")
+# print("   - Linha 22: Outros Créditos Bancários → apenas DCL_2B")
+# print("   - Linha 23: Outros Créditos Bancários - Ajustes → apenas DCL_2B")
+# 
+# print("\n✅ CORREÇÕES DE SINAIS:")
+# print("   - Linha 21: Ajustes para Perdas → POSITIVO (era negativo)")
+# print("   - Linha 23: Outros Créditos Bancários - Ajustes → POSITIVO (era negativo)")
+# 
+# print("\n🔧 FILTROS EXPANDIDOS:")
+# print("   - Linha 7: Demais Dívidas → filtros ISF menos restritivos + padrões de contas")
+# print("   - Linha 8: Precatórios → incluídas todas as contas do dcl_1") 
+# print("   - Linha 10: Passivos → filtros ISF menos restritivos")
+# 
+# print("\n📊 CONTAS ADICIONADAS NO DCL_2B:")
+# print("Total de 47 contas consolidadas de dcl_2a para dcl_2b")
+```
 
-print("\n✅ CORREÇÕES DE SINAIS:")
-print("   - Linha 21: Ajustes para Perdas → POSITIVO (era negativo)")
-print("   - Linha 23: Outros Créditos Bancários - Ajustes → POSITIVO (era negativo)")
+## Processamento Anexo 06
 
-print("\n🔧 FILTROS EXPANDIDOS:")
-print("   - Linha 7: Demais Dívidas → filtros ISF menos restritivos + padrões de contas")
-print("   - Linha 8: Precatórios → incluídas todas as contas do dcl_1") 
-print("   - Linha 10: Passivos → filtros ISF menos restritivos")
+```{r criterio_anexo_06}
+# ===============================================================================
+# CRITÉRIOS RREO ANEXO 6 - DESMEMBRADOS POR DATAFRAME
+# ===============================================================================
 
-print("\n📊 CONTAS ADICIONADAS NO DCL_2B:")
-print("Total de 47 contas consolidadas de dcl_2a para dcl_2b")
+# ===============================================================================
+# 1. RECEITAS PRIMÁRIAS (dados_receita)
+# ===============================================================================
+criterios_receitas_primarias_rreo <- list(
+  
+  # RECEITAS CORRENTES (I) - Total
+  `01  Receitas Correntes (I)` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # IMPOSTOS, TAXAS E CONTRIBUIÇÕES DE MELHORIA (Subitem)
+  `02  ___Impostos, Taxas e Contribuições de Melhoria` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 1 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # CONTRIBUIÇÕES (Subitem)
+  `03  ___Contribuições` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 2 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # RECEITA PATRIMONIAL (Subitem)
+  `04  ___Receita Patrimonial` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # APLICAÇÕES FINANCEIRAS (II) - DEDUÇÃO (Sub-subitem)
+  `05  ______Aplicações Financeiras (II)` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    (natureza_receita_codigo_completo %in% c('13210101', '13210201', '13210301', '13210501') |
+     startsWith(natureza_receita_codigo_completo, '1321004') |
+     startsWith(natureza_receita_codigo_completo, '1329001')) & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # OUTRAS RECEITAS PATRIMONIAIS (Sub-subitem)
+  `06  ______Outras Receitas Patrimoniais` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 & 
+    !(natureza_receita_codigo_completo %in% c('13210101', '13210201', '13210301', '13210501') |
+      startsWith(natureza_receita_codigo_completo, '1321004') |
+      startsWith(natureza_receita_codigo_completo, '1329001')) & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # TRANSFERÊNCIAS CORRENTES (Subitem)
+  `07  ___Transferências Correntes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # DEMAIS RECEITAS CORRENTES (Subitem)
+  `08  ___Demais Receitas Correntes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    (startsWith(natureza_receita_codigo_completo, '14') |
+     startsWith(natureza_receita_codigo_completo, '15') |
+     startsWith(natureza_receita_codigo_completo, '16') |
+     startsWith(natureza_receita_codigo_completo, '18') |
+     startsWith(natureza_receita_codigo_completo, '19')) & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # OUTRAS RECEITAS FINANCEIRAS (III) - DEDUÇÃO (Sub-subitem)
+  `09  ______Outras Receitas Financeiras (III)` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    (natureza_receita_codigo_completo %in% c('16410101', '16410102', '19991101', '19991102', '16410301') |
+     startsWith(natureza_receita_codigo_completo, '1922012') |
+     startsWith(natureza_receita_codigo_completo, '1990992')) & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # RECEITAS CORRENTES RESTANTES (Sub-subitem - calculado)
+  `10  ___Receitas Correntes Restantes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    (startsWith(natureza_receita_codigo_completo, '14') |
+     startsWith(natureza_receita_codigo_completo, '15') |
+     startsWith(natureza_receita_codigo_completo, '16') |
+     startsWith(natureza_receita_codigo_completo, '18') |
+     startsWith(natureza_receita_codigo_completo, '19')) & 
+    !(natureza_receita_codigo_completo %in% c('16410101', '16410102', '19991101', '19991102', '16410301') |
+      startsWith(natureza_receita_codigo_completo, '1922012') |
+      startsWith(natureza_receita_codigo_completo, '1990992')) & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # RECEITAS DE CAPITAL (V) - Total
+  `11  Receitas de Capital (V)` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # OPERAÇÕES DE CRÉDITO (VI) - DEDUÇÃO (Subitem)
+  `12  ___Operações de Crédito (VI)` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 1 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # AMORTIZAÇÃO DE EMPRÉSTIMOS (VII) - DEDUÇÃO (Subitem)
+  `13  ___Amortização de Empréstimos (VII)` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 3 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # ALIENAÇÕES DE BENS (Subitem)
+  `14  ___Alienações de Bens` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 2 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # OUTRAS ALIENAÇÕES DE BENS (Sub-subitem - igual a alienações)
+  `15  ______Outras Alienações de Bens` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 2 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DE CAPITAL (Subitem)
+  `16  ___Transferências de Capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4 & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # OUTRAS RECEITAS DE CAPITAL (Subitem)
+  `17  ___Outras Receitas de Capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem %in% c(5, 6, 7, 8, 9) & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  ),
+  
+  # OUTRAS RECEITAS DE CAPITAL NÃO PRIMÁRIAS (X) - DEDUÇÃO (Sub-subitem)
+  `18  ______Outras Receitas de Capital Não Primárias (X)` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    (startsWith(natureza_receita_codigo_completo, '292') |
+     startsWith(natureza_receita_codigo_completo, '293') |
+     startsWith(natureza_receita_codigo_completo, '294')) & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 5
+    "
+  )
+)
+
+# ===============================================================================
+# 2. DESPESAS PRIMÁRIAS - CATEGORIA/GRUPO (dados_categoria_grupo)
+# ===============================================================================
+criterios_despesas_categoria_grupo_rreo <- list(
+  
+  # DESPESAS CORRENTES (XIII)
+  `01  Despesas Correntes (XIII)` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # PESSOAL E ENCARGOS SOCIAIS (Subitem de Correntes)
+  `02  ___Pessoal e Encargos Sociais` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 & 
+    grupo_despesa_codigo_grupo == 1 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # JUROS E ENCARGOS DA DÍVIDA (XIV) - DEDUÇÃO (Subitem de Correntes)
+  `03  ___Juros e Encargos da Dívida (XIV)` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 & 
+    grupo_despesa_codigo_grupo == 2 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # OUTRAS DESPESAS CORRENTES (Subitem de Correntes)
+  `04  ___Outras Despesas Correntes` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 & 
+    grupo_despesa_codigo_grupo == 3 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # DESPESAS DE CAPITAL (XVI)
+  `05  Despesas de Capital (XVI)` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # INVESTIMENTOS (Subitem de Capital)
+  `06  ___Investimentos` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 & 
+    grupo_despesa_codigo_grupo == 4 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # INVERSÕES FINANCEIRAS (Subitem de Capital)
+  `07  ___Inversões Financeiras` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 & 
+    grupo_despesa_codigo_grupo == 5 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # AMORTIZAÇÃO DA DÍVIDA (XX) - DEDUÇÃO (Subitem de Capital)
+  `08  ___Amortização da Dívida (XX)` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 & 
+    grupo_despesa_codigo_grupo == 6 & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  )
+)
+
+# ===============================================================================
+# 3. DESPESAS PRIMÁRIAS - NATUREZA DETALHADA (dados_ndd)
+# ===============================================================================
+criterios_despesas_natureza_detalhada_rreo <- list(
+  
+  # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (Subitem de Outras Despesas Correntes)
+  `01  ______Transferências Constitucionais e Legais` = list(
+    criterio = "
+    (startsWith(natureza_despesa_detalhada_codigo, '333081') | 
+     startsWith(natureza_despesa_detalhada_codigo, '334081')) & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  ),
+  
+  # CONCESSÃO DE EMPRÉSTIMOS E FINANCIAMENTOS (XVII) - Subitem de Inversões Financeiras
+  `02  ______Concessão de Empréstimos e Financiamentos (XVII)` = list(
+    criterio = "
+    natureza_despesa_detalhada_codigo %in% c('45909206', '45909208', '45909266') & 
+    !acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                               '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                               '20GI', '006C', '00ED', '00EE', '00SG')
+    "
+  )
+)
+
+# ===============================================================================
+# 4. TRANSFERÊNCIAS E SUBSÍDIOS (dados_despesa)
+# ===============================================================================
+criterios_transferencias_subsidios_rreo <- list(
+  
+  # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (30 AÇÕES)
+  `01  Transferências Constitucionais e Legais (30 Ações)` = list(
+    criterio = "
+    acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00D0', '00G6', '00H6', 
+                              '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', 
+                              '0C03', '0E25', '0E36', '00PX', '0C33', '006M', '00QR', '00RX', 
+                              '00S3', '00S7', '00S8', '00SE', '00SB', '00UH') & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 56
+    "
+  ),
+  
+  # SUBSÍDIOS E SUBVENÇÕES (19 AÇÕES)
+  `02  Subsídios e Subvenções (19 Ações)` = list(
+    criterio = "
+    acao_governo_codigo %in% c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                              '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                              '20GI', '006C', '00ED', '00EE', '00SG') & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    item_informacao_codigo == 56
+    "
+  )
+)
+
+# ===============================================================================
+# 5. DISPONIBILIDADES (tg_RPN_disponibilidades)
+# ===============================================================================
+criterios_disponibilidades_rreo <- list(
+  
+  # DISPONIBILIDADES - RECURSOS A CLASSIFICAR
+  `01  Disponibilidades - Recursos a Classificar` = list(
+    criterio = "
+    fonte_recursos_codigo %in% c('77', '490') & 
+    orgao_uge_tipo_administracao_codigo != 7
+    "
+  ),
+  
+  # DISPONIBILIDADES - RECURSOS DIVERSOS
+  `02  Disponibilidades - Recursos Diversos` = list(
+    criterio = "
+    fonte_recursos_codigo %in% c('90', '491') & 
+    orgao_uge_tipo_administracao_codigo != 7
+    "
+  )
+)
+
+# ===============================================================================
+# 6. JUROS ATIVOS E PASSIVOS (dados_juros)
+# ===============================================================================
+criterios_juros_ativos_passivos_rreo <- list(
+  
+  # JUROS ATIVOS (CONTAS 34XXX + ESPECÍFICAS)
+  `01  Juros Ativos` = list(
+    criterio = "
+    substr(conta_contabil_numero, 1, 5) %in% c('34111', '34113', '34114', '34115', '34121', '34131', 
+                                              '34141', '34181', '34183', '34184', '34185', '34191',
+                                              '34211', '34213', '34214', '34215', '34221', '34291') |
+    conta_contabil_numero %in% c('445110100', '445210100')
+    "
+  ),
+  
+  # JUROS PASSIVOS (CONTAS 44XXX)
+  `02  Juros Passivos` = list(
+    criterio = "
+    substr(conta_contabil_numero, 1, 5) %in% c('44111', '44113', '44114', '44115', '44121', '44131', 
+                                              '44133', '44134', '44135', '44141', '44211', '44213', 
+                                              '44214', '44215', '44221')
+    "
+  ),
+  
+  # FUNDOS - FILTRO ESPECÍFICO PARA JUROS
+  `03  Fundos - Juros (Filtro Específico)` = list(
+    criterio = "
+    orgao_uge_tipo_administracao_codigo == '7' & 
+    orgao_uge_orcam_fiscal_s_n == 'PERTENCE' & 
+    ug_executora_codigo != '380916' & 
+    !orgao_uge_codigo %in% c('25915', '37904')
+    "
+  )
+)
+```
+
+```{r processar_resultado_primario}
+
+
+ despesas_categoria_grupo_rreo <- agrupar_e_combinar_dados(
+       df =  dados_categoria_grupo %>% filter(mes_lancamento == mes_filtro),
+        criterios = criterios_despesas_categoria_grupo_rreo
+      )
+ 
+ datatable(
+  processar_dt_criterios( despesas_categoria_grupo_rreo),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "despesas_categoria_grupo_rreo"
+) %>%
+  formatRound(
+    which(sapply(processar_dt_criterios( despesas_categoria_grupo_rreo), is.numeric)), 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+
+ 
+ 
+  receitas_primarias_rreo <- agrupar_e_combinar_dados(
+       df =  dados_receita,
+        criterios = criterios_receitas_primarias_rreo
+      )
+ 
+ datatable(
+  processar_dt_criterios( receitas_primarias_rreo),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "eceitas_primarias_rreo"
+) %>%
+  formatRound(
+    which(sapply(processar_dt_criterios( receitas_primarias_rreo), is.numeric)), 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+ 
+
+ 
+ 
+
+
+despesas_natureza_detalhada_rreo <-   agrupar_e_combinar_dados(
+       df =  dados_ndd,
+        criterios = criterios_despesas_natureza_detalhada_rreo )
+
+
+ datatable(
+  processar_dt_criterios( despesas_natureza_detalhada_rreo),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "despesas_natureza_detalhada_rreo"
+) %>%
+  formatRound(
+    which(sapply(processar_dt_criterios( despesas_natureza_detalhada_rreo), is.numeric)), 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+ 
+ 
+ 
+juros_ativos_passivos_rreo <- agrupar_e_combinar_dados_conta_contabil(
+       df =  dados_juros,
+        criterios = criterios_juros_ativos_passivos_rreo
+      ) 
+
+
+
+
+datatable(
+  juros_ativos_passivos_rreo %>% filter(mes_lancamento == mes_filtro) %>% pivot_wider(names_from = mes_lancamento, values_from = saldo_r_conta_contabil),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "juros_ativos_passivos_rreo"
+) %>%
+  formatRound(
+    mes_filtro, 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+
+
+
+  disponibilidades_rreo <- agrupar_e_combinar_dados_conta_contabil( 
+    df =  tg_RPN_disponibilidades,
+        criterios =criterios_disponibilidades_rreo)
+  
+  
+  datatable(
+  disponibilidades_rreo %>% filter(mes_lancamento == mes_filtro) %>% pivot_wider(names_from = mes_lancamento, values_from = saldo_r_conta_contabil),
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
+  ),
+  caption = "disponibilidades_rreo"
+) %>%
+  formatRound(
+    mes_filtro, 
+    digits = 2, 
+    mark = ".", 
+    dec.mark = ","
+  )
+  
+
+
+```
+
+```{r anexo_06_receitas_primarias}
+# RREO ANEXO 6 - RECEITAS PRIMÁRIAS (CÓDIGO SIMPLES)
+# Replica exatamente os valores da planilha oficial
+
+
+
+
+# Operador auxiliar
+`%notin%` <- Negate(`%in%`)
+
+# =============================================================================
+# FUNÇÃO SIMPLES PARA RECEITAS PRIMÁRIAS
+# =============================================================================
+
+receitas_primarias_rreo <- function(dados_receita) {
+    
+    # Filtros conforme critérios do Tesouro Gerencial
+    dados <- dados_receita %>%
+        filter(
+            # {NRE1 Categoria Econômica} <> 7:RECEITAS CORRENTES, 8:RECEITAS DE CAPITAL
+            nre1_categoria_economica_codigo %in% c(1, 2),  # 1:RECEITAS CORRENTES, 2:RECEITAS DE CAPITAL
+            # {Órgão UGE - Orçam. Fiscal S/N} = PERTENCE
+            orgao_uge_orcam_fiscal_s_n == "PERTENCE",
+            # Filtro para receita líquida para maior precisão
+            item_informacao_codigo == 5  # Receita Líquida
+        )
+    
+    # Função para ordenar meses cronologicamente
+    ordenar_meses <- function(meses_lista) {
+        ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                        "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+        
+        meses_df <- data.frame(
+            mes_completo = meses_lista,
+            mes = substr(meses_lista, 1, 3),
+            ano = substr(meses_lista, 5, 8),
+            stringsAsFactors = FALSE
+        )
+        
+        meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+        meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+        
+        return(meses_ordenados$mes_completo)
+    }
+    
+    # Obter meses disponíveis e ordenar
+    meses_ordenados <- ordenar_meses(unique(dados$mes_lancamento))
+    
+    # Criar estrutura final do relatório
+    relatorio <- data.frame(
+        elemento = c(
+            "RECEITAS CORRENTES (I)",
+            "___Impostos, Taxas e Contribuições de Melhoria", 
+            "___Contribuições",
+            "___Receita Patrimonial",
+            "______Aplicações Financeiras (II)",
+            "______Outras Receitas Patrimoniais",
+            "___Transferências Correntes",
+            "___Demais Receitas Correntes",
+            "______Outras Receitas Financeiras (III)",
+            "___Receitas Correntes Restantes",
+            "RECEITAS PRIMÁRIAS CORRENTES (IV) = (I - II - III)",
+            "RECEITAS DE CAPITAL (V)",
+            "___Operações de Crédito (VI)",
+            "___Amortização de Empréstimos (VII)",
+            "___Alienações de Bens",
+            "______Outras Alienações de Bens", 
+            "___Transferências de Capital",
+            "___Outras Receitas de Capital",
+            "______Outras Receitas de Capital Não Primárias (X)",
+            "RECEITAS PRIMÁRIAS DE CAPITAL (XI) = (V - VI - VII - VIII - IX - X)",
+            "RECEITA PRIMÁRIA TOTAL (XII) = (IV + XI)"
+        ),
+        stringsAsFactors = FALSE
+    )
+    
+    # Calcular valores para cada mês com filtros específicos
+    for (mes in meses_ordenados) {
+        
+        dados_mes <- dados[dados$mes_lancamento == mes, ]
+        
+        # RECEITAS CORRENTES
+        correntes_total <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        impostos <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                dados_mes$nre2_origem_receita_codigo_origem == 1, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        contribuicoes <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                     dados_mes$nre2_origem_receita_codigo_origem == 2, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        patrimonial <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                   dados_mes$nre2_origem_receita_codigo_origem == 3, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # APLICAÇÕES FINANCEIRAS - códigos específicos conforme prints
+        aplicacoes <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                  (dados_mes$natureza_receita_codigo_completo %in% c("13210101", "13210201", "13210301", "13210501") |
+                                   startsWith(dados_mes$natureza_receita_codigo_completo, "1321004") |
+                                   startsWith(dados_mes$natureza_receita_codigo_completo, "1329001")), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        outras_patrimoniais <- patrimonial - aplicacoes
+        
+        transferencias <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                      dados_mes$nre2_origem_receita_codigo_origem == 7, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # DEMAIS RECEITAS CORRENTES - apenas códigos conforme print (SEM exclusões)
+        demais <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                              (startsWith(dados_mes$natureza_receita_codigo_completo, "14") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "15") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "16") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "18") |
+                               startsWith(dados_mes$natureza_receita_codigo_completo, "19")), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # OUTRAS RECEITAS FINANCEIRAS - códigos específicos conforme prints corretos
+        outras_financeiras <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 1 & 
+                                          (dados_mes$natureza_receita_codigo_completo %in% c("16410101", "16410102", "19991101", "19991102", "16410301") |
+                                           startsWith(dados_mes$natureza_receita_codigo_completo, "1922012") |
+                                           startsWith(dados_mes$natureza_receita_codigo_completo, "1990992")), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # RECEITAS CORRENTES RESTANTES - diferença entre Demais e Outras Financeiras
+        receitas_correntes_restantes <- demais - outras_financeiras
+        
+        primarias_correntes <- correntes_total - aplicacoes - outras_financeiras
+        
+        # RECEITAS DE CAPITAL
+        capital_total <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        operacoes_credito <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                         dados_mes$nre2_origem_receita_codigo_origem == 1, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        amortizacao <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                   dados_mes$nre2_origem_receita_codigo_origem == 3, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        alienacoes <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                  dados_mes$nre2_origem_receita_codigo_origem == 2, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        outras_alienacoes <- alienacoes  # Para manter consistência com a planilha
+        
+        transf_capital <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                      dados_mes$nre2_origem_receita_codigo_origem == 4, "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        outras_capital <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                      dados_mes$nre2_origem_receita_codigo_origem %in% c(5, 6, 7, 8, 9), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        # OUTRAS RECEITAS DE CAPITAL NÃO PRIMÁRIAS - códigos específicos conforme prints
+        outras_capital_nao_primarias <- sum(dados_mes[dados_mes$nre1_categoria_economica_codigo == 2 & 
+                                                    (startsWith(dados_mes$natureza_receita_codigo_completo, "292") |
+                                                     startsWith(dados_mes$natureza_receita_codigo_completo, "293") |
+                                                     startsWith(dados_mes$natureza_receita_codigo_completo, "294")), "saldo_r_item_informacao"], na.rm = TRUE)
+        
+        primarias_capital <- capital_total - operacoes_credito - amortizacao - outras_capital_nao_primarias
+        
+        primaria_total <- primarias_correntes + primarias_capital
+        
+        # Adicionar valores ao relatório (manter como numeric para precisão)
+        relatorio[[mes]] <- c(
+            correntes_total,
+            impostos,
+            contribuicoes,
+            patrimonial,
+            aplicacoes,
+            outras_patrimoniais,
+            transferencias,
+            demais,
+            outras_financeiras,
+            receitas_correntes_restantes,
+            primarias_correntes,
+            capital_total,
+            operacoes_credito,
+            amortizacao,
+            alienacoes,
+            outras_alienacoes,
+            transf_capital,
+            outras_capital,
+            outras_capital_nao_primarias,
+            primarias_capital,
+            primaria_total
+        )
+    }
+    
+    return(relatorio)
+}
+
+# =============================================================================
+# USAR A FUNÇÃO
+# =============================================================================
+
+# Executar
+relatorio_final <- receitas_primarias_rreo(dados_receita)
+
+# Criar DT datatable com formatação em R$
+criar_datatable_rreo <- function(relatorio) {
+    
+    # Identificar colunas de valores (excluir coluna 'elemento')
+    colunas_valores <- names(relatorio)[names(relatorio) != "elemento"]
+    
+    # Criar datatable 
+    dt <- DT::datatable(
+        relatorio,
+        options = list(
+            pageLength = 20,
+            scrollX = TRUE,
+            dom = 't',  # Apenas tabela, sem paginação
+            columnDefs = list(
+                list(className = 'dt-left', targets = 0),  # Alinhar primeira coluna à esquerda
+                list(className = 'dt-right', targets = 1:length(colunas_valores))  # Alinhar números à direita
+            )
+        ),
+        rownames = FALSE,
+        class = 'cell-border stripe hover'
+    ) %>%
+    formatRound(which(sapply(relatorio, is.numeric)), 2, mark = ".", dec.mark = ",")
+    
+    return(dt)
+}
+
+# Gerar datatable formatado
+datatable_rreo <- criar_datatable_rreo(relatorio_final)
+
+# Exibir datatable
+datatable_rreo
+
+# Ver resultado simples também
+# print(relatorio_final)
+
+# Salvar em CSV se necessário
+# write.csv2(relatorio_final, "receitas_primarias_rreo.csv", row.names = FALSE)
+```
+
+```{r anexo_06_despesas_primarias}
+despesas_primarias_rreo <- function(dados_ndd, dados_categoria_grupo) {
+    
+    # FILTROS DIRETOS NAS DATAFRAMES
+    
+    # Lista de ações excluídas (subsídios)
+    acoes_excluidas <- c('0021', '0029', '0030', '0031', '0061', '006A', '0427', 
+                        '0534', '0A81', '0A84', '2130', '0062', '00DD', '00S5', 
+                        '20GI', '006C', '00ED', '00EE', '00SG')
+    
+    # Filtrar dados_ndd
+    dados_ndd <- dados_ndd %>%
+        filter(item_informacao_codigo == 56,
+          !acao_governo_codigo %in% acoes_excluidas,
+               !is.na(mes_lancamento),
+               mes_lancamento != "",
+               # Remover linha com data do relatório TG (formato dd/mm/yyyy)
+               !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento))
+    
+    # Filtrar dados_categoria_grupo  
+    dados_categoria_grupo <- dados_categoria_grupo %>%
+        filter(item_informacao_codigo == 56,
+               !acao_governo_codigo %in% acoes_excluidas,
+               !is.na(mes_lancamento), 
+               mes_lancamento != "",
+               # Remover linha com data do relatório TG (formato dd/mm/yyyy)
+               !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento))
+    
+    # Função para ordenar meses cronologicamente
+    ordenar_meses <- function(meses_lista) {
+        ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                        "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+        
+        meses_df <- data.frame(
+            mes_completo = meses_lista,
+            mes = substr(meses_lista, 1, 3),
+            ano = substr(meses_lista, 5, 8),
+            stringsAsFactors = FALSE
+        )
+        
+        meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+        meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+        
+        return(meses_ordenados$mes_completo)
+    }
+    
+    # Obter meses únicos e ordenar cronologicamente
+    meses_unicos <- unique(c(dados_ndd$mes_lancamento, dados_categoria_grupo$mes_lancamento))
+    meses <- ordenar_meses(meses_unicos)
+    
+    # Estrutura do relatório
+    relatorio <- data.frame(
+        elemento = c(
+            "DESPESAS CORRENTES (XIII)",
+            "___Pessoal e Encargos Sociais", 
+            "___Juros e Encargos da Dívida (XIV)",
+            "___Outras Despesas Correntes",
+            "______Transferências Constitucionais e Legais",
+            "______Demais Outras Despesas Correntes", 
+            "DESPESAS PRIMÁRIAS CORRENTES (XV) = (XIII - XIV)",
+            "DESPESAS DE CAPITAL (XVI)",
+            "___Investimentos",
+            "___Inversões Financeiras", 
+            "______Concessão de Empréstimos e Financiamentos (XVII)",
+            "______Demais Inversões Financeiras",
+            "______Amortização da Dívida (XX)",
+            "DESPESAS PRIMÁRIAS DE CAPITAL (XXI) = (XVI - XVII - XX)",
+            "DESPESA PRIMÁRIA TOTAL (XXII) = (XV + XXI)"
+        ),
+        stringsAsFactors = FALSE
+    )
+    
+    # Calcular para cada mês
+    for (mes in meses) {
+        
+        # Filtrar por mês
+        ndd_mes <- dados_ndd[dados_ndd$mes_lancamento == mes, ]
+        cat_mes <- dados_categoria_grupo[dados_categoria_grupo$mes_lancamento == mes, ]
+        
+        # DESPESAS CORRENTES (Categoria 3)
+        correntes <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # PESSOAL (Categoria 3 + Grupo 1)
+        pessoal <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3 & cat_mes$grupo_despesa_codigo_grupo == 1, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # JUROS (Categoria 3 + Grupo 2)
+        juros <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3 & cat_mes$grupo_despesa_codigo_grupo == 2, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # OUTRAS DESPESAS CORRENTES (Categoria 3 + Grupo 3)
+        outras_correntes <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 3 & cat_mes$grupo_despesa_codigo_grupo == 3, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # TRANSFERÊNCIAS CONSTITUCIONAIS (códigos específicos)
+        transferencias <- sum(ndd_mes[startsWith(ndd_mes$natureza_despesa_detalhada_codigo, "333081") | startsWith(ndd_mes$natureza_despesa_detalhada_codigo, "334081"), "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # DEMAIS OUTRAS DESPESAS CORRENTES
+        demais_correntes <- outras_correntes - transferencias
+        
+        # DESPESAS PRIMÁRIAS CORRENTES
+        primarias_correntes <- correntes - juros
+        
+        # DESPESAS DE CAPITAL (Categoria 4)
+        capital <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # INVESTIMENTOS (Categoria 4 + Grupo 4)
+        investimentos <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4 & cat_mes$grupo_despesa_codigo_grupo == 4, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # INVERSÕES FINANCEIRAS (Categoria 4 + Grupo 5)
+        inversoes <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4 & cat_mes$grupo_despesa_codigo_grupo == 5, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # CONCESSÃO DE EMPRÉSTIMOS (códigos específicos)
+        concessao <- sum(ndd_mes[ndd_mes$natureza_despesa_detalhada_codigo %in% c("45909206", "45909208", "45909266"), "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # DEMAIS INVERSÕES FINANCEIRAS
+        demais_inversoes <- inversoes - concessao
+        
+        # AMORTIZAÇÃO DA DÍVIDA (Categoria 4 + Grupo 6)
+        amortizacao <- sum(cat_mes[cat_mes$categoria_economica_despesa_codigo == 4 & cat_mes$grupo_despesa_codigo_grupo == 6, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # DESPESAS PRIMÁRIAS DE CAPITAL
+        primarias_capital <- capital - concessao - amortizacao
+        
+        # DESPESA PRIMÁRIA TOTAL
+        primaria_total <- primarias_correntes + primarias_capital
+        
+        # Adicionar ao relatório
+        relatorio[[mes]] <- c(
+            correntes,
+            pessoal,
+            juros,
+            outras_correntes,
+            transferencias,
+            demais_correntes,
+            primarias_correntes,
+            capital,
+            investimentos,
+            inversoes,
+            concessao,
+            demais_inversoes,
+            amortizacao,
+            primarias_capital,
+            primaria_total
+        )
+    }
+    
+    return(relatorio)
+}
+
+# =============================================================================
+# FUNÇÃO PARA DATATABLE
+# =============================================================================
+
+criar_datatable_despesas <- function(relatorio) {
+    
+    colunas_valores <- names(relatorio)[names(relatorio) != "elemento"]
+    
+    dt <- DT::datatable(
+        relatorio,
+        options = list(
+            pageLength = 20,
+            scrollX = TRUE,
+            dom = 't',
+            columnDefs = list(
+                list(className = 'dt-left', targets = 0),
+                list(className = 'dt-right', targets = 1:length(colunas_valores))
+            )
+        ),
+        rownames = FALSE,
+        class = 'cell-border stripe hover'
+    ) %>%
+    formatRound(which(sapply(relatorio, is.numeric)), 2, mark = ".", dec.mark = ",")
+    
+    return(dt)
+}
+
+# =============================================================================
+# EXECUÇÃO
+# =============================================================================
+
+# Para executar:
+relatorio_despesas <- despesas_primarias_rreo(dados_ndd, dados_categoria_grupo)
+datatable_despesas <- criar_datatable_despesas(relatorio_despesas)
+datatable_despesas
+
+# =============================================================================
+# CAMPOS NECESSÁRIOS:
+# - dados_ndd: mes_lancamento, acao_governo_codigo, natureza_despesa_detalhada_codigo, saldo_r_conta_contabil
+# - dados_categoria_grupo: mes_lancamento, acao_governo_codigo, categoria_economica_despesa_codigo, grupo_despesa_codigo_grupo, saldo_r_conta_contabil
+# =============================================================================
+```
+
+```{r anexo_06_rreo_juros}
+# RREO ANEXO 6 - JUROS ATIVOS E PASSIVOS - CÓDIGO SIMPLIFICADO
+# Totaliza apenas contas 34xxx (ativos) e 44xxx (passivos)
+
+
+
+# =============================================================================
+# FUNÇÃO SIMPLIFICADA PARA JUROS ATIVOS E PASSIVOS RREO
+# =============================================================================
+
+juros_ativos_passivos_rreo <- function(dados_juros) {
+    
+    # FILTROS DIRETOS NA DATAFRAME
+    dados_juros <- dados_juros %>%
+        filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE",
+               !is.na(mes_lancamento),
+               mes_lancamento != "",
+               # Remover célula com data de execução do relatório TG
+               !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento),
+               # Manter apenas meses válidos (formato MMM/YYYY)
+               grepl("^[A-Z]{3}/\\d{4}$", mes_lancamento),
+               # Manter apenas as contas específicas de juros (usando "começa com" e conta específica)
+               (substr(conta_contabil_numero, 1, 5) %in% c(
+                   # Juros Ativos (começa com)
+                   "34111", "34113", "34114", "34115", "34121", "34131", 
+                   "34141", "34181", "34183", "34184", "34185", "34191",
+                   "34211", "34213", "34214", "34215", "34221", "34291",
+                   # Juros Passivos (começa com)
+                   "44111", "44113", "44114", "44115", "44121", "44131", 
+                   "44133", "44134", "44135", "44141", "44211", "44213", 
+                   "44214", "44215", "44221"
+               )) |
+               # Juros Passivos (contas específicas - exatas)
+               conta_contabil_numero == "445110100" | conta_contabil_numero == "445210100")
+    
+    # Função para ordenar meses cronologicamente
+    ordenar_meses <- function(meses_lista) {
+        ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                        "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+        
+        meses_df <- data.frame(
+            mes_completo = meses_lista,
+            mes = substr(meses_lista, 1, 3),
+            ano = substr(meses_lista, 5, 8),
+            stringsAsFactors = FALSE
+        )
+        
+        meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+        meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+        
+        return(meses_ordenados$mes_completo)
+    }
+    
+    # Obter meses únicos e ordenar cronologicamente
+    meses_unicos <- unique(dados_juros$mes_lancamento)
+    meses <- ordenar_meses(meses_unicos)
+    
+    # Estrutura do relatório - COM FILTRO ORÇAMENTO FISCAL
+    relatorio <- data.frame(
+        elemento = c(
+            "TOTAL JUROS ATIVOS (Orçamento Fiscal)",
+            "TOTAL JUROS PASSIVOS (Orçamento Fiscal)",
+            "RESULTADO LÍQUIDO DE JUROS (ATIVOS - PASSIVOS)",
+            "FUNDOS - JUROS ATIVOS (Filtro Específico)",
+            "FUNDOS - JUROS PASSIVOS (Filtro Específico)",
+            "FUNDOS - RESULTADO LÍQUIDO"
+        ),
+        stringsAsFactors = FALSE
+    )
+    
+    # Calcular para cada mês
+    for (mes in meses) {
+        
+        # Filtrar por mês
+        juros_mes <- dados_juros[dados_juros$mes_lancamento == mes, ]
+        
+        # === JUROS ATIVOS - CONTAS QUE COMEÇAM COM OS CÓDIGOS DA IMAGEM 1 ===
+        contas_juros_ativos_prefixos <- c("44111", "44113", "44114", "44115", "44121", "44131", 
+                                         "44133", "44134", "44135", "44141", "44211", "44213", 
+                                         "44214", "44215", "44221")
+        contas_juros_ativos_especificas <- c("445110100", "445210100")
+        
+        juros_ativos_filter <- 
+            substr(juros_mes$conta_contabil_numero, 1, 5) %in% contas_juros_ativos_prefixos |
+            juros_mes$conta_contabil_numero %in% contas_juros_ativos_especificas
+        
+        total_juros_ativos <- sum(juros_mes[juros_ativos_filter, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # === JUROS PASSIVOS - CONTAS QUE COMEÇAM COM OS CÓDIGOS DA IMAGEM 2 ===
+        contas_juros_passivos_prefixos <- c("34111", "34113", "34114", "34115", "34121", "34131", 
+                                           "34141", "34181", "34183", "34184", "34185", "34191",
+                                           "34211", "34213", "34214", "34215", "34221", "34291")
+        
+        juros_passivos_filter <- substr(juros_mes$conta_contabil_numero, 1, 5) %in% contas_juros_passivos_prefixos
+        total_juros_passivos <- sum(juros_mes[juros_passivos_filter, "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # Resultado Líquido
+        resultado_liquido <- total_juros_ativos - total_juros_passivos
+        
+        # === FILTRO ESPECÍFICO PARA FUNDOS ===
+        fundos_mes <- juros_mes %>%
+            filter(
+                # Tipo Administração = 7 (FUNDOS)
+                orgao_uge_tipo_administracao_codigo == "7",
+                # MANTER: Apenas órgãos que pertencem ao orçamento fiscal
+                orgao_uge_orcam_fiscal_s_n == "PERTENCE",
+                # UG Executora diferente de 380916 (CGFAT)
+                ug_executora_codigo != "380916",
+                # Órgão UGE diferente de 25915 e 37904
+                !orgao_uge_codigo %in% c("25915", "37904")
+            )
+        
+        # Fundos - Juros Ativos (usando mesma lógica)
+        fundos_juros_ativos <- sum(fundos_mes[
+            substr(fundos_mes$conta_contabil_numero, 1, 5) %in% contas_juros_ativos_prefixos |
+            fundos_mes$conta_contabil_numero %in% contas_juros_ativos_especificas, 
+            "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # Fundos - Juros Passivos (usando mesma lógica)
+        fundos_juros_passivos <- sum(fundos_mes[
+            substr(fundos_mes$conta_contabil_numero, 1, 5) %in% contas_juros_passivos_prefixos, 
+            "saldo_r_conta_contabil"], na.rm = TRUE)
+        
+        # Fundos - Resultado Líquido
+        fundos_resultado_liquido <- fundos_juros_ativos - fundos_juros_passivos
+        
+        # Adicionar ao relatório
+        relatorio[[mes]] <- c(
+            total_juros_ativos,
+            total_juros_passivos,
+            resultado_liquido,
+            fundos_juros_ativos,
+            fundos_juros_passivos,
+            fundos_resultado_liquido
+        )
+    }
+    
+    return(relatorio)
+}
+
+# =============================================================================
+# FUNÇÃO PARA DATATABLE
+# =============================================================================
+
+criar_datatable_juros <- function(relatorio) {
+    
+    # Identificar colunas com valores numéricos
+    colunas_valores <- names(relatorio)[names(relatorio) != "elemento"]
+    
+    dt <- DT::datatable(
+        relatorio,
+        options = list(
+            pageLength = 8,
+            scrollX = TRUE,
+            dom = 't',
+            columnDefs = list(
+                list(className = 'dt-left', targets = 0),
+                list(className = 'dt-right', targets = 1:length(colunas_valores))
+            )
+        ),
+        rownames = FALSE,
+        class = 'cell-border stripe hover'
+    ) 
+    
+    # Aplicar formatação apenas em colunas numéricas não vazias
+    for (i in 2:ncol(relatorio)) {
+        if (is.numeric(relatorio[[i]])) {
+            dt <- dt %>% formatRound(i, 2, mark = ".", dec.mark = ",")
+        }
+    }
+    
+    return(dt)
+}
+
+# =============================================================================
+# EXECUÇÃO
+# =============================================================================
+
+# Para executar o relatório principal:
+# relatorio_juros <- juros_ativos_passivos_rreo(tg_RPN_juros)
+# datatable_juros <- criar_datatable_juros(relatorio_juros)
+# datatable_juros
+
+# =============================================================================
+# CAMPOS NECESSÁRIOS NA DATAFRAME tg_RPN_juros:
+# - mes_lancamento: Mês de referência (ex: "JAN/2025")
+# - orgao_uge_orcam_fiscal_s_n: Indica se pertence ao orçamento fiscal ("PERTENCE")
+# - saldo_r_conta_contabil: Valor em R$
+# - orgao_uge_tipo_administracao_codigo: Código do tipo de administração
+# - ug_executora_codigo: Código da UG executora
+# - orgao_uge_codigo: Código do órgão UGE
+# =============================================================================
+
+relatorio_juros <- juros_ativos_passivos_rreo(tg_RPN_juros)
+datatable_juros <- criar_datatable_juros(relatorio_juros)
+datatable_juros
+```
+
+```{r anexo_06_transf}
+# RREO ANEXO 6 - TRANSFERÊNCIAS E SUBSÍDIOS - CÓDIGO DIRETO
+# Script direto sem função - apenas totais
+
+
+# =============================================================================
+# FILTROS E PREPARAÇÃO DOS DADOS
+# =============================================================================
+
+# FILTROS DIRETOS NA DATAFRAME
+dados_filtrados <- dados_despesa %>%
+    filter(orgao_uge_orcam_fiscal_s_n  == "PERTENCE" ,
+           !is.na(mes_lancamento),
+           mes_lancamento != "",
+           # Remover célula com data de execução do relatório TG
+           !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento),
+           # Manter apenas meses válidos (formato MMM/YYYY)
+           grepl("^[A-Z]{3}/\\d{4}$", mes_lancamento),
+           # FILTRO: Apenas órgãos que pertencem ao orçamento fiscal
+           orgao_uge_orcam_fiscal_s_n == "PERTENCE",
+           # FILTRO: Apenas pagamentos totais (exercício e RAP)
+           item_informacao_codigo == 23)
+
+# LISTA DE AÇÕES DE TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
+acoes_transferencias <- c(
+    "0044", "0045", "0046", "0050", "0051", "00D0", "00G6", "00H6", 
+    "0169", "0223", "0369", "0546", "0547", "0999", "099B", "0A53", 
+    "0C03", "0E25", "0E36", "00PX", "0C33", "006M", "00QR", "00RX", 
+    "00S3", "00S7", "00S8", "00SE", "00SB", "00UH"
+)
+
+# LISTA DE AÇÕES DE SUBSÍDIOS
+acoes_subsidios <- c(
+    "0021", "0029", "0030", "0031", "0061", "006A", "0427", "0534", 
+    "0A81", "0A84", "2130", "0062", "00DD", "00S5", "20GI", "006C", 
+    "00ED", "00EE", "00SG"
+)
+
+# =============================================================================
+# FUNÇÃO PARA ORDENAR MESES
+# =============================================================================
+
+ordenar_meses <- function(meses_lista) {
+    ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                    "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+    
+    meses_df <- data.frame(
+        mes_completo = meses_lista,
+        mes = substr(meses_lista, 1, 3),
+        ano = substr(meses_lista, 5, 8),
+        stringsAsFactors = FALSE
+    )
+    
+    meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+    meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+    
+    return(meses_ordenados$mes_completo)
+}
+
+# Obter meses únicos e ordenar cronologicamente
+meses_unicos <- unique(dados_filtrados$mes_lancamento)
+meses <- ordenar_meses(meses_unicos)
+
+# =============================================================================
+# CRIAÇÃO DO RELATÓRIO
+# =============================================================================
+
+# Estrutura do relatório - APENAS TOTAIS
+relatorio_transferencias <- data.frame(
+    elemento = c(
+        "TOTAL TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS",
+        "TOTAL SUBSÍDIOS E SUBVENÇÕES",
+        "TOTAL GERAL (TRANSFERÊNCIAS + SUBSÍDIOS)"
+    ),
+    stringsAsFactors = FALSE
+)
+
+# Calcular para cada mês
+for (mes in meses) {
+    
+    # Filtrar por mês
+    despesa_mes <- dados_filtrados[dados_filtrados$mes_lancamento == mes, ]
+    
+    # Total Transferências Constitucionais (todas as 30 ações)
+    total_transferencias <- sum(despesa_mes[despesa_mes$acao_governo_codigo %in% acoes_transferencias, "saldo_r_item_informacao"], na.rm = TRUE)
+    
+    # Total Subsídios (todas as 19 ações)
+    total_subsidios <- sum(despesa_mes[despesa_mes$acao_governo_codigo %in% acoes_subsidios, "saldo_r_item_informacao"], na.rm = TRUE)
+    
+    # Total Geral
+    total_geral <- total_transferencias + total_subsidios
+    
+    # Adicionar ao relatório
+    relatorio_transferencias[[mes]] <- c(
+        total_transferencias,
+        total_subsidios,
+        total_geral
+    )
+}
+
+# =============================================================================
+# CRIAÇÃO DO DATATABLE
+# =============================================================================
+
+# Identificar colunas com valores numéricos
+colunas_valores <- names(relatorio_transferencias)[names(relatorio_transferencias) != "elemento"]
+
+datatable_transferencias <- DT::datatable(
+    relatorio_transferencias,
+    options = list(
+        pageLength = 5,
+        scrollX = TRUE,
+        dom = 't',
+        columnDefs = list(
+            list(className = 'dt-left', targets = 0),
+            list(className = 'dt-right', targets = 1:length(colunas_valores))
+        )
+    ),
+    rownames = FALSE,
+    class = 'cell-border stripe hover'
+) 
+
+# Aplicar formatação apenas em colunas numéricas
+for (i in 2:ncol(relatorio_transferencias)) {
+    if (is.numeric(relatorio_transferencias[[i]])) {
+        datatable_transferencias <- datatable_transferencias %>% 
+            formatRound(i, 2, mark = ".", dec.mark = ",")
+    }
+}
+
+# =============================================================================
+# EXIBIR RESULTADO
+# =============================================================================
+
+# Mostrar o resultado
+datatable_transferencias
+
+# Para ver apenas o dataframe sem formatação:
+# View(relatorio_transferencias)
+
+# =============================================================================
+# RESUMO DO QUE FOI CALCULADO:
+# - 30 ações de transferências constitucionais e legais
+# - 19 ações de subsídios e subvenções  
+# - Filtro: orgao_uge_orcam_fiscal_s_n == "PERTENCE"
+# - Filtro: item_informacao_codigo == 56 (Pagamentos Totais)
+# =============================================================================
+```
+
+```{r rreo_anexo_6_disponibilidade}
+# RREO ANEXO 6 - DISPONIBILIDADES - CÓDIGO SIMPLIFICADO
+# Utiliza dcl_2a para capturar caixa e equivalentes de caixa
+
+
+
+# =============================================================================
+# FILTROS E PREPARAÇÃO DOS DADOS
+# =============================================================================
+
+# FILTROS DIRETOS NA DATAFRAME - EXCLUINDO FUNDOS CORRETAMENTE
+dados_filtrados <- tg_RPN_disponibilidades %>%
+    filter(!is.na(mes_lancamento),
+           mes_lancamento != "",
+           # Remover célula com data de execução do relatório TG
+           !grepl("^\\d{1,2}/\\d{1,2}/\\d{4}$", mes_lancamento),
+           # Manter apenas meses válidos (formato MMM/YYYY)
+           grepl("^[A-Z]{3}/\\d{4}$", mes_lancamento),
+           # FILTRO CRUCIAL: Excluir Fundos (Tipo Administração diferente de 7)
+           orgao_uge_tipo_administracao_codigo != 7,
+           # FILTRO: Fontes específicas conforme TG
+           fonte_recursos_codigo %in% c("77", "90", "490", "491"))
+
+# =============================================================================
+# FUNÇÃO PARA ORDENAR MESES
+# =============================================================================
+
+ordenar_meses <- function(meses_lista) {
+    ordem_meses <- c("JAN", "FEV", "MAR", "ABR", "MAI", "JUN", 
+                    "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+    
+    meses_df <- data.frame(
+        mes_completo = meses_lista,
+        mes = substr(meses_lista, 1, 3),
+        ano = substr(meses_lista, 5, 8),
+        stringsAsFactors = FALSE
+    )
+    
+    meses_df$ordem_mes <- match(meses_df$mes, ordem_meses)
+    meses_ordenados <- meses_df[order(meses_df$ano, meses_df$ordem_mes), ]
+    
+    return(meses_ordenados$mes_completo)
+}
+
+# Obter meses únicos e ordenar cronologicamente
+meses_unicos <- unique(dados_filtrados$mes_lancamento)
+meses <- ordenar_meses(meses_unicos)
+
+# =============================================================================
+# CRIAÇÃO DO RELATÓRIO
+# =============================================================================
+
+# Estrutura do relatório - FONTES ESPECÍFICAS
+relatorio_disponibilidades <- data.frame(
+    elemento = c(
+        "RECURSOS A CLASSIFICAR (Fontes 77 + 490)",
+        "RECURSOS DIVERSOS (Fontes 90 + 491)",
+        "TOTAL DISPONIBILIDADES (Fontes Específicas)"
+    ),
+    stringsAsFactors = FALSE
+)
+
+# Calcular para cada mês
+for (mes in meses) {
+    
+    # Filtrar por mês
+    disponib_mes <- dados_filtrados[dados_filtrados$mes_lancamento == mes, ]
+    
+    # Recursos a Classificar (Fontes 77 e 490)
+    recursos_classificar <- sum(disponib_mes[disponib_mes$fonte_recursos_codigo %in% c("77", "490"), "saldo_r_conta_contabil"], na.rm = TRUE)
+    
+    # Recursos Diversos (Fontes 90 e 491)
+    recursos_diversos <- sum(disponib_mes[disponib_mes$fonte_recursos_codigo %in% c("90", "491"), "saldo_r_conta_contabil"], na.rm = TRUE)
+    
+    # Total de todas as fontes específicas
+    total_disponibilidades <- recursos_classificar + recursos_diversos
+    
+    # Adicionar ao relatório
+    relatorio_disponibilidades[[mes]] <- c(
+        recursos_classificar,
+        recursos_diversos,
+        total_disponibilidades
+    )
+}
+
+# =============================================================================
+# CRIAÇÃO DO DATATABLE
+# =============================================================================
+
+# Identificar colunas com valores numéricos
+colunas_valores <- names(relatorio_disponibilidades)[names(relatorio_disponibilidades) != "elemento"]
+
+datatable_disponibilidades <- DT::datatable(
+    relatorio_disponibilidades,
+    options = list(
+        pageLength = 10,
+        scrollX = TRUE,
+        dom = 't',
+        columnDefs = list(
+            list(className = 'dt-left', targets = 0),
+            list(className = 'dt-right', targets = 1:length(colunas_valores))
+        )
+    ),
+    rownames = FALSE,
+    class = 'cell-border stripe hover'
+) 
+
+# Aplicar formatação apenas em colunas numéricas
+for (i in 2:ncol(relatorio_disponibilidades)) {
+    if (is.numeric(relatorio_disponibilidades[[i]])) {
+        datatable_disponibilidades <- datatable_disponibilidades %>% 
+            formatRound(i, 2, mark = ".", dec.mark = ",")
+    }
+}
+
+# =============================================================================
+# EXIBIR RESULTADO
+# =============================================================================
+
+# Mostrar o resultado
+datatable_disponibilidades
+
+# Para ver apenas o dataframe sem formatação:
+# View(relatorio_disponibilidades)
+
+# =============================================================================
+# RESUMO DO QUE FOI CALCULADO:
+# - Dataframe: tg_RPN_disponibilidades
+# - FILTRO CRUCIAL: orgao_uge_tipo_administracao_codigo != 7 (EXCLUIR FUNDOS)
+# - Fontes: 77, 490 (Recursos a Classificar) e 90, 491 (Recursos Diversos)
+# - Contas: 53 contas específicas já filtradas no TG
+# - Filtros TG: Orçam. Fiscal = PERTENCE
+# =============================================================================
 ```
 
 # 📋 RREO Anexo 07 - Restos a Pagar
@@ -4012,20 +5535,20 @@ criterios_tabela_02 <- list(
 
 ### 💼 Processamento dos Dados
 
-### 📊 Dotação Inicial
+### 📊 Dotação Atualizada
 
 ```{r processar-dotacao}
-# Processar dados para Dotação Inicial (Item 9)
+# Processar dados para Dotação Atualizada (Item 12)
 resultado_dotacao <- aplicar_criterios(
   df = dados_despesa %>% 
     filter(
       grupo_despesa_codigo_grupo == 1, 
       orgao_uge_orcam_fiscal_s_n == "PERTENCE",
       mes_lancamento == mes_filtro,
-      item_informacao_codigo == "9"
+      item_informacao_codigo == "13"
     ),
   criterios = criterios_tabela_02,
-  item_informacao_filtro = "9"
+  item_informacao_filtro = "13"
 )
 
 # Calcular subtotais por soma dos itens individuais
@@ -4091,7 +5614,7 @@ datatable(
     scrollX = TRUE,
     language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
   ),
-  caption = "Tabela 02 - Dotação Inicial por Tipo de Administração"
+  caption = "Tabela 02 - Dotação Atualizada por Tipo de Administração"
 ) %>%
   formatRound(
     which(sapply(DT_dotacao, is.numeric)), 
@@ -4417,7 +5940,7 @@ cat("
 ")
 ```
 
-# 📋 RREO Tabela 3
+# 📋 RREO Tabela 03
 
 ```{r tabela_3}
 agrupado_despesa_orgao <- c("orgao_uge_orgao_maximo_codigo", "orgao_uge_orgao_maximo_nome")
@@ -4425,7 +5948,7 @@ agrupado_despesa_orgao <- c("orgao_uge_orgao_maximo_codigo", "orgao_uge_orgao_ma
 dt_formatada(tabela_pivotada(dados_despesa %>% filter(resultado_eof_codigo == 6), agrupado_despesa_orgao),agrupado_despesa_orgao)
 ```
 
-# 📋 RREO Tabela 4
+# 📋 RREO Tabela 04
 
 A coluna "demais_obrigacoes_new" foi criada a partir do reltatório do Tesouro Gerencial "dados_tabela_04_filtro_rreo".
 
@@ -4593,7 +6116,7 @@ despesas_c <- tabela_04 %>%
 
 # COLUNA (e): DISPONIBILIDADE BRUTA - LIM. SAQUE
 disponibilidade_bruta_e <- tabela_04 %>%
-  filter(c_con_classe_1_codigo == 1, c_con_grupo_2_codigo_grupo == 1, c_con_subgrupo_3_codigo_subgrupo == 1, c_con_isf == "F", conta_contabil_numero != "111110205") %>%
+  filter(c_con_classe_1_codigo == 1, c_con_grupo_2_codigo_grupo == 1, c_con_subgrupo_3_codigo_subgrupo == 1, isf_lancamento == "F", conta_contabil_numero != "111110205") %>%
   group_by(linhas) %>%
   summarise(disponibilidade_bruta_e = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
 
@@ -4617,7 +6140,7 @@ rpnp_exercicios_anteriores_g <- tabela_04 %>%
 
 # COLUNA (h): DEMAIS OBRIGAÇÕES
 demais_obrigacoes_h <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_demais_obrigacoes_h, c_con_isf == "F") %>%
+  filter(conta_contabil_numero %in% contas_demais_obrigacoes_h, isf_lancamento == "F") %>%
   group_by(linhas) %>%
   summarise(demais_obrigacoes_h = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
 
@@ -4653,7 +6176,7 @@ deducoes_reclassificacao_e1 <- tabela_04 %>%
 
 # COLUNA e.2: DEDUÇÕES LIMITE DE SAQUE EXECUTIVO
 deducoes_limite_saque_e2 <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_deducoes_limite_saque_e2, c_con_isf == "F") %>%
+  filter(conta_contabil_numero %in% contas_deducoes_limite_saque_e2, isf_lancamento == "F") %>%
   group_by(linhas) %>%
   summarise(deducoes_limite_saque_e2 = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
 
