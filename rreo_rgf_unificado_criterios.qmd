@@ -207,19 +207,14 @@ dados_tabela_04 <- map_df(arq_tabela_04, read_excel) %>%
 
 
 
-# Dados específicos da UG 170600
-# dados_tabela_04_170600 <- read_excel("data/tg_julho/dados_conta_contabil_tabela_04_claude_conta_contabil_170600.xlsx") %>% 
-#   clean_names() %>% 
-#   mutate(ug = "170600")
+
 
 # Dados filtro RREO - demais UGs
 dados_tabela_04_filtro_rreo <- read_excel(str_c(mes_pasta,"tg_rreo_tabela_04_filtro_rreo.xlsx")) %>% 
   clean_names() %>% 
   mutate(ug = "demais")
 
-cat("📊 Tabela 04 - Dados principais:", nrow(dados_tabela_04), "registros\n")
-# cat("📊 Tabela 04 - UG 170600:", nrow(dados_tabela_04_170600), "registros\n")
-cat("📊 Tabela 04 - Filtro RREO:", nrow(dados_tabela_04_filtro_rreo), "registros\n")
+
     
     
 # Dados NDD (Natureza de Despesa Detalhada)
@@ -230,8 +225,7 @@ dados_ndd <- read_excel(str_c(mes_pasta,"tg_anexo_06_rreo_despesas_primarias_ndd
 dados_categoria_grupo <- read_excel(str_c(mes_pasta,"tg_anexo_06_rreo_despesas_primarias_categoria_grupo.xlsx")) %>% 
   clean_names()
 
-cat("📊 Anexo 06 - NDD:", nrow(dados_ndd), "registros\n")
-cat("📊 Anexo 06 - Categoria/Grupo:", nrow(dados_categoria_grupo), "registros\n")
+
 
 
 # RPN - Juros
@@ -261,89 +255,6 @@ dcl_2b <- map_df(arq_dcl_2b, read_excel) %>%
 
 
 
-cat("📊 RPN - Juros:", nrow(tg_RPN_juros), "registros\n")
-cat("📊 RPN - Disponibilidades:", nrow(tg_RPN_disponibilidades), "registros\n")
-
-print("✅ Dados contábeis carregados:")
-print(paste("   - Tabela 04:", nrow(dados_tabela_04), "registros"))
-# print(paste("   - Tabela 04 (170600):", nrow(dados_tabela_04_170600), "registros"))
-print(paste("   - NDD:", nrow(dados_ndd), "registros"))
-print(paste("   - RPN Juros:", nrow(tg_RPN_juros), "registros"))
-```
-
-```{r}
-# Criar resumo dos dados importados
-# resumo_importacao <- data.frame(
-#   Base = c(
-#     "dados_receita",
-#     "dados_despesa", 
-#     "dados_rp_anexo_07",
-#     "dados_rp_anexo_12",
-#     "dados_rp_anexo_08",
-#     "dados_rp_anexo_03_rcl",
-#     "dados_tabela_04",
-#     
-#     "dados_tabela_04_filtro_rreo",
-#     "dados_ndd",
-#     "dados_categoria_grupo",
-#     "tg_RPN_juros",
-#     "tg_RPN_disponibilidades"
-#   ),
-#   Registros = c(
-#     nrow(dados_receita),
-#     nrow(dados_despesa),
-#     nrow(dados_rp_anexo_07),
-#     nrow(dados_rp_anexo_12),
-#     nrow(dados_rp_anexo_08),
-#     nrow(dados_rp_anexo_03_rcl),
-#     nrow(dados_tabela_04),
-#     nrow(dados_ndd),
-#     nrow(dados_categoria_grupo),
-#     nrow(tg_RPN_juros),
-#     nrow(tg_RPN_disponibilidades)
-#   ),
-#   Tipo = c(
-#     "Receita",
-#     "Despesa",
-#     "Restos a Pagar",
-#     "Restos a Pagar", 
-#     "Restos a Pagar",
-#     "Restos a Pagar",
-#     "Conta Contábil",
-#     "Conta Contábil",
-#     "Anexo 06",
-#     "Anexo 06",
-#     "RPN",
-#     "RPN"
-#   )
-# )
-# 
-# # Exibir tabela resumo
-# knitr::kable(
-#   resumo_importacao,
-#   caption = "Resumo dos Dados Importados",
-#   format.args = list(big.mark = ".", decimal.mark = ",")
-# )
-```
-
-## ⚙️ Metodologia e Filtros
-
-```{r metodologia}
-#| echo: true
-#| eval: true
-
-# Filtros de metodologia
-filtros_metodologia <- read_excel("data/filtros.xlsx", sheet = "metodologia")
-atributos_metodologia <- read_excel("data/filtros.xlsx", sheet = "metodologia")
-
-print("✅ Metodologia carregada:")
-print(paste("   - Filtros:", nrow(filtros_metodologia), "registros"))
-print(paste("   - Atributos:", nrow(atributos_metodologia), "registros"))
-```
-
-## 📊 Resumo dos Dados Carregados
-
-```{r resumo_dados}
 
 ```
 
@@ -560,11 +471,7 @@ desmembrar_codigo <- function(codigo) {
   )
 }
 
-# Teste da função
-# codigo_teste <- "JUN/2025RGFA07"
-# resultado_teste <- desmembrar_codigo(codigo_teste)
-# print("Teste de desmembramento:")
-# print(resultado_teste)
+
 ```
 
 Melhorias:
@@ -609,7 +516,7 @@ agrupar_e_combinar_dados <- function(df, criterios) {
 
 
 
-print("✅ Função agrupar_e_combinar_dados definida")
+
 ```
 
 ```{r}
@@ -691,18 +598,7 @@ agrupar_e_combinar_dados_conta_contabil <- function(df, criterios, metrica = "sa
   })
 }
 
-# Exemplos de uso:
 
-# Uso padrão (saldo item informação)
-# resultado_saldo <- agrupar_e_combinar_dados(df, criterios)
-
-# Usando movimento líquido
-# resultado_movimento <- agrupar_e_combinar_dados(df, criterios, 
-#                                               metrica = "movimento_liquido_r_item_informacao")
-
-# Usando saldo conta contábil  
-# resultado_conta <- agrupar_e_combinar_dados(df, criterios, 
-                                           # metrica = "saldo_r_conta_contabil")
 ```
 
 ## 🛠️ Utilitários Diversos
@@ -773,9 +669,6 @@ calcular_percentual <- function(valor_numerador, valor_denominador, casas_decima
   round(percentual, casas_decimais)
 }
 
-# Teste da função
-# teste_perc <- calcular_percentual(25, 100)
-# print(paste("Teste percentual 25/100:", teste_perc, "%"))
 ```
 
 # 📋 RREO Anexo 01 - Balanço Orçamentário {#sec-anexo-07}
@@ -1015,18 +908,7 @@ receitas_anexo3_rcl <- agrupar_e_combinar_dados(
   
 )
 
-# receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
-#   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
-# 
-# DT_receitas_anexo3_rcl <- receitas_anexo3_rcl %>% 
-#   filter(mes_lancamento == mes_filtro) %>%
-#   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-#   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-#   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-#   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
-# 
-# 
-# processar_dt_criterios(receitas_anexo3_rcl)
+
 
 # Processamento das despesas
 despesas_anexo3_rcl <- agrupar_e_combinar_dados(
@@ -1041,15 +923,7 @@ rp_cancelados_anexo3_rcl <- agrupar_e_combinar_dados(
 )
 
 
-# despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
-#   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
-# 
-# DT_despesas_anexo3_rcl <- despesas_anexo3_rcl %>% 
-#   filter(mes_lancamento == mes_filtro) %>%
-#   group_by(ordem, nome, categoria, item_informacao_nome) %>% 
-#   summarise(saldo = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-#   complete(categoria, item_informacao_nome, fill = list(saldo = 0)) %>%
-#   pivot_wider(names_from = item_informacao_nome, values_from = saldo)
+
 ```
 
 ```{r rcl_receita}
@@ -1122,153 +996,6 @@ formatar_numero((sum(receitas_anexo3_rcl$saldo_r_item_informacao)-sum(despesas_a
 
 ```
 
-## 📊 Demonstrativo da Receita Corrente Líquida
-
-```{r tabela-rcl}
-#| echo: false
-#| eval: false
-
-# Criar tabela no formato oficial
-criar_tabela_rcl_oficial <- function(receitas_dt, despesas_dt) {
-  
-  # Função para buscar valor ou retornar 0
-  buscar_valor <- function(dt, ordem_num, coluna = "RECEITA ORCAMENTARIA (LIQUIDA)") {
-    if (coluna %in% names(dt)) {
-      valor <- dt %>% 
-        filter(ordem == sprintf("%02d", ordem_num)) %>% 
-        pull(!!sym(coluna))
-      return(ifelse(length(valor) > 0 && !is.na(valor), valor, 0))
-    }
-    return(0)
-  }
-  
-  # Buscar valores das receitas (apenas se existirem)
-  receitas_valores <- sapply(1:9, function(i) buscar_valor(receitas_dt, i))
-  total_receitas <- sum(receitas_valores, na.rm = TRUE)
-  
-  # === CÁLCULOS INTERMEDIÁRIOS (NÃO APARECEM NA TABELA) ===
-  # Buscar valores das deduções específicas
-  contrib_emp_trab <- buscar_valor(receitas_dt, 11)      # Contrib. Emp. e Trab. p/ Seg. Social
-  contrib_servidor <- buscar_valor(receitas_dt, 12)      # Contrib. Plano Seg. Social do Servidor
-  compensacao_rpps <- buscar_valor(receitas_dt, 13)      # Compensação Financeira entre Regimes RPPS
-  contrib_militares <- buscar_valor(receitas_dt, 14)     # Contrib. p/ Custeio Pensões Militares
-  contrib_pis_pasep <- buscar_valor(receitas_dt, 15)     # Contribuição p/ PIS/PASEP
-  deducoes_receitas <- buscar_valor(receitas_dt, 16)     # Deduções das Receitas (INTERMEDIÁRIO)
-  
-  # Transferências Constitucionais e Legais - usar DESPESAS LIQUIDADAS (item informação 25)
-  transf_constitucionais <- buscar_valor(despesas_dt, 1, "DESPESAS LIQUIDADAS")
-  
-  # Total de deduções (para o cálculo da RCL)
-  total_deducoes <- transf_constitucionais + contrib_emp_trab + contrib_servidor + 
-                   compensacao_rpps + contrib_militares + contrib_pis_pasep
-  
-  # RCL final
-  rcl_final <- total_receitas - total_deducoes
-  
-  # === CRIAR TABELA FINAL (APENAS LINHAS QUE APARECEM NO RELATÓRIO OFICIAL) ===
-  especificacao <- c()
-  valores <- c()
-  
-  # RECEITA CORRENTE (I)
-  especificacao <- c(especificacao, "RECEITA CORRENTE (I)")
-  valores <- c(valores, total_receitas)
-  
-  # Adicionar apenas linhas com valores > 0
-  nomes_receitas <- c(
-    "    Impostos, Taxas e Contribuições de Melhoria",
-    "    Receita de Contribuições", 
-    "    Receita Patrimonial",
-    "    Receita Agropecuária",
-    "    Receita Industrial",
-    "    Receita de Serviços",
-    "    Transferências Correntes",
-    "    Receitas Correntes a Classificar",
-    "    Outras Receitas Correntes"
-  )
-  
-  for(i in 1:9) {
-    if(receitas_valores[i] > 0) {
-      especificacao <- c(especificacao, nomes_receitas[i])
-      valores <- c(valores, receitas_valores[i])
-    }
-  }
-  
-  # DEDUÇÕES (II)
-  if(total_deducoes > 0) {
-    especificacao <- c(especificacao, "DEDUÇÕES (II)")
-    valores <- c(valores, total_deducoes)
-    
-    # Apenas as linhas que aparecem no relatório oficial
-    if(transf_constitucionais > 0) {
-      especificacao <- c(especificacao, "    Transf. Constitucionais e Legais")
-      valores <- c(valores, transf_constitucionais)
-    }
-    
-    if(contrib_emp_trab > 0) {
-      especificacao <- c(especificacao, "    Contrib. Emp. e Trab. p/ Seg. Social")
-      valores <- c(valores, contrib_emp_trab)
-    }
-    
-    if(contrib_servidor > 0) {
-      especificacao <- c(especificacao, "    Contrib. Plano Seg. Social do Servidor")
-      valores <- c(valores, contrib_servidor)
-    }
-    
-    if(compensacao_rpps > 0) {
-      especificacao <- c(especificacao, "    Compensação Financeira RGPS/RPPS")
-      valores <- c(valores, compensacao_rpps)
-    }
-    
-    if(contrib_militares > 0) {
-      especificacao <- c(especificacao, "    Contrib. p/ Custeio Pensões Militares")
-      valores <- c(valores, contrib_militares)
-    }
-    
-    if(contrib_pis_pasep > 0) {
-      especificacao <- c(especificacao, "    Contribuição p/ PIS/PASEP")
-      valores <- c(valores, contrib_pis_pasep)
-    }
-  }
-  
-  # RECEITA CORRENTE LÍQUIDA
-  especificacao <- c(especificacao, "RECEITA CORRENTE LÍQUIDA (III) = (I - II)")
-  valores <- c(valores, rcl_final)
-  
-  # Criar data frame final
-  tabela_final <- data.frame(
-    ESPECIFICACAO = especificacao,
-    `R$ (milhares)` = formatC(valores / 1000, format = "f", digits = 0, big.mark = ".", decimal.mark = ","),
-    check.names = FALSE,
-    stringsAsFactors = FALSE
-  )
-  
-  return(tabela_final)
-}
-
-# Gerar e exibir tabela
-tabela_rcl <- criar_tabela_rcl_oficial(processar_dt_criterios(despesas_anexo3_rcl), processar_dt_criterios(receitas_anexo3_rcl))
-
-# Exibir com formatação
-tabela_rcl %>%
-  kable(
-    caption = paste("DEMONSTRATIVO DA RECEITA CORRENTE LÍQUIDA - MÊS", toupper(month.name[mes_filtro]), "2025"),
-    align = c("l", "r"),
-    escape = FALSE
-  ) %>%
-  kableExtra::kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed"),
-    full_width = FALSE,
-    position = "left"
-  ) %>%
-  # Destacar linhas principais
-  kableExtra::row_spec(which(grepl("^RECEITA CORRENTE \\(I\\)", tabela_rcl$ESPECIFICACAO)), 
-                       bold = TRUE, background = "#E3F2FD") %>%
-  kableExtra::row_spec(which(grepl("^DEDUÇÕES \\(II\\)", tabela_rcl$ESPECIFICACAO)), 
-                       bold = TRUE, background = "#FFEBEE") %>%
-  kableExtra::row_spec(which(grepl("RECEITA CORRENTE LÍQUIDA", tabela_rcl$ESPECIFICACAO)), 
-                       bold = TRUE, background = "#E8F5E8")
-```
-
 ------------------------------------------------------------------------
 
 *📊 Relatório gerado automaticamente em `r format(Sys.time(), "%d/%m/%Y às %H:%M")`*
@@ -1276,17 +1003,6 @@ tabela_rcl %>%
 # 📋 RREO Anexo 04 Previdência
 
 O **Anexo 04** apresenta o demonstrativo das receitas e despesas previdenciárias do Governo Federal, segregado em três sistemas:
-
--   **RGPS** - Regime Geral de Previdência Social
--   **RPPS** - Regime Próprio de Previdência Social (Civil e Militar)
--   **RPPS FCDF** - Regime Próprio de Previdência Social do Fundo Constitucional do Distrito Federal
-
-### 🎯 Objetivo
-
--   Demonstrar a sustentabilidade dos sistemas previdenciários
--   Acompanhar o equilíbrio atuarial dos regimes
--   Evidenciar as transferências entre sistemas
--   Monitorar a evolução dos benefícios previdenciários
 
 ## 🏛️ REGIME GERAL DE PREVIDÊNCIA SOCIAL (RGPS)
 
@@ -1804,117 +1520,11 @@ kable(indicadores_consolidados,
   row_spec(which(indicadores_consolidados$Resultado >= 0), background = "#ccffcc")
 ```
 
-### 📈 Análise de Sustentabilidade
-
-```{r analise-sustentabilidade}
-#| echo: false
-#| eval: false
-# Calcular ratios de sustentabilidade
-analise_sustentabilidade <- indicadores_consolidados %>%
-  mutate(
-    `Razão Receita/Despesa` = round(Receitas / Despesas, 3),
-    `Cobertura (%)` = round((Receitas / Despesas) * 100, 1),
-    `Déficit/Superávit` = case_when(
-      Resultado < 0 ~ paste("Déficit:", format(abs(Resultado), big.mark = ".", decimal.mark = ",")),
-      Resultado >= 0 ~ paste("Superávit:", format(Resultado, big.mark = ".", decimal.mark = ",")),
-      TRUE ~ "Equilibrio"
-    )
-  ) %>%
-  select(Sistema, `Razão Receita/Despesa`, `Cobertura (%)`, `Déficit/Superávit`)
-
-kable(analise_sustentabilidade,
-      caption = "Análise de Sustentabilidade dos Sistemas Previdenciários") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-```
-
-### 🔍 Destaques da Execução
-
-```{r destaques-execucao, echo=FALSE}
-# Identificar sistema com maior déficit/superávit
-sistema_maior_deficit <- indicadores_consolidados %>%
-  filter(Resultado == min(Resultado)) %>%
-  pull(Sistema)
-
-sistema_maior_receita <- indicadores_consolidados %>%
-  filter(Receitas == max(Receitas)) %>%
-  pull(Sistema)
-
-cat("
-### 🎯 Principais Destaques
-
-- **Sistema com Maior Arrecadação**: ", sistema_maior_receita, "
-- **Sistema com Maior Desequilíbrio**: ", sistema_maior_deficit, "
-- **Compensação Previdenciária**: Transferências entre RGPS e RPPS
-- **Sustentabilidade**: Acompanhamento dos déficits atuariais
-
-### 📊 Tendências Observadas
-
-- **RGPS**: Maior volume de beneficiários e arrecadação
-- **RPPS Civil**: Despesas concentradas em aposentadorias e pensões
-- **RPPS Militar**: Características específicas das carreiras militares
-- **FCDF**: Sistema específico do Distrito Federal
-
-### ⚠️ Pontos de Atenção
-
-- Monitoramento contínuo do equilíbrio atuarial
-- Acompanhamento das reformas previdenciárias
-- Evolução demográfica e seus impactos
-- Sustentabilidade fiscal de longo prazo
-")
-```
-
-## 📋 Notas Metodológicas
-
-### 🔍 Critérios de Classificação
-
-**Unidades Orçamentárias por Sistema:**
-
--   **RGPS**: 33904, 40904, 55902, 25917
--   **RPPS**: Demais unidades (exceto 73901)
--   **FCDF**: 73901
-
-**Elementos de Despesa Específicos:**
-
--   **Aposentadorias**: 01 (RPPS), 53/54 (RGPS)
--   **Pensões**: 03 (RPPS), 55/56 (RGPS)
--   **Outros Benefícios**: 57/58 (RGPS), demais elementos (RPPS)
-
-### 📊 Fontes de Dados
-
--   Sistema Integrado de Administração Financeira (SIAFI)
--   Tesouro Gerencial
--   Manual RREO - STN
--   Classificações orçamentárias vigentes
-
-### ⚠️ Observações Importantes
-
--   Período de referência: Junho/2025
--   Valores expressos em milhares de reais
--   Critérios baseados no Manual RREO 2025
--   Segregação por esfera orçamentária
--   Filtros específicos por sistema previdenciário
-
-------------------------------------------------------------------------
-
-*📊 Relatório gerado automaticamente pelo sistema de Relatórios Fiscais RREO & RGF*
-
 # 📋 RREO Anexo 06 (Resultado Primário)
 
 ## Dados da DCL (RGF Anexo 02)
 
 ```{r dcl}
-# ANEXO 2 RGF - DCL (DÍVIDA CONSOLIDADA LÍQUIDA) - CÓDIGO R COMPLETO
-# Versão Consolidada Final - Usa apenas DCL_2B para múltiplos dataframes
-# Baseado nas consultas SQL reais do Tesouro Gerencial
-# Atualizado com consolidação de contas e correções de sinais
-
-# library(dplyr)
-# library(tidyr)
-# library(stringr)
-
-# =============================================================================
-# CONFIGURAR FORMATAÇÃO DE NÚMEROS
-# =============================================================================
 
 options(OutDec = ",")
 options(scipen = 999)
@@ -2969,6 +2579,9 @@ datatable(
 ```
 
 ```{r anexo_06_receitas_primarias}
+#| echo: false
+#| eval: false
+
 # RREO ANEXO 6 - RECEITAS PRIMÁRIAS (CÓDIGO SIMPLES)
 # Replica exatamente os valores da planilha oficial
 
@@ -3197,6 +2810,8 @@ datatable_rreo
 ```
 
 ```{r anexo_06_despesas_primarias}
+#| echo: false
+#| eval: false
 despesas_primarias_rreo <- function(dados_ndd, dados_categoria_grupo) {
     
     # FILTROS DIRETOS NAS DATAFRAMES
@@ -3387,6 +3002,8 @@ datatable_despesas
 ```
 
 ```{r anexo_06_rreo_juros}
+#| echo: false
+#| eval: false
 # RREO ANEXO 6 - JUROS ATIVOS E PASSIVOS - CÓDIGO SIMPLIFICADO
 # Totaliza apenas contas 34xxx (ativos) e 44xxx (passivos)
 
@@ -3585,6 +3202,8 @@ datatable_juros
 ```
 
 ```{r anexo_06_transf}
+#| echo: false
+#| eval: false
 # RREO ANEXO 6 - TRANSFERÊNCIAS E SUBSÍDIOS - CÓDIGO DIRETO
 # Script direto sem função - apenas totais
 
@@ -3939,93 +3558,6 @@ dt_formatada(
 
 ### Resumo por Tipo de Modalidade
 
-```{r resumo_modalidade_anexo_07}
-#| echo: false
-#| eval: false
-
-resumo_modalidade <- dados_rp_anexo_07 %>%
-  group_by(tipo_modalidade) %>%
-  summarise(
-    total_saldo = sum(saldo_r_item_informacao, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    percentual = calcular_percentual(total_saldo, sum(total_saldo)),
-    total_saldo_formatado = formatar_numero(total_saldo)
-  )
-
-kable(resumo_modalidade, 
-      caption = "💰 Resumo de Restos a Pagar por Tipo de Modalidade",
-      col.names = c("Tipo de Modalidade", "Total (R$)", "Percentual (%)", "Total Formatado"),
-      format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  row_spec(0, bold = TRUE, background = "#f8f9fa")
-```
-
-### Top 10 Órgãos com Maiores Valores
-
-```{r top_10_orgaos_anexo_07}
-#| echo: false
-#| eval: false
-
-top_10_orgaos <- dados_rp_anexo_07 %>%
-  group_by(orgao_uge_orgao_maximo_codigo, orgao_uge_orgao_maximo_nome) %>%
-  summarise(
-    total_saldo = sum(saldo_r_item_informacao, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(total_saldo)) %>%
-  head(10) %>%
-  mutate(
-    posicao = row_number(),
-    total_saldo_formatado = formatar_numero(total_saldo)
-  )
-
-kable(top_10_orgaos, 
-      caption = "🏆 Top 10 Órgãos com Maiores Valores de Restos a Pagar",
-      col.names = c("Código", "Nome do Órgão", "Total (R$)", "Posição", "Total Formatado"),
-      format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  row_spec(0, bold = TRUE, background = "#f8f9fa") %>%
-  column_spec(4, bold = TRUE, color = "white", background = "#007bff")
-```
-
-## 📈 Indicadores-Chave Anexo 07
-
-```{r indicadores_anexo_07}
-#| echo: false
-
-# Calcular indicadores principais
-total_geral <- sum(dados_rp_anexo_07$saldo_r_item_informacao, na.rm = TRUE)
-total_intra <- sum(dados_rp_anexo_07$saldo_r_item_informacao[dados_rp_anexo_07$tipo_modalidade == "intra"], na.rm = TRUE)
-total_exceto_intra <- sum(dados_rp_anexo_07$saldo_r_item_informacao[dados_rp_anexo_07$tipo_modalidade == "exceto intra"], na.rm = TRUE)
-qtd_orgaos <- length(unique(dados_rp_anexo_07$orgao_uge_orgao_maximo_codigo))
-
-indicadores_principais <- data.frame(
-  Indicador = c(
-    "💰 Total Geral de Restos a Pagar",
-    "🔄 Total Intragovernamental", 
-    "🏛️ Total Exceto Intragovernamental",
-    "📊 Quantidade de Órgãos",
-    "📅 Período de Referência"
-  ),
-  Valor = c(
-    formatar_numero(total_geral),
-    formatar_numero(total_intra),
-    formatar_numero(total_exceto_intra),
-    as.character(qtd_orgaos),
-    mes_filtro
-  )
-)
-
-kable(indicadores_principais, 
-      caption = "🎯 Indicadores-Chave do Anexo 07",
-      format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
-  row_spec(0, bold = TRUE, background = "#f8f9fa") %>%
-  column_spec(1, bold = TRUE, color = "#007bff")
-```
-
 # 📚 RREO Anexo 08 - MDE {#sec-anexo-08}
 
 ## 📝 Descrição
@@ -4245,32 +3777,7 @@ transferencias_resumo <- rli_transf %>%
   arrange(desc(total)) %>%
   mutate(total_formatado = formatar_numero(total))
 
-# Exibir com DT::datatable
-# DT::datatable(
-#   transferencias_resumo,
-#   colnames = c("Tipo de Transferência", "Total (R$)", "Total Formatado"),
-#   caption = "🔄 Transferências Constitucionais por Tipo",
-#   rownames = FALSE,
-#   options = list(
-#     pageLength = 10,
-#     dom = 'ft',
-#     columnDefs = list(
-#       list(className = 'dt-left', targets = 0),      # Tipo à esquerda
-#       list(className = 'dt-right', targets = c(1,2)) # Valores à direita
-#     ),
-#     language = list(
-#       url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json'
-#     )
-#   )
-# ) %>%
-#   DT::formatStyle(
-#     columns = "transferencia",
-#     fontWeight = 'bold'
-#   ) %>%
-#   DT::formatStyle(
-#     columns = c("total", "total_formatado"),
-#     textAlign = 'right'
-#   )
+
 ```
 
 ### Cálculo da RLI Mensal
@@ -4727,302 +4234,7 @@ DT::datatable(
   DT::formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = ",")
 ```
 
-```         
-```
-
-## 📊 Resumo Executivo e Indicadores
-
-### Totais Consolidados
-
-```{r resumo-executivo}
-# Calcular totais principais
-total_computadas <- sum(despesas_saude_completa$saldo_r_item_informacao, na.rm = TRUE)
-total_nao_computadas <- sum(despesa_saude_nao_computadas$saldo_r_item_informacao, na.rm = TRUE)
-total_geral_saude <- total_computadas + total_nao_computadas
-
-# Criar tabela resumo
-resumo_saude <- data.frame(
-  Categoria = c(
-    "Despesas Computadas para o Limite",
-    "Despesas NÃO Computadas",
-    "Total Geral das Despesas com Saúde"
-  ),
-  `Valor (R$)` = c(
-    total_computadas,
-    total_nao_computadas,
-    total_geral_saude
-  ),
-  `Valor (R$ Milhões)` = c(
-    total_computadas / 1000000,
-    total_nao_computadas / 1000000,
-    total_geral_saude / 1000000
-  ),
-  `Percentual` = c(
-    (total_computadas / total_geral_saude) * 100,
-    (total_nao_computadas / total_geral_saude) * 100,
-    100
-  )
-)
-
-# Exibir tabela resumo
-knitr::kable(
-  resumo_saude,
-  caption = "**Resumo Executivo - Despesas com Saúde**",
-  format.args = list(big.mark = ".", decimal.mark = ",", digits = 2),
-  align = c("l", "r", "r", "r")
-) %>%
-  kableExtra::kable_styling(
-    bootstrap_options = c("striped", "hover", "condensed"),
-    full_width = FALSE
-  ) %>%
-  kableExtra::row_spec(3, bold = TRUE, background = "#e8f5e8")
-```
-
-### Indicadores Principais
-
-```{r indicadores-saude}
-# Calcular indicadores
-percentual_computadas <- (total_computadas / total_geral_saude) * 100
-percentual_nao_computadas <- (total_nao_computadas / total_geral_saude) * 100
-
-cat("### 🎯 Indicadores Principais\n\n")
-cat("💚 **Despesas Computadas para o Limite:** ", 
-    format(round(percentual_computadas, 2), decimal.mark = ","), "%\n\n")
-cat("❌ **Despesas NÃO Computadas:** ", 
-    format(round(percentual_nao_computadas, 2), decimal.mark = ","), "%\n\n")
-cat("💰 **Total de Despesas Computadas:** R$ ", 
-    format(round(total_computadas / 1000000, 2), big.mark = ".", decimal.mark = ","), 
-    " milhões\n\n")
-cat("📊 **Total Geral com Saúde:** R$ ", 
-    format(round(total_geral_saude / 1000000, 2), big.mark = ".", decimal.mark = ","), 
-    " milhões\n\n")
-```
-
-## 📈 Visualizações
-
-### Gráfico Comparativo: Computadas vs Não Computadas
-
-```{r grafico-comparativo}
-#| echo: false
-#| eval: false
-# Preparar dados para o gráfico
-dados_grafico <- data.frame(
-  Categoria = c("Despesas Computadas", "Despesas NÃO Computadas"),
-  Valor = c(
-    total_computadas / 1000000,
-    total_nao_computadas / 1000000
-  ),
-  Tipo = c("Computadas", "Não Computadas")
-)
-
-# Criar gráfico
-library(ggplot2)
-ggplot(dados_grafico, aes(x = Categoria, y = Valor, fill = Tipo)) +
-  geom_col(alpha = 0.8) +
-  geom_text(aes(label = paste0("R$ ", format(round(Valor, 1), big.mark = ".", decimal.mark = ","))), 
-            vjust = -0.5, 
-            size = 4) +
-  scale_fill_manual(values = c("Computadas" = "#228B22", "Não Computadas" = "#DC143C")) +
-  labs(
-    title = "Despesas com Saúde - Computadas vs Não Computadas",
-    subtitle = paste0("Mês de Referência: ", mes_filtro),
-    x = "Categoria",
-    y = "Valor (R$ Milhões)",
-    fill = "Tipo",
-    caption = "Fonte: Tesouro Gerencial"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5, size = 12),
-    axis.text.x = element_text(size = 11),
-    legend.position = "bottom"
-  )
-```
-
-### Distribuição por Subfunção de Governo
-
-```{r grafico-subfuncoes-saude}
-#| echo: false
-#| eval: false
-# Preparar dados das despesas por subfunção (apenas computadas)
-despesas_por_subfuncao <- tabela_consolidada %>%
-  filter(subfuncao_governo_codigo != "demais") %>%
-  group_by(subfuncao_governo_nome) %>%
-  summarise(
-    valor_total = sum(saldo_r_item_informacao, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(valor_total)) %>%
-  mutate(
-    valor_milhoes = valor_total / 1000000,
-    percentual = (valor_total / sum(valor_total)) * 100
-  )
-
-# Criar gráfico de barras
-ggplot(despesas_por_subfuncao, aes(x = reorder(subfuncao_governo_nome, valor_milhoes), y = valor_milhoes)) +
-  geom_col(fill = "#4682B4", alpha = 0.8) +
-  geom_text(aes(label = paste0("R$ ", format(round(valor_milhoes, 1), big.mark = ".", decimal.mark = ","))), 
-            hjust = -0.1, size = 3.5) +
-  coord_flip() +
-  labs(
-    title = "Despesas com Saúde por Subfunção de Governo",
-    subtitle = "Subfunções Específicas de Saúde (301-306)",
-    x = "Subfunção",
-    y = "Valor (R$ Milhões)",
-    caption = "Fonte: Tesouro Gerencial"
-  ) +
-  theme_minimal() +
-  theme(
-    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
-    plot.subtitle = element_text(hjust = 0.5, size = 12),
-    axis.text.y = element_text(size = 10)
-  )
-```
-
-### Análise por Tipo de Aplicação
-
-```{r grafico-modalidade-aplicacao}
-#| echo: false
-#| eval: false
-# Preparar dados por modalidade de aplicação
-despesas_por_modalidade <- tabela_consolidada %>%
-  group_by(transferencia) %>%
-  summarise(
-    valor_total = sum(saldo_r_item_informacao, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    valor_milhoes = valor_total / 1000000,
-    percentual = (valor_total / sum(valor_total)) * 100,
-    tipo_limpo = case_when(
-      transferencia == "aplicacao_direta" ~ "Aplicação Direta",
-      transferencia == "_transferencia" ~ "Transferências",
-      TRUE ~ transferencia
-    )
-  )
-
-# Criar gráfico de pizza
-library(plotly)
-plot_ly(
-  despesas_por_modalidade,
-  labels = ~tipo_limpo,
-  values = ~valor_milhoes,
-  type = 'pie',
-  textposition = 'inside',
-  textinfo = 'label+percent',
-  hovertemplate = paste(
-    '<b>%{label}</b><br>',
-    'Valor: R$ %{value:.1f} milhões<br>',
-    'Percentual: %{percent}<br>',
-    '<extra></extra>'
-  )
-) %>%
-  layout(
-    title = list(
-      text = "Distribuição das Despesas com Saúde por Modalidade de Aplicação",
-      font = list(size = 16)
-    ),
-    showlegend = TRUE,
-    legend = list(
-      orientation = "v",
-      x = 1.02,
-      y = 0.5
-    )
-  )
-```
-
-## 📋 Considerações Metodológicas
-
-### Critérios de Classificação
-
-```{r metodologia-saude}
-cat("### 🔍 Metodologia Aplicada\n\n")
-cat("**Despesas Computadas para o Limite Constitucional:**\n")
-cat("- ID de USO: Saúde (6)\n")
-cat("- Item de Informação: Pago (25)\n")
-cat("- Subfunções Específicas: 301, 302, 303, 304, 305, 306\n")
-cat("- Base Legal: LC nº 141/2012\n\n")
-
-cat("**Despesas NÃO Computadas:**\n")
-cat("- ID de USO: Diferente de Saúde (≠ 6)\n")
-cat("- Órgão Superior: Ministério da Saúde (36000)\n")
-cat("- Exclusão: UO 74202 (conforme critérios específicos)\n")
-cat("- Incluem: despesas administrativas, aposentadorias, etc.\n\n")
-
-cat("**Modalidades de Aplicação:**\n")
-cat("  - **Aplicação Direta:** 20, 22, 71, 72, 75, 76, 91, 93, 94, 95, 96, 97, 99\n")
-cat("  - **Transferências:** 30, 31, 32, 35, 36, 40, 41, 42, 45, 46\n\n")
-
-cat("**Subfunções Específicas de Saúde:**\n")
-cat("- 301: Atenção Básica\n")
-cat("- 302: Assistência Hospitalar e Ambulatorial\n")
-cat("- 303: Suporte Profilático e Terapêutico\n")
-cat("- 304: Vigilância Sanitária\n")
-cat("- 305: Vigilância Epidemiológica\n")
-cat("- 306: Alimentação e Nutrição\n\n")
-
-cat("**Período de Referência:**\n")
-cat("- Mês: ", mes_filtro, "\n")
-cat("- Base de dados: Tesouro Gerencial (SIAFI)\n\n")
-```
-
-## 📄 Observações Finais
-
-```{r observacoes-saude}
-#| echo: false
-#| eval: false
-cat("### ⚠️ Observações Importantes\n\n")
-cat("1. **Limite Constitucional:** União deve aplicar mínimo de 15% da RCL em saúde\n")
-cat("2. **Periodicidade:** Relatório com periodicidade bimestral, conforme LRF\n")
-cat("3. **Abrangência:** Dados consolidados do Governo Federal\n")
-cat("4. **Legislação:** EC nº 29/2000, LC nº 141/2012, e demais normas aplicáveis\n")
-cat("5. **Metodologia:** Segue as normas da STN e critérios do Ministério da Saúde\n\n")
-
-# Informações técnicas do processamento
-cat("### 📊 Informações Técnicas\n\n")
-cat("- **Data de Processamento:** ", format(Sys.time(), "%d/%m/%Y %H:%M:%S"), "\n")
-cat("- **Total de Registros Processados:** ", nrow(dados_despesa), "\n")
-cat("- **Registros de Despesas Computadas:** ", nrow(despesas_saude_completa), "\n")
-cat("- **Registros de Despesas NÃO Computadas:** ", nrow(despesa_saude_nao_computadas), "\n")
-### Análise das "Demais" Subfunções
-
-# Analisar quais subfunções estão sendo classificadas como "demais"
-demais_subfuncoes_detalhado <- dados_despesa %>% 
-  filter(
-    mes_lancamento == mes_filtro, 
-    iduso_codigo == 6, 
-    item_informacao_codigo == 25,
-    subfuncao_governo_codigo %notin% c(301, 302, 303, 304, 305, 306)
-  ) %>%
-  group_by(subfuncao_governo_codigo, subfuncao_governo_nome) %>%
-  summarise(
-    valor_total = sum(saldo_r_item_informacao, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  arrange(desc(valor_total)) %>%
-  mutate(valor_milhares = valor_total / 1000)
-
-# Exibir detalhamento das "demais" subfunções
-DT::datatable(
-  demais_subfuncoes_detalhado,
-  caption = "Detalhamento das 'Demais' Subfunções de Saúde",
-  options = list(
-    pageLength = 15,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  )
-) %>%
-  DT::formatRound(c("valor_total", "valor_milhares"), 2, mark = ".", dec.mark = ",")
-
-# Total das demais subfunções
-total_demais_detalhado <- sum(demais_subfuncoes_detalhado$valor_total)
-cat("\n💰 **Total Detalhado das 'Demais' Subfunções:** R$", 
-    format(total_demais_detalhado, big.mark = ".", decimal.mark = ","), "\n")
-cat("💰 **Valor Oficial 'Outras Subfunções':** R$", 
-    format(11078161 * 1000, big.mark = ".", decimal.mark = ","), "\n")
-cat("📊 **Diferença:** R$", 
-    format(total_demais_detalhado - (11078161 * 1000), big.mark = ".", decimal.mark = ","), "\n")
+```{}
 ```
 
 # 📋 RREO Tabela 01
@@ -5562,18 +4774,7 @@ criterios_tabela_02 <- list(
 ### 📊 Dotação Atualizada
 
 ```{r processar-dotacao}
-# Processar dados para Dotação Atualizada (Item 12)
-# resultado_dotacao <- aplicar_criterios(
-#   df = dados_despesa %>% 
-#     filter(
-#       grupo_despesa_codigo_grupo == 1, 
-#       orgao_uge_orcam_fiscal_s_n == "PERTENCE",
-#       mes_lancamento == mes_filtro,
-#       item_informacao_codigo == "13"
-#     ),
-#   criterios = criterios_tabela_02,
-#   item_informacao_filtro = "13"
-# )
+
 
 
 tabela_02A_dotacao <- agrupar_e_combinar_dados_tipo_adm(df = dados_despesa %>% 
@@ -5583,53 +4784,6 @@ tabela_02A_dotacao <- agrupar_e_combinar_dados_tipo_adm(df = dados_despesa %>%
 
 
 
-
-
-# 
-# 
-# # Calcular subtotais por soma dos itens individuais
-# calcular_subtotais <- function(df) {
-#   # Item 03 - Pessoal Civil (soma dos itens 04 a 10)
-#   item03 <- df %>%
-#     filter(grepl("^0[4-9]  |^10  ", categoria)) %>%
-#     group_by(orgao_uge_tipo_administracao_nome) %>%
-#     summarise(saldo_r_item_informacaor = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-#     mutate(categoria = "03  Pessoal Civil")
-#   
-#   # Item 11 - Pessoal Militar (soma dos itens 12 a 18, mas 17-18)
-#   item11 <- df %>%
-#     filter(grepl("^1[2-8]  ", categoria)) %>%
-#     group_by(orgao_uge_tipo_administracao_nome) %>%
-#     summarise(
-#       saldo_r_item_informacao = sum(ifelse(grepl("^1[2-6]  |^17  ", categoria), saldo_r_item_informacao, 0), na.rm = TRUE) - 
-#               sum(ifelse(grepl("^18  ", categoria), saldo_r_item_informacao, 0), na.rm = TRUE),
-#       .groups = "drop"
-#     ) %>%
-#     mutate(categoria = "11  Pessoal Militar")
-#   
-#   # Item 01 - Aplicação Direta (soma dos itens 02, 03 e 11)
-#   valores_para_item01 <- bind_rows(
-#     df %>% filter(grepl("^02  ", categoria)),
-#     item03,
-#     item11
-#   )
-#   
-#   item01 <- valores_para_item01 %>%
-#     group_by(orgao_uge_tipo_administracao_nome) %>%
-#     summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE), .groups = "drop") %>%
-#     mutate(categoria = "01  Aplicação Direta")
-#   
-#   # Combinar dados originais (exceto subtotais) com subtotais calculados
-#   df_final <- df %>%
-#     filter(!grepl("^01  |^03  |^11  ", categoria)) %>%
-#     bind_rows(item01, item03, item11)
-#   
-#   return(df_final)
-# }
-# 
-# # Aplicar cálculo de subtotais
-# resultado_dotacao_final <- calcular_subtotais(resultado_dotacao) %>%
-#   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
 
 # Pivotar dados para visualização
 DT_02A_dotacao <-  tabela_02A_dotacao %>% separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>% group_by(orgao_uge_tipo_administracao_nome, ordem, nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE))%>%
@@ -5663,7 +4817,7 @@ datatable(
 ### 📊 Despesas Liquidadas
 
 ```{r processar-liquidadas}
-# Processar dados para Despesas Liquidadas (Item 25)
+# Processar dados para Despesas Liquidadas (Item 28)
 
 tabela_02A_liquidada <- agrupar_e_combinar_dados_tipo_adm(df = dados_despesa %>% 
     filter( grupo_despesa_codigo_grupo == 1,  orgao_uge_orcam_fiscal_s_n == "PERTENCE",   mes_lancamento == mes_filtro,   item_informacao_codigo == "25"
@@ -5682,18 +4836,7 @@ DT_liquidadas_02A <-  tabela_02A_liquidada %>% separate(categoria, into = c("ord
 
 
 
-# # Aplicar cálculo de subtotais para liquidadas
-# resultado_liquidadas_final <- calcular_subtotais(resultado_liquidadas) %>%
-#   separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
-# 
-# # Pivotar dados para visualização
-# DT_liquidadas <- resultado_liquidadas_final %>%
-#   pivot_wider(
-#     names_from = orgao_uge_tipo_administracao_nome,
-#     values_from = saldo_r_item_informacao,
-#     values_fill = 0
-#   ) %>%
-#   arrange(ordem)
+
 ```
 
 ```{r tabela-liquidadas}
@@ -5714,38 +4857,6 @@ datatable(
     dec.mark = ","
   )
 ```
-
-## 🔍 Análises Específicas
-
-### 👥 Análise de Pessoal Civil
-
-```{r analise-civil}
-# Filtrar apenas critérios relacionados a Pessoal Civil
-# pessoal_civil <- tabela_02A_liquidada %>% separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>% group_by(orgao_uge_tipo_administracao_nome, ordem, nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE)) %>%
-#   filter(grepl("Pessoal Civil", categoria)) %>%
-#   arrange(ordem)
-# 
-# kable(pessoal_civil, 
-#       caption = "Detalhamento - Pessoal Civil",
-#       format.args = list(big.mark = ".", decimal.mark = ",")) %>%
-#   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-```
-
-### 🎖️ Análise de Pessoal Militar
-
-```{r analise-militar}
-# Filtrar apenas critérios relacionados a Pessoal Militar
-# pessoal_militar <- resultado_liquidadas_final %>%
-#   filter(grepl("Pessoal Militar", categoria)) %>%
-#   arrange(ordem)
-# 
-# kable(pessoal_militar, 
-#       caption = "Detalhamento - Pessoal Militar",
-#       format.args = list(big.mark = ".", decimal.mark = ",")) %>%
-#   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
-```
-
-## 🔍 Validações dos Critérios
 
 ### ✅ Teste Pessoal Militar
 
@@ -5854,118 +4965,6 @@ validacao_aplicacao <- dados_despesa %>%
 datatable(validacao_aplicacao, 
           caption = "Validação - Aplicação Direta") %>%
   formatRound(c('saldo_r_item_informacao'), 2, mark = ".", dec.mark = ",")
-```
-
-## 📊 Resumo Executivo
-
-### 💡 Principais Indicadores
-
-```{r indicadores-executivos, echo=FALSE}
-# Calcular totais por categoria principal
-# totais_categoria <- resultado_dotacao_final %>%
-#   mutate(
-#     categoria_principal = case_when(
-#       grepl("Aplicação Direta", categoria) ~ "Aplicação Direta",
-#       grepl("Pessoal Civil", categoria) ~ "Pessoal Civil",
-#       grepl("Pessoal Militar", categoria) ~ "Pessoal Militar",
-#       grepl("Transferências", categoria) ~ "Transferências",
-#       TRUE ~ "Outras"
-#     )
-#   ) %>%
-#   group_by(categoria_principal) %>%
-#   summarise(
-#     total = sum(c_across(where(is.numeric)), na.rm = TRUE),
-#     .groups = "drop"
-#   ) %>%
-#   arrange(desc(total))
-# 
-# cat("
-# ### 🎯 Destaques da Execução
-# 
-# - **Maior Categoria**: ", totais_categoria$categoria_principal[1], "
-# - **Administração Direta vs Indireta**: Comparação por tipo
-# - **Pessoal Civil vs Militar**: Distribuição dos gastos
-# - **Transferências**: Montante destinado a entes subnacionais
-# 
-# ### 📈 Análises Observadas
-# 
-# - Concentração de gastos em aplicação direta
-# - Distribuição entre pessoal civil e militar
-# - Evolução das transferências intergovernamentais
-# - Eficiência na execução orçamentária
-# 
-# ### ⚠️ Nota sobre Método de Cálculo
-# 
-# **Abordagem Simplificada por Soma:**
-# 
-# **Item 01 - Aplicação Direta**:
-# - = Item 02 (A Detalhar) + Item 03 (Pessoal Civil) + Item 11 (Pessoal Militar)
-# 
-# **Item 03 - Pessoal Civil**:
-# - = Soma dos itens 04 a 10
-# 
-# **Item 11 - Pessoal Militar**:
-# - = Soma dos itens 12 a 16 + Item 17 - Item 18
-# - = Valor base + 740.839.373,97
-# 
-# Esta metodologia permite maior transparência e facilita a auditoria dos valores.
-# ")
-```
-
-## 📋 Notas Metodológicas
-
-### 🔍 Critérios Específicos
-
-1.  **Aplicação Direta**: Engloba gastos diretos do órgão, excluindo transferências
-2.  **Pessoal Civil**: Inclui todos os elementos de despesa de pessoal não militar
-3.  **Pessoal Militar**: Específico para o Ministério da Defesa com regras especiais
-4.  **Ministério da Defesa**: Código 52000 com tratamento diferenciado
-
-### 📊 Elementos de Despesa
-
--   **11**: Vencimentos e Vantagens Fixas - Pessoal Civil
--   **12**: Vencimentos e Vantagens Fixas - Pessoal Militar\
--   **16**: Outras Despesas Variáveis - Pessoal Civil
--   **17**: Outras Despesas Variáveis - Pessoal Militar
--   **01**: Aposentadorias/Reformas
--   **03**: Pensões
--   **41**: Transferências Intergovernamentais
-
-### ⚠️ Observações Importantes
-
--   Filtro aplicado: Grupo de Despesa 1 (Pessoal e Encargos Sociais)
--   Esfera: Orçamento Fiscal Federal
--   Período: Junho/2025
--   **Dotação Inicial**: Item de informação 9
--   **Despesas Liquidadas**: Item de informação 25
--   Valores expressos em milhares de reais
-
-------------------------------------------------------------------------
-
-*📊 Relatório gerado automaticamente pelo sistema de Relatórios Fiscais RREO & RGF*
-
-## 📊 Resumo Executivo
-
-### 💡 Principais Indicadores
-
-```{r indicadores, echo=FALSE}
-# Calcular indicadores principais (exemplo)
-# Estes cálculos seriam baseados nos dados reais processados
-
-cat("
-### 🎯 Destaques do Período
-
-- **Receitas Correntes**: Representam a maior parte da arrecadação
-- **Despesas com Pessoal**: Grupo de despesa mais significativo
-- **Resultado Primário**: [Calcular com base nos dados]
-- **Execução Orçamentária**: [Percentual de execução]
-
-### 📈 Tendências Observadas
-
-- Crescimento das receitas tributárias
-- Estabilidade nas despesas de custeio
-- Evolução dos investimentos públicos
-")
 ```
 
 # 📋 RREO Tabela 03
@@ -6369,420 +5368,4 @@ datatable(tabela_04_clean %>% filter( linhas != "outros") %>% select(linhas, dis
     )
 ```
 
-```{r}
-# print("=== TABELA 4 RREO - VERSÃO FINAL CORRIGIDA ===")
-# 
-# # Formatar para exibição
-# tabela_04_formatada <- tabela_04_final %>%
-#   mutate(across(where(is.numeric), formatar_numero))
-# 
-# print(tabela_04_formatada)
-# 
-# cat("\nDimensões da tabela:")
-# cat("\nLinhas:", nrow(tabela_04_final))
-# cat("\nColunas:", ncol(tabela_04_final))
-# 
-# # Verificar total por critério
-# cat("\n=== RESUMO POR CRITÉRIO ===")
-# resumo_criterios <- tabela_04_final %>%
-#   summarise(across(where(is.numeric), sum, na.rm = TRUE))
-# 
-# print(resumo_criterios)
-# 
-# print("\n=== STATUS FINAL ===")
-# print("✅ Código sem erros de sintaxe")
-# print("✅ Baseado em dados reais do Excel")
-# print("✅ 287 contas contábeis corretas")
-# print("✅ Disponibilidade Líquida calculada")
-# print("✅ Pronto para produção")
-# 
-# cat("\n🎯 TABELA 4 RREO FINALIZADA COM SUCESSO!")
-# 
-# datatable(tabela_04_final) %>% 
-#     formatRound(tabela_04_final[2:20] %>% colnames(),
-#          
-#         2, 
-#         mark = ".", 
-#         dec.mark = ","
-#     )
-```
-
-## 📋 Notas Metodológicas
-
-### 🔍 Critérios Utilizados
-
-1.  **Esfera Orçamentária**: Filtro aplicado para esfera federal (código 2)
-2.  **Período de Referência**: Junho/2025
-3.  **Classificações**: Baseadas no Manual de Contabilidade Aplicada ao Setor Público (MCASP)
-
-### 📊 Fontes de Dados
-
--   Sistema Integrado de Administração Financeira (SIAFI)
--   Tesouro Gerencial
--   Manual RREO - STN
-
-### ⚠️ Observações Importantes
-
--   Os dados apresentados referem-se ao Governo Federal
--   Valores expressos em milhares de reais
--   Última atualização: `r Sys.Date()`
-
 ------------------------------------------------------------------------
-
-*📊 Relatório gerado automaticamente pelo sistema de Relatórios Fiscais RREO & RGF*
-
-\`\`\`
-
-------------------------------------------------------------------------
-
-# 📝 Observações Metodológicas {#sec-metodologia}
-
-## Critérios de Classificação
-
-### RREO Anexo 07
-
--   **Intragovernamental**: Modalidade de Aplicação = 91
--   **Exceto Intragovernamental**: Demais modalidades de aplicação
--   **Órgão Máximo**: Maior nível hierárquico da estrutura organizacional
-
-### RREO Anexo 08 - MDE
-
--   **MDE**: Despesas que se qualificam como Manutenção e Desenvolvimento do Ensino
--   **RLI**: 18% das receitas de impostos líquidas de transferências constitucionais
--   **FUNDEB**: 30% da complementação da União é considerada para MDE
-
-## Base Legal
-
--   **Art. 212 da CF/88**: Mínimo de 18% da RLI em MDE
--   **Lei nº 14.113/2020**: Novo FUNDEB
--   **Portaria STN**: Metodologia de cálculo
-
-## Dados de Origem
-
--   **Fonte**: Sistema Tesouro Gerencial
--   **Período**: `r mes_filtro`
--   **Registros Processados**:
--   Receita: `r nrow(dados_receita)`
--   Despesa: `r nrow(dados_despesa)`
--   RP Anexo 07: `r nrow(dados_rp_anexo_07)`
--   RP Anexo 08: `r nrow(dados_rp_anexo_08)`
-
-------------------------------------------------------------------------
-
-**📅 Gerado em**: `r Sys.time()`\
-**📊 Mês de referência**: `r mes_filtro`\
-**✅ Status**: Relatórios processados com sucesso!
-
-## 📚 Referências
-
--   **Emenda Constitucional nº 29/2000** - Assegura recursos mínimos para saúde
--   **Lei Complementar nº 141/2012** - Regulamenta a EC 29/2000
--   **Lei Complementar nº 101/2000** - Lei de Responsabilidade Fiscal
--   **Manual de Demonstrativos Fiscais** - Secretaria do Tesouro Nacional
--   **Sistema Tesouro Gerencial** - Fonte dos dados utilizados
-
-------------------------------------------------------------------------
-
-*Documento gerado automaticamente pelo sistema de relatórios fiscais baseado em dados do Tesouro Gerencial.*
-
-```{r}
-# Estrutura unificada de critérios para relatórios fiscais
-criterios_relatorios_fiscais <- list(
-  
-  # ===== RREO ANEXO 3 - RCL (DESPESAS) =====
-  rreo_a03_rcl_desp_01 = list(
-    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
-    base_dados = "dados_despesa", linha_nome = "Transferências Constitucionais e Legais",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas com transferências constitucionais e legais para dedução da RCL",
-    data_atualizacao = Sys.Date(),
-    criterio = "acao_governo_codigo %in% c('0E36', '00SB') | grepl('^28846090900RX', programa_governo_codigo) | (programa_governo_codigo %in% c('0903', '2030', '2080') & modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))"
-  ),
-  rreo_a03_rcl_desp_02 = list(
-    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
-    base_dados = "dados_despesa", linha_nome = "Outras Deduções",
-    linha_codigo = "02", metrica = "saldo_r_item_informacao",
-    observacao = "Outras deduções para cálculo da RCL",
-    data_atualizacao = Sys.Date(),
-    criterio = "acao_governo_codigo %in% c('0E36', '00SB') | grepl('^28846090900RX', programa_governo_codigo) | (programa_governo_codigo %in% c('0903', '2030', '2080') & modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', '00G6', '0169', '0223', '0369', '0546', '0547', '0999', '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))"
-  ),
-  
-  # ===== RREO ANEXO 3 - RCL (RECEITAS) =====
-  rreo_a03_rcl_rec_01 = list(
-    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
-    base_dados = "dados_receita", linha_nome = "Impostos, Taxas e Contribuições de Melhoria",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Receitas tributárias para cálculo da RCL",
-    data_atualizacao = Sys.Date(),
-    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 1"
-  ),
-  rreo_a03_rcl_rec_02 = list(
-    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
-    base_dados = "dados_receita", linha_nome = "Receita de Contribuições",
-    linha_codigo = "02", metrica = "saldo_r_item_informacao",
-    observacao = "Receitas de contribuições para cálculo da RCL",
-    data_atualizacao = Sys.Date(),
-    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2"
-  ),
-  rreo_a03_rcl_rec_10 = list(
-    relatorio = "RREO", anexo_nome = "Receita Corrente Líquida", anexo_codigo = "A03",
-    base_dados = "dados_receita", linha_nome = "Transferências Constitucionais e Legais",
-    linha_codigo = "10", metrica = "saldo_r_item_informacao",
-    observacao = "Receitas de transferências constitucionais e legais",
-    data_atualizacao = Sys.Date(),
-    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7 & (grepl('FPE|FPM|CONSTITUCIONAL|LEGAL', natureza_receita_nome, ignore.case = TRUE) | grepl('^172[0-9]', natureza_receita_codigo_completo) | grepl('^171[0-9]', natureza_receita_codigo_completo))"
-  ),
-  
-  # ===== RREO ANEXO 4 - RPPS (DESPESAS) =====
-  rreo_a04_rpps_desp_01 = list(
-    relatorio = "RREO", anexo_nome = "RPPS", anexo_codigo = "A04",
-    base_dados = "dados_despesa", linha_nome = "CIVIS - DESPESAS - A detalhar",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas RPPS Civil - A detalhar",
-    data_atualizacao = Sys.Date(),
-    criterio = "esfera_orcamentaria_codigo %in% c(2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('00') & acao_governo_codigo %in% c('0053', '0181') & funcao_governo_codigo %notin% c('10', '08')"
-  ),
-  rreo_a04_rpps_desp_02 = list(
-    relatorio = "RREO", anexo_nome = "RPPS", anexo_codigo = "A04",
-    base_dados = "dados_despesa", linha_nome = "CIVIS - DESPESAS - Aposentadorias",
-    linha_codigo = "02", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas RPPS Civil - Aposentadorias",
-    data_atualizacao = Sys.Date(),
-    criterio = "esfera_orcamentaria_codigo %in% c(2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('01') & acao_governo_codigo %in% c('0053', '0181')"
-  ),
-  
-  # ===== RREO ANEXO 4 - RPPS (RECEITAS) =====
-  rreo_a04_rpps_rec_01 = list(
-    relatorio = "RREO", anexo_nome = "RPPS", anexo_codigo = "A04",
-    base_dados = "dados_receita", linha_nome = "CIVIS - RECEITA SEGURADOS - Ativo",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Receitas RPPS Civil - Segurados Ativos",
-    data_atualizacao = Sys.Date(),
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100423', '12100421', '12100422', '12100424', '12100461', '12100462', '12100463', '12100464') | startsWith(natureza_receita_codigo_completo, '1215011') | startsWith(natureza_receita_codigo_completo, '1215014') | startsWith(natureza_receita_codigo_completo, '121503'))"
-  ),
-  
-  # ===== RREO ANEXO 8 - MDE =====
-  rreo_a08_mde_01 = list(
-    relatorio = "RREO", anexo_nome = "Manutenção e Desenvolvimento do Ensino", anexo_codigo = "A08",
-    base_dados = "dados_despesa", linha_nome = "COMPLEMENTAÇÃO DA UNIÃO AO FUNDEB",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas com complementação da União ao FUNDEB",
-    data_atualizacao = Sys.Date(),
-    criterio = "acao_governo_codigo %in% c('00SB', '0E36')"
-  ),
-  rreo_a08_mde_03 = list(
-    relatorio = "RREO", anexo_nome = "Manutenção e Desenvolvimento do Ensino", anexo_codigo = "A08",
-    base_dados = "dados_despesa", linha_nome = "EDUCAÇÃO BÁSICA",
-    linha_codigo = "03", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas com educação básica",
-    data_atualizacao = Sys.Date(),
-    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134', '213', '242') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '368'"
-  ),
-  
-  # ===== RREO TABELA 01 - RECEITAS =====
-  rreo_t01_rec_01 = list(
-    relatorio = "RREO", anexo_nome = "Demonstrativo da Receita", anexo_codigo = "T01",
-    base_dados = "dados_receita", linha_nome = "Receita Tributária",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Receitas tributárias ordinárias e intra",
-    data_atualizacao = Sys.Date(),
-    criterio = "(nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 1) | (nre1_categoria_economica_codigo == 7 & nre2_origem_receita_codigo_origem == 1)"
-  ),
-  
-  # ===== RREO TABELA 02 - DESPESAS =====
-  rreo_t02_desp_01 = list(
-    relatorio = "RREO", anexo_nome = "Demonstrativo da Despesa", anexo_codigo = "T02",
-    base_dados = "dados_despesa", linha_nome = "Pessoal e Encargos Sociais",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas com pessoal e encargos sociais",
-    data_atualizacao = Sys.Date(),
-    criterio = "grupo_despesa_codigo_grupo == '1'"
-  ),
-  
-  # ===== RREO TABELA 04 - RESTOS A PAGAR =====
-  rreo_t04_rp_02 = list(
-    relatorio = "RREO", anexo_nome = "Restos a Pagar", anexo_codigo = "T04",
-    base_dados = "dados_rp", linha_nome = "A Detalhar",
-    linha_codigo = "02", metrica = "saldo_r_item_informacao",
-    observacao = "Restos a pagar - A detalhar",
-    data_atualizacao = Sys.Date(),
-    criterio = "elemento_despesa_codigo %in% c('00')"
-  ),
-  
-  # ===== RGF TABELA 04 - OPERAÇÕES DE CRÉDITO =====
-  rgf_t04_oper_01 = list(
-    relatorio = "RGF", anexo_nome = "Operações de Crédito", anexo_codigo = "T04",
-    base_dados = "dados_receita", linha_nome = "Operações de Crédito",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Receitas de operações de crédito ordinárias e intra",
-    data_atualizacao = Sys.Date(),
-    criterio = "(nre1_categoria_economica_codigo == 2 & nre2_origem_receita_codigo_origem == 1) | (nre1_categoria_economica_codigo == 8 & nre2_origem_receita_codigo_origem == 1)"
-  ),
-  
-  # ===== RREO TABELA 1B - SEGURIDADE =====
-  rreo_t1b_seg_01 = list(
-    relatorio = "RREO", anexo_nome = "Seguridade Social", anexo_codigo = "T1B",
-    base_dados = "dados_despesa", linha_nome = "Saúde",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas com saúde",
-    data_atualizacao = Sys.Date(),
-    criterio = "iduso_codigo %in% c('6') & funcao_governo_codigo %notin% c('08')"
-  ),
-  
-  # ===== ESPECIAIS - RGPS =====
-  especial_rgps_01 = list(
-    relatorio = "ESPECIAL", anexo_nome = "RGPS", anexo_codigo = "RGPS",
-    base_dados = "dados_despesa", linha_nome = "Aposentadorias",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas RGPS - Aposentadorias",
-    data_atualizacao = Sys.Date(),
-    criterio = "elemento_despesa_codigo %in% c('53', '54') & grupo_despesa_codigo_grupo %in% c(3) & modalidade_aplicacao_codigo %notin% c('91')"
-  ),
-  
-  # ===== ESPECIAIS - FCDF =====
-  especial_fcdf_desp_01 = list(
-    relatorio = "ESPECIAL", anexo_nome = "FCDF", anexo_codigo = "FCDF",
-    base_dados = "dados_despesa", linha_nome = "FCDF - DESPESAS - A detalhar",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Despesas FCDF - A detalhar",
-    data_atualizacao = Sys.Date(),
-    criterio = "esfera_orcamentaria_codigo %in% c(1, 2) & subfuncao_governo_codigo %in% c('272', '273', '274', '845') & grupo_despesa_codigo_grupo %in% c(1) & elemento_despesa_codigo %in% c('00') & acao_governo_codigo %in% c('00Q2', '00QN', '00NS')"
-  ),
-  especial_fcdf_rec_01 = list(
-    relatorio = "ESPECIAL", anexo_nome = "FCDF", anexo_codigo = "FCDF",
-    base_dados = "dados_receita", linha_nome = "FCDF - RECEITA SEGURADOS - Ativo",
-    linha_codigo = "01", metrica = "saldo_r_item_informacao",
-    observacao = "Receitas FCDF - Segurados Ativos",
-    data_atualizacao = Sys.Date(),
-    criterio = "fonte_recursos_codigo %notin% c('00', '000') & (natureza_receita_codigo_completo %in% c('12100431', '12104211', '12104221', '12104231', '12104411', '12104421', '12104431', '12104611', '12104621', '12104631', '12191111', '12191321', '12191411') | startsWith(natureza_receita_codigo_completo, '121503') | startsWith(natureza_receita_codigo_completo, '1215011') | startsWith(natureza_receita_codigo_completo, '1215014'))"
-  )
-)
-
-# Funções para trabalhar com a estrutura unificada
-
-# 1. Filtrar critérios por relatório
-filtrar_por_relatorio <- function(lista_criterios, relatorio) {
-  lista_criterios[sapply(lista_criterios, function(x) x$relatorio == relatorio)]
-}
-
-# 2. Filtrar critérios por anexo
-filtrar_por_anexo <- function(lista_criterios, anexo_codigo) {
-  lista_criterios[sapply(lista_criterios, function(x) x$anexo_codigo == anexo_codigo)]
-}
-
-# 3. Filtrar critérios por base de dados
-filtrar_por_base_dados <- function(lista_criterios, base_dados) {
-  lista_criterios[sapply(lista_criterios, function(x) x$base_dados == base_dados)]
-}
-
-# 4. Listar todos os relatórios disponíveis
-listar_relatorios <- function(lista_criterios) {
-  unique(sapply(lista_criterios, function(x) x$relatorio))
-}
-
-# 5. Listar anexos por relatório
-listar_anexos <- function(lista_criterios, relatorio = NULL) {
-  if (!is.null(relatorio)) {
-    criterios_filtrados <- filtrar_por_relatorio(lista_criterios, relatorio)
-  } else {
-    criterios_filtrados <- lista_criterios
-  }
-  
-  data.frame(
-    anexo_codigo = sapply(criterios_filtrados, function(x) x$anexo_codigo),
-    anexo_nome = sapply(criterios_filtrados, function(x) x$anexo_nome),
-    relatorio = sapply(criterios_filtrados, function(x) x$relatorio),
-    base_dados = sapply(criterios_filtrados, function(x) x$base_dados)
-  ) %>% distinct()
-}
-
-# 6. Aplicar função em critérios específicos (versão melhorada)
-aplicar_criterios <- function(dados, lista_criterios, filtro_relatorio = NULL, 
-                             filtro_anexo = NULL, metrica_personalizada = NULL) {
-  
-  # Aplicar filtros se especificados
-  criterios_selecionados <- lista_criterios
-  
-  if (!is.null(filtro_relatorio)) {
-    criterios_selecionados <- filtrar_por_relatorio(criterios_selecionados, filtro_relatorio)
-  }
-  
-  if (!is.null(filtro_anexo)) {
-    criterios_selecionados <- filtrar_por_anexo(criterios_selecionados, filtro_anexo)
-  }
-  
-  # Aplicar os critérios
-  map_df(names(criterios_selecionados), function(nome_criterio) {
-    criterio <- criterios_selecionados[[nome_criterio]]
-    
-    # Usar métrica personalizada ou a padrão do critério
-    metrica_usar <- ifelse(!is.null(metrica_personalizada), 
-                          metrica_personalizada, 
-                          criterio$metrica)
-    
-    # Avaliar condição
-    condicao_expr <- eval(parse(text = criterio$criterio), envir = dados)
-    
-    dados %>%
-      filter(condicao_expr) %>%
-      group_by(mes_lancamento, item_informacao_nome, item_informacao_codigo) %>%
-      summarise(
-        valor = sum(.data[[metrica_usar]], na.rm = TRUE), 
-        .groups = "drop"
-      ) %>%
-      mutate(
-        categoria = paste0(criterio$linha_codigo, "  ", criterio$linha_nome),
-        relatorio = criterio$relatorio,
-        anexo_codigo = criterio$anexo_codigo,
-        anexo_nome = criterio$anexo_nome,
-        base_dados = criterio$base_dados,
-        metrica_utilizada = metrica_usar,
-        observacao = criterio$observacao
-      ) %>%
-      rename(!!metrica_usar := valor)
-  })
-}
-
-# 7. Função para converter listas antigas para estrutura unificada
-converter_lista_antiga <- function(lista_antiga, relatorio, anexo_nome, anexo_codigo, base_dados, metrica = "saldo_r_item_informacao") {
-  map(names(lista_antiga), function(nome_linha) {
-    # Extrair código da linha (primeiros 2 caracteres)
-    codigo_linha <- str_extract(nome_linha, "^\\d{2}")
-    if (is.na(codigo_linha)) codigo_linha <- "01"
-    
-    # Extrair nome da linha (depois do código)
-    nome_limpo <- str_trim(str_remove(nome_linha, "^\\d{2}\\s*"))
-    
-    list(
-      relatorio = relatorio,
-      anexo_nome = anexo_nome,
-      anexo_codigo = anexo_codigo,
-      base_dados = base_dados,
-      linha_nome = nome_limpo,
-      linha_codigo = codigo_linha,
-      metrica = metrica,
-      observacao = paste("Convertido automaticamente -", nome_limpo),
-      data_atualizacao = Sys.Date(),
-      criterio = str_trim(lista_antiga[[nome_linha]]$criterio)
-    )
-  })
-}
-
-# 8. Função para resumir critérios
-resumir_criterios <- function(lista_criterios) {
-  data.frame(
-    id = names(lista_criterios),
-    relatorio = sapply(lista_criterios, function(x) x$relatorio),
-    anexo = sapply(lista_criterios, function(x) x$anexo_codigo),
-    anexo_nome = sapply(lista_criterios, function(x) x$anexo_nome),
-    base_dados = sapply(lista_criterios, function(x) x$base_dados),
-    linha = sapply(lista_criterios, function(x) x$linha_codigo),
-    linha_nome = sapply(lista_criterios, function(x) x$linha_nome),
-    metrica = sapply(lista_criterios, function(x) x$metrica),
-    atualizado_em = sapply(lista_criterios, function(x) as.character(x$data_atualizacao))
-  ) %>%
-  arrange(relatorio, anexo, as.numeric(linha))
-}
-
-
-```
