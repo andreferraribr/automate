@@ -44,18 +44,23 @@ aplicar_criterios <- function(df, criterios, agrupamento = NULL) {
   resultado <- map_df(names(criterios), function(categoria) {
     crit <- criterios[[categoria]]
     
-    # Avaliar condição
-    condicao_expr <- eval(parse(text = crit$criterio), envir = df)
+    # Extrair informação de print do nome da categoria
+    if (grepl("_s$", categoria)) {
+      print_flag <- "s"
+      categoria_limpa <- str_replace(categoria, "_s$", "")
+    } else if (grepl("_n$", categoria)) {
+      print_flag <- "n"
+      categoria_limpa <- str_replace(categoria, "_n$", "")
+    } else {
+      print_flag <- "s"  # default
+      categoria_limpa <- categoria
+    }
     
-    df %>%
-      filter(condicao_expr) %>%
-      group_by(across(all_of(group_vars))) %>%
-      summarise(
-        valor = sum(.data[[metrica]], na.rm = TRUE), 
-        .groups = "drop"
-      ) %>%
-      mutate(
-        categoria = categoria,
+    # Verificar se o critério é uma fórmula matemática (contém chaves de outros itens)
+    if (grepl("\\{[^}]+\\}", crit$criterio)) {
+      # É uma fórmula matemática - processar depois que todos os itens básicos forem calculados
+      return(data.frame(
+        categoria = categoria_limpa,
         metrica = metrica,
         dataframe_nome = df_nome,
         dataframe_filtros = df_filtros,
@@ -63,10 +68,91 @@ aplicar_criterios <- function(df, criterios, agrupamento = NULL) {
         anexo_codigo = anexo_codigo,
         anexo_nome = anexo_nome,
         detalhe = detalhe,
-        filtro = crit$criterio
+        print = print_flag,
+        filtro = crit$criterio,
+        valor = NA,  # Será calculado depois
+        formula_matematica = TRUE,
+        stringsAsFactors = FALSE
       ) %>%
-      separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+        separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>%
+        group_by(across(all_of(group_vars))) %>%
+        slice(1) %>%
+        ungroup()
+      )
+    } else {
+      # É um critério normal de filtro
+      # Avaliar condição
+      condicao_expr <- eval(parse(text = crit$criterio), envir = df)
+      
+      df %>%
+        filter(condicao_expr) %>%
+        group_by(across(all_of(group_vars))) %>%
+        summarise(
+          valor = sum(.data[[metrica]], na.rm = TRUE), 
+          .groups = "drop"
+        ) %>%
+        mutate(
+          categoria = categoria_limpa,
+          metrica = metrica,
+          dataframe_nome = df_nome,
+          dataframe_filtros = df_filtros,
+          relatorio = relatorio,
+          anexo_codigo = anexo_codigo,
+          anexo_nome = anexo_nome,
+          detalhe = detalhe,
+          print = print_flag,
+          filtro = crit$criterio,
+          formula_matematica = FALSE
+        ) %>%
+        separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE)
+    }
   })
+  
+  # Processar fórmulas matemáticas após todos os itens básicos
+  formulas <- resultado %>% filter(formula_matematica == TRUE, is.na(valor))
+  
+  if (nrow(formulas) > 0) {
+    # Criar lookup dos valores calculados (por ordem)
+    valores_calculados <- resultado %>% 
+      filter(formula_matematica == FALSE) %>%
+      select(ordem, valor) %>%
+      distinct()
+    
+    lookup_valores <- setNames(valores_calculados$valor, valores_calculados$ordem)
+    
+    # Processar cada fórmula
+    for (i in 1:nrow(formulas)) {
+      formula <- formulas$filtro[i]
+      
+      # Substituir os placeholders {ordem} pelos valores
+      placeholders <- str_extract_all(formula, "\\{[^}]+\\}")[[1]]
+      formula_processada <- formula
+      
+      for (placeholder in placeholders) {
+        ordem_ref <- str_remove_all(placeholder, "[{}]")
+        if (ordem_ref %in% names(lookup_valores)) {
+          valor_ref <- lookup_valores[[ordem_ref]]
+          formula_processada <- str_replace(formula_processada, 
+                                            fixed(placeholder), 
+                                            as.character(valor_ref))
+        } else {
+          formula_processada <- str_replace(formula_processada, 
+                                            fixed(placeholder), 
+                                            "0")
+        }
+      }
+      
+      # Calcular o resultado da fórmula
+      valor_calculado <- eval(parse(text = formula_processada))
+      
+      # Atualizar o resultado
+      resultado[resultado$ordem == formulas$ordem[i] & 
+                  resultado$formula_matematica == TRUE, "valor"] <- valor_calculado
+    }
+  }
+  
+  # Remover a coluna auxiliar
+  resultado <- resultado %>% select(-formula_matematica)
   
   # Criar o nome da nova dataframe com prefixo df_
   novo_nome <- paste0("df_", criterios_nome)
@@ -99,28 +185,112 @@ consolidar_criterios <- function() {
   # Reagrupar apenas por mes_lancamento, ignorando agrupamentos adicionais
   resultado <- resultado_completo %>%
     group_by(mes_lancamento, categoria, ordem, nome, metrica, dataframe_nome, dataframe_filtros,
-             relatorio, anexo_codigo, anexo_nome, detalhe, filtro) %>%
+             relatorio, anexo_codigo, anexo_nome, detalhe, print, filtro) %>%
     summarise(valor = sum(valor, na.rm = TRUE), .groups = "drop") %>%
     arrange(mes_lancamento, relatorio, anexo_codigo, detalhe, ordem, detalhe) %>%
     select(-categoria) %>%
-    select(mes_lancamento,  relatorio, anexo_codigo, 
-           anexo_nome, detalhe,dataframe_nome, dataframe_filtros, filtro, metrica, ordem, nome, valor)
+    mutate(
+      # Converter mes_lancamento para data (último dia do mês)
+      data = case_when(
+        grepl("JAN", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-01-31")),
+        grepl("FEV", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-02-28")),
+        grepl("MAR", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-03-31")),
+        grepl("ABR", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-04-30")),
+        grepl("MAI", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-05-31")),
+        grepl("JUN", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-06-30")),
+        grepl("JUL", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-07-31")),
+        grepl("AGO", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-08-31")),
+        grepl("SET", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-09-30")),
+        grepl("OUT", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-10-31")),
+        grepl("NOV", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-11-30")),
+        grepl("DEZ", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-12-31")),
+        TRUE ~ as.Date(NA)
+      ),
+      # Criar chave única
+      chave = paste0(str_extract(mes_lancamento, "\\d{4}"), 
+                     case_when(
+                       grepl("JAN", mes_lancamento) ~ "01",
+                       grepl("FEV", mes_lancamento) ~ "02", 
+                       grepl("MAR", mes_lancamento) ~ "03",
+                       grepl("ABR", mes_lancamento) ~ "04",
+                       grepl("MAI", mes_lancamento) ~ "05",
+                       grepl("JUN", mes_lancamento) ~ "06",
+                       grepl("JUL", mes_lancamento) ~ "07",
+                       grepl("AGO", mes_lancamento) ~ "08",
+                       grepl("SET", mes_lancamento) ~ "09",
+                       grepl("OUT", mes_lancamento) ~ "10",
+                       grepl("NOV", mes_lancamento) ~ "11",
+                       grepl("DEZ", mes_lancamento) ~ "12",
+                       TRUE ~ "00"
+                     ),
+                     "_", tolower(relatorio), "_", tolower(anexo_codigo), "_", tolower(detalhe), "_", ordem)
+    ) %>%
+    select(chave, mes_lancamento, data, dataframe_nome, dataframe_filtros, relatorio, anexo_codigo, 
+           anexo_nome, detalhe, print, filtro, metrica, ordem, nome, valor)
   
   return(resultado)
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
+# Função para realizar operações matemáticas usando as chaves únicas
+calcular_operacoes <- function(dados_consolidados = NULL, ...) {
+  
+  # Se dados não fornecidos, usar consolidar_criterios()
+  if (is.null(dados_consolidados)) {
+    dados_consolidados <- consolidar_criterios()
+  }
+  
+  # Capturar as operações passadas como argumentos
+  operacoes <- list(...)
+  
+  if (length(operacoes) == 0) {
+    stop("Nenhuma operação foi especificada")
+  }
+  
+  # Criar um lookup table para facilitar a busca
+  lookup_valores <- setNames(dados_consolidados$valor, dados_consolidados$chave)
+  
+  # Processar cada operação
+  resultados <- map(names(operacoes), function(nome_operacao) {
+    operacao <- operacoes[[nome_operacao]]
+    
+    if (is.character(operacao)) {
+      # Operação simples: apenas a fórmula como string
+      formula <- operacao
+    } else if (is.list(operacao) && !is.null(operacao$formula)) {
+      # Operação estruturada
+      formula <- operacao$formula
+    } else {
+      stop(paste("Operação", nome_operacao, "deve ser uma string (fórmula) ou list com 'formula'"))
+    }
+    
+    formula_processada <- formula
+    
+    # Encontrar todas as chaves na fórmula (padrão: YYYYMM_texto_texto_texto_NN)
+    chaves <- str_extract_all(formula, "[0-9]{6}_[a-zA-Z0-9/_]+_[a-zA-Z0-9/_]+_[a-zA-Z0-9/_]+_[0-9]+")[[1]]
+    
+    for (chave in chaves) {
+      valor <- ifelse(chave %in% names(lookup_valores), 
+                      lookup_valores[[chave]], 
+                      0)
+      formula_processada <- str_replace(formula_processada, 
+                                        fixed(chave), 
+                                        as.character(valor))
+    }
+    
+    # Avaliar a expressão matemática
+    resultado_calculo <- eval(parse(text = formula_processada))
+    
+    return(list(
+      operacao = nome_operacao,
+      formula_original = formula,
+      formula_processada = formula_processada,
+      resultado = resultado_calculo
+    ))
+  })
+  
+  names(resultados) <- names(operacoes)
+  return(resultados)
+}
 criterios_rreo_A03_rcl_receitas <- list(
   
   # === RECEITAS CORRENTES POR ORIGEM (01-09) ===
