@@ -847,7 +847,7 @@ datatable(consolidar_criterios())
 # CRITÉRIOS PARA DESPESAS (DEDUÇÕES) - ANEXO 3 RCL
 # ===============================================================================
 
-criterios_despesas_anexo3_rcl <- list(
+criterios_rreo_A03_rcl_despesas <- list(
   
   # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (DESPESAS)
   `01  Transferências Constitucionais e Legais` = list(
@@ -877,13 +877,15 @@ criterios_despesas_anexo3_rcl <- list(
     "
   )
 )
+
+datatable(aplicar_criterios(df = dados_despesa %>% unique(), criterios_rreo_A03_rcl_despesas))
 ```
 
 ```{r criterio_rp_cancelados_transferencias}
 # Filtro para RREO Anexo 3 - Receita Corrente Líquida
 # RP Cancelados de Transferências Constitucionais e Legais
 
-criterio_rp_cancelados_transferencias <- list(
+criterios_rreo_A03_rcl_rpcancelados <- list(
   
   # RP CANCELADOS DE TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
   `01 RP Cancelados de Transferências Constitucionais e Legais` = list(
@@ -904,109 +906,8 @@ criterio_rp_cancelados_transferencias <- list(
     "
   )
 )
-```
 
-## 🔄 Processamento dos Dados
-
-```{r processamento}
-#| message: false
-#| warning: false
-
-
-
-# Processamento das receitas
-receitas_anexo3_rcl <- agrupar_e_combinar_dados(
-  df = dados_receita %>% filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE"),
-  criterios = criterios_receitas_anexo3_rcl
-  
-)
-
-
-
-# Processamento das despesas
-despesas_anexo3_rcl <- agrupar_e_combinar_dados(
-  df = dados_despesa %>% unique(),
-  criterios = criterios_despesas_anexo3_rcl
-)
-
-
-rp_cancelados_anexo3_rcl <- agrupar_e_combinar_dados(
-  df = dados_rp_anexo_03_rcl %>% unique(),
-  criterios = criterio_rp_cancelados_transferencias
-)
-
-
-
-```
-
-```{r rcl_receita}
-
-
-datatable(
-   processar_dt_criterios( receitas_anexo3_rcl),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "receitas_anexo3_rcl"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( receitas_anexo3_rcl), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-
-
-
-
-```
-
-```{r rcl_despesa}
-datatable(
-   processar_dt_criterios( despesas_anexo3_rcl),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "despesas_anexo3_rcl"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( despesas_anexo3_rcl), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-```
-
-```{r rp_rcl}
-
-
-
-
-datatable(
-   processar_dt_criterios( rp_cancelados_anexo3_rcl),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "rp_cancelados_anexo3_rcl"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( rp_cancelados_anexo3_rcl), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-```
-
-```{r}
-
-formatar_numero((sum(receitas_anexo3_rcl$saldo_r_item_informacao)-sum(despesas_anexo3_rcl$saldo_r_item_informacao)- sum(rp_cancelados_anexo3_rcl$saldo_r_item_informacao))/1000)
-
+datatable(aplicar_criterios(df = dados_rp_anexo_03_rcl %>% unique(), criterios_rreo_A03_rcl_rpcancelados))
 ```
 
 ------------------------------------------------------------------------
@@ -1021,7 +922,7 @@ O **Anexo 04** apresenta o demonstrativo das receitas e despesas previdenciária
 
 ```{r criterios-receitas-rgps}
 
-criterios_receitas_rgps <- list(
+criterios_rreo_A04_rgps_receitas <- list(
   
   # RECEITAS CORRENTES - DOS EMPREGADORES, TRABALHADORES E DEMAIS SEGURADOS
   `01  Receitas Correntes - Dos Empregadores, Trabalhadores e Demais Segurados` = list(
@@ -1063,7 +964,7 @@ criterios_receitas_rgps <- list(
 ### 💸 Critérios de Despesas RGPS
 
 ```{r criterios-despesas-rgps}
-criterios_despesas_rgps <- list(
+criterios_rreo_A04_rgps_despesas <- list(
   
   # APOSENTADORIAS
   `01  Aposentadorias` = list(
@@ -1100,72 +1001,33 @@ criterios_despesas_rgps <- list(
     criterio = "grupo_despesa_codigo_grupo %in% c(3) & modalidade_aplicacao_codigo %in% c('91') & elemento_despesa_codigo %notin% c('01', '03', '05')"
   )
 )
+
+
 ```
 
 ### 📊 Processamento RGPS - Receitas
 
 ```{r processar-rgps-receitas}
-# Processar receitas RGPS
-receita_rgps <- agrupar_e_combinar_dados(
-  df = dados_receita %>% 
+
+datatable(aplicar_criterios(df = dados_receita %>% 
     filter(
       unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917) | 
-      natureza_receita_codigo_completo == 79900211
-    ),
-  criterios = criterios_receitas_rgps
-)
+      natureza_receita_codigo_completo == 79900211), criterios_rreo_A04_rgps_receitas))
 
 
-```
 
-```{r tabela-rgps-receitas}
-datatable(
-  processar_dt_criterios(receita_rgps),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "RGPS - Receitas Previdenciárias"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios(receita_rgps), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
+
 ```
 
 ### 📊 Processamento RGPS - Despesas
 
 ```{r processar-rgps-despesas}
-# Processar despesas RGPS
-despesa_rgps <- agrupar_e_combinar_dados(
-  df = dados_despesa %>% 
-    filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917)),
-  criterios = criterios_despesas_rgps
-)
+
+datatable(aplicar_criterios(df = dados_despesa %>% 
+    filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917)), criterios_rreo_A04_rgps_despesas))
+
 
  
-```
-
-```{r tabela-rgps-despesas}
-# Exibir tabela de despesas RGPS
-datatable(
-   processar_dt_criterios( despesa_rgps),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "RGPS - Despesas Previdenciárias"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( despesa_rgps), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
 ```
 
 ## 👥 REGIME PRÓPRIO DE PREVIDÊNCIA SOCIAL (RPPS)
@@ -1173,7 +1035,7 @@ datatable(
 ### 💰 Critérios de Receitas RPPS
 
 ```{r criterios-receitas-rpps}
-criterios_receitas_rpps <- list(
+criterios_rreo_A04_rpps_receitas_civil_militar <- list(
   
  # CIVIS - RECEITA SEGURADOS - Ativo (CORRIGIDO)
 `01  CIVIS - RECEITA SEGURADOS - Ativo` = list(
@@ -1222,7 +1084,7 @@ startsWith(natureza_receita_codigo_completo, '121911'))"
 ### 💸 Critérios de Despesas RPPS
 
 ```{r criterios-despesas-rpps}
-criterios_despesas_rpps <- list(
+criterios_rreo_A04_rpps_despesas_civil_militar <- list(
   
   # CIVIS - DESPESAS - A detalhar
   `01  CIVIS - DESPESAS - A detalhar` = list(
@@ -1282,74 +1144,37 @@ criterios_despesas_rpps <- list(
 ### 📊 Processamento RPPS - Receitas
 
 ```{r processar-rpps-receitas}
-# Processar receitas RPPS
-receita_rpps <- agrupar_e_combinar_dados(
-  df = dados_receita %>% 
+
+datatable(aplicar_criterios(df = dados_receita %>% 
     filter(
       unidade_orcamentaria_codigo %notin% c(73901),
       fonte_recursos_codigo %notin% c('054')
-    ),
-  criterios = criterios_receitas_rpps
-)
+    ), criterios_rreo_A04_rpps_receitas_civil_militar))
+
+
 
 
 ```
 
 verificar linha 08 Total das Receitas RPPS.
 
-```{r tabela-rpps-receitas}
-# Exibir tabela de receitas RPPS
-datatable(
-  processar_dt_criterios( receita_rpps),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "RPPS - Receitas Previdenciárias (Civil e Militar)"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( receita_rpps), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-```
-
 ### 📊 Processamento RPPS - Despesas
 
 ```{r processar-rpps-despesas}
 # Processar despesas RPPS
-despesa_rpps <- agrupar_e_combinar_dados(
-  df = dados_despesa %>% 
+
+
+
+datatable(aplicar_criterios(df = dados_despesa %>% 
     filter(
       unidade_orcamentaria_codigo %notin% c(73901),
       elemento_despesa_codigo %notin% c('04', '07', '11', '13', '16', '39', '67', '96'),
       acao_governo_codigo != '09HB'
-    ),
-  criterios = criterios_despesas_rpps
-)
+    ), criterios_rreo_A04_rpps_despesas_civil_militar))
 
 
-```
 
-```{r tabela-rpps-despesas}
-# Exibir tabela de despesas RPPS
-datatable(
-  processar_dt_criterios( despesa_rpps),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "RPPS - Despesas Previdenciárias (Civil e Militar)"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( despesa_rpps), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
+
 ```
 
 ## 🏛️ REGIME PRÓPRIO DE PREVIDÊNCIA SOCIAL - FCDF
@@ -1357,7 +1182,7 @@ datatable(
 ### 💰 Critérios de Receitas FCDF
 
 ```{r criterios-receitas-fcdf}
-criterios_receitas_fcdf <- list(
+criterios_rreo_A04_rpps_receitas_fcdf<- list(
   
   # FCDF - RECEITA SEGURADOS - Ativo
   `01  FCDF - RECEITA SEGURADOS - Ativo` = list(
@@ -1399,7 +1224,7 @@ criterios_receitas_fcdf <- list(
 ### 💸 Critérios de Despesas FCDF
 
 ```{r criterios-despesas-fcdf}
-criterios_despesas_fcdf <- list(
+criterios_rreo_A04_rpps_despesas_fcdf <- list(
   
   # FCDF - DESPESAS - A detalhar
   `01  FCDF - DESPESAS - A detalhar` = list(
@@ -1426,110 +1251,32 @@ criterios_despesas_fcdf <- list(
 ### 📊 Processamento FCDF - Receitas
 
 ```{r processar-fcdf-receitas}
-# Processar receitas FCDF
-receita_rpps_fcdf <- agrupar_e_combinar_dados(
-  df = dados_receita %>% 
+
+datatable(aplicar_criterios(df = dados_receita %>% 
     filter(unidade_orcamentaria_codigo %in% c(73901)),
-  criterios = criterios_receitas_fcdf
-)
+    criterios_rreo_A04_rpps_receitas_fcdf))
 
 
-```
 
-```{r tabela-fcdf-receitas}
-# Exibir tabela de receitas FCDF
-datatable(
-  processar_dt_criterios( receita_rpps_fcdf),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "RPPS FCDF - Receitas Previdenciárias"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( receita_rpps_fcdf), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
+
+
 ```
 
 ### 📊 Processamento FCDF - Despesas
 
 ```{r processar-fcdf-despesas}
-# Processar despesas FCDF
-despesa_rpps_fcdf <- agrupar_e_combinar_dados(
-  df = dados_despesa %>% 
+
+datatable(aplicar_criterios(df = dados_despesa %>% 
     filter(
       unidade_orcamentaria_codigo %in% c(73901),
       elemento_despesa_codigo %notin% c('04', '07', '11', '13', '16', '39', '67', '96'),
       acao_governo_codigo != '09HB'
     ),
-  criterios = criterios_despesas_fcdf
-)
+    criterios_rreo_A04_rpps_despesas_fcdf))
 
 
-```
 
-```{r tabela-fcdf-despesas}
-# Exibir tabela de despesas FCDF
-datatable(
-  processar_dt_criterios( despesa_rpps_fcdf),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "RPPS FCDF - Despesas Previdenciárias"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( despesa_rpps_fcdf), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-```
 
-## 📊 Análises Consolidadas
-
-### 💡 Indicadores por Sistema
-
-```{r indicadores-sistemas}
-# Calcular totais por sistema previdenciário
-calcular_total_sistema <- function(df_receitas, df_despesas, nome_sistema) {
-  total_receitas <- df_receitas %>%
-    summarise(total = sum(`RECEITA ORCAMENTARIA (LIQUIDA)`, na.rm = TRUE)) %>%
-    pull(total)
-  
-  total_despesas <- df_despesas %>%
-    summarise(total = sum(`DESPESAS LIQUIDADAS`, na.rm = TRUE)) %>%
-    pull(total)
-  
-  resultado <- tibble(
-    Sistema = nome_sistema,
-    Receitas = total_receitas,
-    Despesas = total_despesas,
-    Resultado = total_receitas - total_despesas
-  )
-  
-  return(resultado)
-}
-
-# Consolidar indicadores
-indicadores_consolidados <- bind_rows(
-  calcular_total_sistema(processar_dt_criterios( receita_rgps), processar_dt_criterios(despesa_rgps), "RGPS"),
-  calcular_total_sistema(processar_dt_criterios( receita_rpps), processar_dt_criterios( despesa_rpps), "RPPS"),
-  calcular_total_sistema(processar_dt_criterios( receita_rpps_fcdf), processar_dt_criterios( despesa_rpps_fcdf), "RPPS FCDF")
-)
-
-# Exibir tabela consolidada
-kable(indicadores_consolidados,
-      caption = "Indicadores Consolidados dos Sistemas Previdenciários",
-      format.args = list(big.mark = ".", decimal.mark = ",")) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed")) %>%
-  row_spec(which(indicadores_consolidados$Resultado < 0), background = "#ffcccc") %>%
-  row_spec(which(indicadores_consolidados$Resultado >= 0), background = "#ccffcc")
 ```
 
 # 📋 RREO Anexo 06 (Resultado Primário)
@@ -1545,7 +1292,7 @@ kable(indicadores_consolidados,
 # ===============================================================================
 # CRITÉRIOS PARA DCL_1 (Dados Orçamentários)
 # ===============================================================================
-criterios_dcl_1 <- list(
+criterios_rgf_A02_dcl_1 <- list(
   
   `08 - PRECATÓRIOS POSTERIORES A 05/05/2000` = list(
     criterio = "
@@ -1572,7 +1319,7 @@ criterios_dcl_1 <- list(
 # ===============================================================================
 # CRITÉRIOS PARA DCL_2A (Dados Patrimoniais - Base Principal)
 # ===============================================================================
-criterios_dcl_2a <- list(
+criterios_rgf_A02_dcl_2a <- list(
   
   `02 - APLICAÇÃO EM TÍTULOS PÚBLICOS` = list(
     criterio = "
@@ -1704,7 +1451,7 @@ criterios_dcl_2a <- list(
 # ===============================================================================
 # CRITÉRIOS PARA DCL_2B (Dados Patrimoniais - Base Específica)
 # ===============================================================================
-criterios_dcl_2b <- list(
+criterios_rgf_A02_dcl_2b <- list(
   
   `01 - DÍVIDA MOBILIÁRIA TN INTERNA - PARTE 1` = list(
     criterio = "
@@ -1853,74 +1600,11 @@ criterios_dcl_2b <- list(
 )
 
 
+datatable(aplicar_criterios(dcl_1, criterios_rgf_A02_dcl_1))
 
- 
-dcl_2b_agrupado <- agrupar_e_combinar_dados_conta_contabil(
-       df =  dcl_2b,
-        criterios = criterios_dcl_2b
-      )
- 
- datatable(
-  processar_dt_criterios_conta_contabil( dcl_2b_agrupado),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "dcl_2a_agrupado"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios_conta_contabil( dcl_2b_agrupado), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
- 
- 
- 
- 
- dcl_2a_agrupado <- agrupar_e_combinar_dados_conta_contabil(
-       df =  dcl_2a,
-        criterios = criterios_dcl_2a
-      )
- 
- datatable(
-  processar_dt_criterios_conta_contabil( dcl_2a_agrupado),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "dcl_2a_agrupado"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios_conta_contabil( dcl_2a_agrupado), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
- 
- 
- dcl_1_agrupado <- agrupar_e_combinar_dados_conta_contabil(
-       df =  dcl_1,
-        criterios = criterios_dcl_1
-      )
- 
- datatable(
-  processar_dt_criterios_conta_contabil( dcl_1_agrupado),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "dcl_1_agrupado"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios_conta_contabil( dcl_1_agrupado), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
+datatable(aplicar_criterios(dcl_2a, criterios_rgf_A02_dcl_2a))
+
+datatable(aplicar_criterios(dcl_2b, criterios_rgf_A02_dcl_2b))
 
 
 ```
@@ -1935,7 +1619,7 @@ dcl_2b_agrupado <- agrupar_e_combinar_dados_conta_contabil(
 # ===============================================================================
 # 1. RECEITAS PRIMÁRIAS (dados_receita)
 # ===============================================================================
-criterios_receitas_primarias_rreo <- list(
+criterios_rreo_A06_receitas <- list(
   
   # RECEITAS CORRENTES (I) - Total
   `01  Receitas Correntes (I)` = list(
@@ -2139,7 +1823,7 @@ criterios_receitas_primarias_rreo <- list(
 # ===============================================================================
 # 2. DESPESAS PRIMÁRIAS - CATEGORIA/GRUPO (dados_categoria_grupo)
 # ===============================================================================
-criterios_despesas_categoria_grupo_rreo <- list(
+criterios_rreo_A06_despesas_categoria_grupo <- list(
   
   # DESPESAS CORRENTES (XIII)
   `01  Despesas Correntes (XIII)` = list(
@@ -2231,7 +1915,7 @@ criterios_despesas_categoria_grupo_rreo <- list(
 # ===============================================================================
 # 3. DESPESAS PRIMÁRIAS - NATUREZA DETALHADA (dados_ndd)
 # ===============================================================================
-criterios_despesas_natureza_detalhada_rreo <- list(
+criterios_rreo_A06_despesas_natureza_detalhada <- list(
   
   # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (Subitem de Outras Despesas Correntes)
   `01  ______Transferências Constitucionais e Legais` = list(
@@ -2258,7 +1942,7 @@ criterios_despesas_natureza_detalhada_rreo <- list(
 # ===============================================================================
 # 4. TRANSFERÊNCIAS E SUBSÍDIOS (dados_despesa)
 # ===============================================================================
-criterios_transferencias_subsidios_rreo <- list(
+criterios_rreo_A06_transferencias_subsidios <- list(
   
   # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (30 AÇÕES)
   `01  Transferências Constitucionais e Legais (30 Ações)` = list(
@@ -2287,7 +1971,7 @@ criterios_transferencias_subsidios_rreo <- list(
 # ===============================================================================
 # 5. DISPONIBILIDADES (tg_RPN_disponibilidades)
 # ===============================================================================
-criterios_disponibilidades_rreo <- list(
+criterios_rreo_A06_disponibilidades <- list(
   
   # DISPONIBILIDADES - RECURSOS A CLASSIFICAR
   `01  Disponibilidades - Recursos a Classificar` = list(
@@ -2309,7 +1993,7 @@ criterios_disponibilidades_rreo <- list(
 # ===============================================================================
 # 6. JUROS ATIVOS E PASSIVOS (dados_juros)
 # ===============================================================================
-criterios_juros_ativos_passivos_rreo <- list(
+criterios_rreo_A06_juros_ativos_passivos <- list(
   
   # JUROS ATIVOS (CONTAS 34XXX + ESPECÍFICAS)
   `01  Juros Ativos` = list(
@@ -2345,124 +2029,40 @@ criterios_juros_ativos_passivos_rreo <- list(
 ```{r processar_resultado_primario}
 
 
- despesas_categoria_grupo_rreo <- agrupar_e_combinar_dados(
+ aplicar_criterios(
        df =  dados_categoria_grupo %>% filter(mes_lancamento == mes_filtro),
-        criterios = criterios_despesas_categoria_grupo_rreo
+        criterios = criterios_rreo_A06_despesas_categoria_grupo
       )
  
- datatable(
-  processar_dt_criterios( despesas_categoria_grupo_rreo),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "despesas_categoria_grupo_rreo"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( despesas_categoria_grupo_rreo), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-
  
- 
-  receitas_primarias_rreo <- agrupar_e_combinar_dados(
+  aplicar_criterios(
        df =  dados_receita,
-        criterios = criterios_receitas_primarias_rreo
+        criterios = criterios_rreo_A06_receitas
       )
- 
- datatable(
-  processar_dt_criterios( receitas_primarias_rreo),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "eceitas_primarias_rreo"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( receitas_primarias_rreo), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
- 
 
- 
  
 
 
-despesas_natureza_detalhada_rreo <-   agrupar_e_combinar_dados(
+aplicar_criterios(
        df =  dados_ndd,
-        criterios = criterios_despesas_natureza_detalhada_rreo )
+        criterios = criterios_rreo_A06_despesas_natureza_detalhada )
 
 
- datatable(
-  processar_dt_criterios( despesas_natureza_detalhada_rreo),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "despesas_natureza_detalhada_rreo"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( despesas_natureza_detalhada_rreo), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
- 
- 
- 
-juros_ativos_passivos_rreo <- agrupar_e_combinar_dados_conta_contabil(
+
+aplicar_criterios(
        df =  dados_juros,
-        criterios = criterios_juros_ativos_passivos_rreo
+        criterios = criterios_rreo_A06_juros_ativos_passivos
       ) 
 
 
 
 
-datatable(
-  juros_ativos_passivos_rreo %>% filter(mes_lancamento == mes_filtro) %>% pivot_wider(names_from = mes_lancamento, values_from = saldo_r_conta_contabil),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "juros_ativos_passivos_rreo"
-) %>%
-  formatRound(
-    mes_filtro, 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-
-
-
-  disponibilidades_rreo <- agrupar_e_combinar_dados_conta_contabil( 
+(aplicar_criterios( 
     df =  tg_RPN_disponibilidades,
-        criterios =criterios_disponibilidades_rreo)
+        criterios =criterios_rreo_A06_disponibilidades))
   
   
-  datatable(
-  disponibilidades_rreo %>% filter(mes_lancamento == mes_filtro) %>% pivot_wider(names_from = mes_lancamento, values_from = saldo_r_conta_contabil),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "disponibilidades_rreo"
-) %>%
-  formatRound(
-    mes_filtro, 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
+ 
   
 
 
