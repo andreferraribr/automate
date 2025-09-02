@@ -39,7 +39,7 @@ library(readr)
 library(scales)
 
 # Configurações globais
-options(OutDec = ",")
+options(OutDec = ".")
 options(scipen = 999)
 
 # Configurações DT
@@ -704,7 +704,7 @@ dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == mes_filt
 # CRITÉRIOS PARA RECEITAS - ANEXO 3 RCL
 # ===============================================================================
 
-criterios_rreo_A03_rcl_receitas <- list(
+criterios_rreo_A03_rcl_receitas_rcl <- list(
   
   # === RECEITAS CORRENTES POR ORIGEM (01-09) ===
   
@@ -836,7 +836,7 @@ criterios_rreo_A03_rcl_receitas <- list(
 )
 
 
-datatable(aplicar_criterios(dados_receita, criterios_rreo_A03_rcl_receitas))
+datatable(aplicar_criterios(dados_receita, criterios_rreo_A03_rcl_receitas_rcl))
 
 datatable(consolidar_criterios())
 ```
@@ -847,7 +847,7 @@ datatable(consolidar_criterios())
 # CRITÉRIOS PARA DESPESAS (DEDUÇÕES) - ANEXO 3 RCL
 # ===============================================================================
 
-criterios_rreo_A03_rcl_despesas <- list(
+criterios_rreo_A03_rcl_despesas_rcl <- list(
   
   # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (DESPESAS)
   `01  Transferências Constitucionais e Legais` = list(
@@ -878,14 +878,14 @@ criterios_rreo_A03_rcl_despesas <- list(
   )
 )
 
-datatable(aplicar_criterios(df = dados_despesa %>% unique(), criterios_rreo_A03_rcl_despesas))
+datatable(aplicar_criterios(df = dados_despesa %>% unique(), criterios_rreo_A03_rcl_despesas_rcl))
 ```
 
 ```{r criterio_rp_cancelados_transferencias}
 # Filtro para RREO Anexo 3 - Receita Corrente Líquida
 # RP Cancelados de Transferências Constitucionais e Legais
 
-criterios_rreo_A03_rcl_rpcancelados <- list(
+criterios_rreo_A03_rcl_rpcancelados_rcl <- list(
   
   # RP CANCELADOS DE TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
   `01 RP Cancelados de Transferências Constitucionais e Legais` = list(
@@ -907,7 +907,7 @@ criterios_rreo_A03_rcl_rpcancelados <- list(
   )
 )
 
-datatable(aplicar_criterios(df = dados_rp_anexo_03_rcl %>% unique(), criterios_rreo_A03_rcl_rpcancelados))
+datatable(aplicar_criterios(df = dados_rp_anexo_03_rcl %>% unique(), criterios_rreo_A03_rcl_rpcancelados_rcl))
 ```
 
 ------------------------------------------------------------------------
@@ -922,7 +922,7 @@ O **Anexo 04** apresenta o demonstrativo das receitas e despesas previdenciária
 
 ```{r criterios-receitas-rgps}
 
-criterios_rreo_A04_rgps_receitas <- list(
+criterios_rreo_A04_rgps_receitas_rgps <- list(
   
   # RECEITAS CORRENTES - DOS EMPREGADORES, TRABALHADORES E DEMAIS SEGURADOS
   `01  Receitas Correntes - Dos Empregadores, Trabalhadores e Demais Segurados` = list(
@@ -964,7 +964,7 @@ criterios_rreo_A04_rgps_receitas <- list(
 ### 💸 Critérios de Despesas RGPS
 
 ```{r criterios-despesas-rgps}
-criterios_rreo_A04_rgps_despesas <- list(
+criterios_rreo_A04_rgps_despesas_rgps <- list(
   
   # APOSENTADORIAS
   `01  Aposentadorias` = list(
@@ -1012,7 +1012,7 @@ criterios_rreo_A04_rgps_despesas <- list(
 datatable(aplicar_criterios(df = dados_receita %>% 
     filter(
       unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917) | 
-      natureza_receita_codigo_completo == 79900211), criterios_rreo_A04_rgps_receitas))
+      natureza_receita_codigo_completo == 79900211), criterios_rreo_A04_rgps_receitas_rgps))
 
 
 
@@ -1024,7 +1024,7 @@ datatable(aplicar_criterios(df = dados_receita %>%
 ```{r processar-rgps-despesas}
 
 datatable(aplicar_criterios(df = dados_despesa %>% 
-    filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917)), criterios_rreo_A04_rgps_despesas))
+    filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917)), criterios_rreo_A04_rgps_despesas_rgps))
 
 
  
@@ -1035,7 +1035,7 @@ datatable(aplicar_criterios(df = dados_despesa %>%
 ### 💰 Critérios de Receitas RPPS
 
 ```{r criterios-receitas-rpps}
-criterios_rreo_A04_rpps_receitas_civil_militar <- list(
+criterios_rreo_A04_rpps_receitas_civil_militar_rpps <- list(
   
  # CIVIS - RECEITA SEGURADOS - Ativo (CORRIGIDO)
 `01  CIVIS - RECEITA SEGURADOS - Ativo` = list(
@@ -1084,7 +1084,7 @@ startsWith(natureza_receita_codigo_completo, '121911'))"
 ### 💸 Critérios de Despesas RPPS
 
 ```{r criterios-despesas-rpps}
-criterios_rreo_A04_rpps_despesas_civil_militar <- list(
+criterios_rreo_A04_rpps_despesas_civil_militar_rpps <- list(
   
   # CIVIS - DESPESAS - A detalhar
   `01  CIVIS - DESPESAS - A detalhar` = list(
@@ -1149,7 +1149,7 @@ datatable(aplicar_criterios(df = dados_receita %>%
     filter(
       unidade_orcamentaria_codigo %notin% c(73901),
       fonte_recursos_codigo %notin% c('054')
-    ), criterios_rreo_A04_rpps_receitas_civil_militar))
+    ), criterios_rreo_A04_rpps_receitas_civil_militar_rpps))
 
 
 
@@ -1170,7 +1170,7 @@ datatable(aplicar_criterios(df = dados_despesa %>%
       unidade_orcamentaria_codigo %notin% c(73901),
       elemento_despesa_codigo %notin% c('04', '07', '11', '13', '16', '39', '67', '96'),
       acao_governo_codigo != '09HB'
-    ), criterios_rreo_A04_rpps_despesas_civil_militar))
+    ), criterios_rreo_A04_rpps_despesas_civil_militar_rpps))
 
 
 
@@ -1619,7 +1619,7 @@ datatable(aplicar_criterios(dcl_2b, criterios_rgf_A02_dcl_2b))
 # ===============================================================================
 # 1. RECEITAS PRIMÁRIAS (dados_receita)
 # ===============================================================================
-criterios_rreo_A06_receitas <- list(
+criterios_rreo_A06_receitas_A06 <- list(
   
   # RECEITAS CORRENTES (I) - Total
   `01  Receitas Correntes (I)` = list(
@@ -1823,7 +1823,7 @@ criterios_rreo_A06_receitas <- list(
 # ===============================================================================
 # 2. DESPESAS PRIMÁRIAS - CATEGORIA/GRUPO (dados_categoria_grupo)
 # ===============================================================================
-criterios_rreo_A06_despesas_categoria_grupo <- list(
+criterios_rreo_A06_despesas_categoria_grupo_A06 <- list(
   
   # DESPESAS CORRENTES (XIII)
   `01  Despesas Correntes (XIII)` = list(
@@ -1915,7 +1915,7 @@ criterios_rreo_A06_despesas_categoria_grupo <- list(
 # ===============================================================================
 # 3. DESPESAS PRIMÁRIAS - NATUREZA DETALHADA (dados_ndd)
 # ===============================================================================
-criterios_rreo_A06_despesas_natureza_detalhada <- list(
+criterios_rreo_A06_despesas_natureza_detalhada_A06 <- list(
   
   # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (Subitem de Outras Despesas Correntes)
   `01  ______Transferências Constitucionais e Legais` = list(
@@ -1942,7 +1942,7 @@ criterios_rreo_A06_despesas_natureza_detalhada <- list(
 # ===============================================================================
 # 4. TRANSFERÊNCIAS E SUBSÍDIOS (dados_despesa)
 # ===============================================================================
-criterios_rreo_A06_transferencias_subsidios <- list(
+criterios_rreo_A06_transferencias_subsidios_A06 <- list(
   
   # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (30 AÇÕES)
   `01  Transferências Constitucionais e Legais (30 Ações)` = list(
@@ -1971,7 +1971,7 @@ criterios_rreo_A06_transferencias_subsidios <- list(
 # ===============================================================================
 # 5. DISPONIBILIDADES (tg_RPN_disponibilidades)
 # ===============================================================================
-criterios_rreo_A06_disponibilidades <- list(
+criterios_rreo_A06_disponibilidades_A06 <- list(
   
   # DISPONIBILIDADES - RECURSOS A CLASSIFICAR
   `01  Disponibilidades - Recursos a Classificar` = list(
@@ -1993,7 +1993,7 @@ criterios_rreo_A06_disponibilidades <- list(
 # ===============================================================================
 # 6. JUROS ATIVOS E PASSIVOS (dados_juros)
 # ===============================================================================
-criterios_rreo_A06_juros_ativos_passivos <- list(
+criterios_rreo_A06_juros_ativos_passivos_A06 <- list(
   
   # JUROS ATIVOS (CONTAS 34XXX + ESPECÍFICAS)
   `01  Juros Ativos` = list(
@@ -2031,13 +2031,13 @@ criterios_rreo_A06_juros_ativos_passivos <- list(
 
  aplicar_criterios(
        df =  dados_categoria_grupo %>% filter(mes_lancamento == mes_filtro),
-        criterios = criterios_rreo_A06_despesas_categoria_grupo
+        criterios = criterios_rreo_A06_despesas_categoria_grupo_A06
       )
  
  
   aplicar_criterios(
        df =  dados_receita,
-        criterios = criterios_rreo_A06_receitas
+        criterios = criterios_rreo_A06_receitas_A06
       )
 
  
@@ -2045,13 +2045,13 @@ criterios_rreo_A06_juros_ativos_passivos <- list(
 
 aplicar_criterios(
        df =  dados_ndd,
-        criterios = criterios_rreo_A06_despesas_natureza_detalhada )
+        criterios = criterios_rreo_A06_despesas_natureza_detalhada_A06 )
 
 
 
 aplicar_criterios(
        df =  dados_juros,
-        criterios = criterios_rreo_A06_juros_ativos_passivos
+        criterios = criterios_rreo_A06_juros_ativos_passivos_A06
       ) 
 
 
@@ -2059,7 +2059,7 @@ aplicar_criterios(
 
 (aplicar_criterios( 
     df =  tg_RPN_disponibilidades,
-        criterios =criterios_rreo_A06_disponibilidades))
+        criterios =criterios_rreo_A06_disponibilidades_A06))
   
   
  
@@ -2130,7 +2130,7 @@ Este anexo apresenta as **Receitas e Despesas com Manutenção e Desenvolvimento
 #| echo: true
 
 # Definir a lista de critérios para classificação das despesas MDE
-criterios_educacao <- list(
+criterios_rreo_A08_mde_despesas <- list(
   `01 - COMPLEMENTAÇÃO DA UNIÃO AO FUNDEB` = list(
     criterio = "acao_governo_codigo %in% c('00SB', '0E36')"
   ),
@@ -2146,11 +2146,11 @@ criterios_educacao <- list(
   `06 - OUTRAS` = list(
     criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & !subfuncao_governo_codigo %in% c('363', '364', '368') & acao_governo_codigo %notin% c('00SB', '0E36')"
   ),
-  `08 - COMPLEMENTAÇÃO DA UNIÃO - VAAT` = list(
+  `08 - COMPLEMENTAÇÃO DA UNIÃO - VAAF` = list(
     criterio = "acao_governo_codigo %in% c('00SB', '0E36') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212') & plano_orcamentario_codigo_po == '0001'"
   ),
   `09 - COMPLEMENTAÇÃO DA UNIÃO - VAAT` = list(
-    criterio = "acao_governo_codigo %in% c('00SB', '0E36') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212') & plano_orcamentario_codigo_po %in% c('0002')"
+    criterio = "acao_governo_codigo %in% c('00SB', '0E36') & fonte_recursos_codigo %notin% c('133', '134', '213', '008', '035', '212') & plano_orcamentario_codigo_po %in% c('0002') | fonte_recursos_codigo %notin% c('008') & plano_orcamentario_codigo_po %in% c('0003') & funcao_governo_codigo == '12' & subfuncao_governo_codigo == '847' & programa_governo_codigo == 5111 & acao_governo_codigo == '00SB' & unidade_orcamentaria_codigo == '26298' "
   ),
   `09b - VAAT po 26298 12 847 5111 00SB 0003` = list(
     criterio = "fonte_recursos_codigo %notin% c('008') & plano_orcamentario_codigo_po %in% c('0003') & funcao_governo_codigo == '12' & subfuncao_governo_codigo == '847' & programa_governo_codigo == 5111 & acao_governo_codigo == '00SB' & unidade_orcamentaria_codigo == '26298'"
@@ -2169,81 +2169,7 @@ criterios_educacao <- list(
   )
 )
 
-print("✅ Critérios de educação definidos:")
-print(names(criterios_educacao))
-```
-
-## 📊 Processamento dos Dados
-
-### Aplicar Critérios de Educação
-
-```{r aplicar_criterios_anexo_08}
-#| echo: true
-#| eval: true
-
-# Gerar dados classificados usando a função de agrupamento
-codigo_anexo08 <- paste0(mes_filtro, "REO", "A08", "despesa")
-
-print(paste("🔍 Código gerado:", codigo_anexo08))
-print(paste("📊 Dados de entrada:", nrow(dados_despesa), "registros"))
-
-anexo_08 <- agrupar_e_combinar_dados(
-  dados_despesa, 
-  criterios_educacao
-)
-
-print(paste("✅ Dados do Anexo 08 processados:", nrow(anexo_08), "registros"))
-
-print("✅ Categorias criadas:")
-print(unique(anexo_08$categoria))
-```
-
-## 📈 Tabela Principal - Despesas por Categoria MDE
-
-```{r tabela_principal_anexo_08}
-#| echo: true
-#| eval: true
-
-# Definir agrupamento por categoria
-agrupamento_mde <- c("categoria")
-
-# Criar tabela principal com função robusta
-if (nrow(anexo_08) > 0) {
-  # Função pivotagem específica para MDE
-  tabela_mde <- anexo_08 %>%
-    # Garantir que temos apenas dados numéricos para saldo
-    filter(!is.na(saldo_r_item_informacao)) %>%
-    # Agrupar por categoria
-    group_by(categoria, item_informacao_nome) %>%
-    # Sumarizar valores
-    summarise(
-      total = sum(saldo_r_item_informacao, na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    # Pivotar para formato de tabela
-    pivot_wider(
-      names_from = item_informacao_nome,
-      values_from = total,
-      values_fill = 0
-    )
-  
-  # Exibir tabela formatada
-  dt_formatada(tabela_mde, agrupamento_mde)
-  
-} else {
-  print("❌ Nenhum dado encontrado no anexo_08")
-  
-  # Tabela vazia para exibição
-  tabela_vazia <- data.frame(
-    categoria = "Nenhum dado encontrado",
-    observacao = "Verificar critérios e dados de entrada"
-  )
-  
-  kable(tabela_vazia, 
-        caption = "⚠️ Tabela MDE - Sem Dados",
-        format = "html") %>%
-    kable_styling(bootstrap_options = c("striped", "hover"))
-}
+datatable(aplicar_criterios(dados_despesa, criterios_rreo_A08_mde_despesas))
 ```
 
 ## 💰 Cálculo da Receita Líquida de Impostos (RLI)
@@ -2253,6 +2179,9 @@ if (nrow(anexo_08) > 0) {
 ```{r receitas_rli}
 #| echo: true
 #| eval: true
+
+
+
 
 # Receitas que compõem a base da RLI (impostos)
 receitas_base_rli <- dados_receita %>% 
@@ -2416,18 +2345,17 @@ print(paste("📅 RLI para", mes_filtro, ":", formatar_numero(rli_atual)))
 ```{r despesas_mde}
 
 # Despesas MDE das categorias principais (02, 03, 04, 05, 06)
-despesa_mde <- anexo_08 %>% 
+datatable(despesa_mde <- aplicar_criterios(dados_despesa, criterios_rreo_A08_mde_despesas) %>% 
   filter(
     item_informacao_codigo == 25, mes_lancamento == mes_filtro,
-    categoria %in% c(
-      "03 - EDUCAÇÃO BÁSICA",
-      "04 - ENSINO SUPERIOR", 
-      "05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR",
-      "06 - OUTRAS"
+    ordem %in% c(
+      "03",
+      "04", 
+      "05",
+      "06"
     )
   ) %>% 
-  summarise(saldo_mde = sum(saldo_r_item_informacao, na.rm = TRUE)) %>%
-  pull(saldo_mde)
+  summarise(valor = sum(valor, na.rm = TRUE)) )
 
 print(paste("💰 Despesas MDE principais:", formatar_numero(despesa_mde)))
 ```
@@ -2787,7 +2715,7 @@ A **Tabela 01** apresenta o demonstrativo da receita e despesa orçamentária, s
 # CRITÉRIOS DA TABELA 1 - RECEITAS
 # ======================================
 
-criterios_tabela1_receitas <- list(
+criterios_rreo_T01_receitas <- list(
   
   # === RECEITAS CORRENTES ===
   
@@ -2867,33 +2795,15 @@ criterios_tabela1_receitas <- list(
 
 ```{r processar-receitas}
 # Processar dados de receitas
-tabela1_receitas <- agrupar_e_combinar_dados(
+
+
+
+datatable(aplicar_criterios(
   df = dados_receita %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela1_receitas
-)
+  criterios = criterios_rreo_T01_receitas
+))
 
 
-```
-
-## 📊 Demonstrativo das Receitas
-
-```{r tabela-receitas}
-# Exibir tabela de receitas
-datatable(
-  processar_dt_criterios( tabela1_receitas),
-  options = list(
-    pageLength = 15,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "Tabela 01 - Demonstrativo das Receitas Orçamentárias"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( tabela1_receitas), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
 ```
 
 ## 💸 DESPESAS ORÇAMENTÁRIAS
@@ -2903,7 +2813,7 @@ datatable(
 # CRITÉRIOS DA TABELA 1 - DESPESAS
 # ======================================
 
-criterios_tabela1_despesas <- list(
+criterios_rreo_T01_despesas_T01 <- list(
   
   # === DESPESAS CORRENTES ===
   
@@ -2972,33 +2882,12 @@ criterios_tabela1_despesas <- list(
 
 ```{r processar-despesas}
 # Processar dados de despesas
-tabela1_despesas <- agrupar_e_combinar_dados(
+datatable(aplicar_criterios(
   df = dados_despesa %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela1_despesas
-)
+  criterios = criterios_rreo_T01_despesas_T01
+))
 
 
-```
-
-## 📊 Demonstrativo das Despesas
-
-```{r tabela-despesas}
-# Exibir tabela de despesas
-datatable(
-  processar_dt_criterios( tabela1_despesas),
-  options = list(
-    pageLength = 15,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "Tabela 01 - Demonstrativo das Despesas Orçamentárias"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( tabela1_despesas), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
 ```
 
 ## 📊 Tabela 01A - Detalhamento das Receitas
@@ -3007,7 +2896,7 @@ datatable(
 # ======================================
 # CRITÉRIOS DA TABELA 1A - COLUNAS 2025
 # ======================================
-criterios_tabela1a_colunas <- list(
+criterios_rreo_T01a_receita_prevista_T01 <- list(
   
   # === PREVISÃO ATUALIZADA (a) ===
   
@@ -3049,38 +2938,19 @@ criterios_tabela1a_colunas <- list(
 
 ```{r processar-tabela1a}
 # Processar Tabela 01A
-tabela_01A_receitas <- agrupar_e_combinar_dados(
+datatable(aplicar_criterios(
   df = dados_receita %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela1a_colunas
-)
+  criterios = criterios_rreo_T01a_receita_prevista_T01
+))
 
 
-```
-
-```{r exibir-tabela1a}
-# Exibir Tabela 01A
-datatable(
-  processar_dt_criterios( tabela_01A_receitas),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "Tabela 01A - Detalhamento das Receitas por Período"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( tabela_01A_receitas), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
 ```
 
 ## 🏥 Seguridade Social
 
 ```{r criterios-seguridade}
 # Critérios para análise da Seguridade Social
-criterios_tabela_1b_seguridade <- list(
+criterios_rreo_T01B_seguridade_T01B <- list(
   
   # SAÚDE
   `01  Saúde` = list(
@@ -3111,31 +2981,12 @@ criterios_tabela_1b_seguridade <- list(
 
 ```{r processar-seguridade}
 # Processar dados da Seguridade Social
-tabela_1b_seguridade <- agrupar_e_combinar_dados(
+datatable(aplicar_criterios(
   df = dados_despesa %>% filter(esfera_orcamentaria_codigo == 2) %>% unique(),
-  criterios = criterios_tabela_1b_seguridade
-)
+  criterios = criterios_rreo_T01B_seguridade_T01B
+))
 
 
-```
-
-```{r exibir-seguridade}
-# Exibir tabela da Seguridade Social
-datatable(
-  processar_dt_criterios( tabela_1b_seguridade),
-  options = list(
-    pageLength = 10,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "Despesas da Seguridade Social"
-) %>%
-  formatRound(
-    which(sapply(processar_dt_criterios( tabela_1b_seguridade), is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
 ```
 
 # 📋 RREO Tabela 02
@@ -3153,10 +3004,10 @@ A **Tabela 02** apresenta o demonstrativo das despesas por função de governo, 
 
 ```{r criterios-tabela02}
 # ======================================
-# CRITÉRIOS DA TABELA 02 - DESPESAS POR FUNÇÃO
+# CRITÉRIOS DA TABELA 02 -
 # ======================================
 
-criterios_tabela_02 <- list(
+criterios_rreo_T02_despesas_T02 <- list(
   
   # APLICAÇÃO DIRETA (será calculado por soma dos subitens)
   `01  Aplicação Direta` = list(
@@ -3274,85 +3125,15 @@ criterios_tabela_02 <- list(
 
 
 
-tabela_02A_dotacao <- agrupar_e_combinar_dados_tipo_adm(df = dados_despesa %>% 
-    filter( grupo_despesa_codigo_grupo == 1,  orgao_uge_orcam_fiscal_s_n == "PERTENCE",   mes_lancamento == mes_filtro,   item_informacao_codigo == "13"
+datatable(aplicar_criterios(df = dados_despesa %>% 
+    filter( grupo_despesa_codigo_grupo == 1,  orgao_uge_orcam_fiscal_s_n == "PERTENCE",   mes_lancamento == mes_filtro
     ),
-  criterios = criterios_tabela_02)
+  criterios = criterios_rreo_T02_despesas_T02))
 
 
 
 
-# Pivotar dados para visualização
-DT_02A_dotacao <-  tabela_02A_dotacao %>% separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>% group_by(orgao_uge_tipo_administracao_nome, ordem, nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE))%>%
-  pivot_wider(
-    names_from = orgao_uge_tipo_administracao_nome,
-    values_from = saldo_r_item_informacao,
-    values_fill = 0
-  ) %>%
-  arrange(ordem)
-```
 
-```{r tabela-dotacao}
-# Exibir tabela de Dotação Inicial
-datatable(
-  DT_02A_dotacao,
-  options = list(
-    pageLength = 20,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "Tabela 02 - Dotação Atualizada por Tipo de Administração"
-) %>%
-  formatRound(
-    which(sapply(DT_02A_dotacao, is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-```
-
-### 📊 Despesas Liquidadas
-
-```{r processar-liquidadas}
-# Processar dados para Despesas Liquidadas (Item 28)
-
-tabela_02A_liquidada <- agrupar_e_combinar_dados_tipo_adm(df = dados_despesa %>% 
-    filter( grupo_despesa_codigo_grupo == 1,  orgao_uge_orcam_fiscal_s_n == "PERTENCE",   mes_lancamento == mes_filtro,   item_informacao_codigo == "25"
-    ),
-  criterios = criterios_tabela_02)
-
-
-# Pivotar dados para visualização
-DT_liquidadas_02A <-  tabela_02A_liquidada %>% separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>% group_by(orgao_uge_tipo_administracao_nome, ordem, nome) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE))%>%
-  pivot_wider(
-    names_from = orgao_uge_tipo_administracao_nome,
-    values_from = saldo_r_item_informacao,
-    values_fill = 0
-  ) %>%
-  arrange(ordem)
-
-
-
-
-```
-
-```{r tabela-liquidadas}
-# Exibir tabela de Despesas Liquidadas
-datatable(
-  DT_liquidadas_02A,
-  options = list(
-    pageLength = 20,
-    scrollX = TRUE,
-    language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese-Brasil.json')
-  ),
-  caption = "Tabela 02 - Despesas Liquidadas por Tipo de Administração"
-) %>%
-  formatRound(
-    which(sapply(DT_liquidadas_02A, is.numeric)), 
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
 ```
 
 ### ✅ Teste Pessoal Militar
@@ -4214,4 +3995,10 @@ cat("✅ Fonte 182 (FUNCAP) adicionada à linha_07\n")
 cat("✅ Aplicado a ambos os dataframes: tabela_04 e dados_tabela_04_filtro_rreo\n")
 cat("✅ Taxa de validação: 100% baseada no resultado oficial\n")
 cat("\n🎯 CLASSIFICAÇÃO PRONTA PARA USO!\n")
+```
+
+```{r}
+ write.csv2( consolidar_criterios() %>% select(-filtro, -dataframe_filtros), "criterios_consolidados_clean.csv", row.names = FALSE)
+ 
+ write.csv2 (tabela_04_clean %>% filter( linhas != "outros") %>% select(linhas, disponibilidade_inicial, receitas_b, despesas_c, demais_fluxos_clean, disponibilidade_bruta_clean, rpp_exercicios_anteriores_f, rpp_exercicio_f1, rpnp_exercicios_anteriores_g, demais_obrigacoes_financeiras_1_clean, disponibilidade_antes_insc_rp_clean) %>% adorn_totals(where = "row"), "tabela_04.csv", row.names = FALSE)
 ```
