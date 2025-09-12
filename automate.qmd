@@ -6,7 +6,7 @@ date: today
 execute:
   warning: false
   message: false
-  cache: false
+  cache: true
 format:
   html:
     theme: cosmo
@@ -37,6 +37,7 @@ library(knitr)
 library(kableExtra)
 library(readr)
 library(scales)
+library(lubridate)
 
 # Configurações globais
 options(OutDec = ".")
@@ -62,9 +63,9 @@ print("✅ Bibliotecas carregadas com sucesso!")
 
 ```{r variaveis_globais}
 # Filtro principal do mês
-mes_filtro <- "JUL/2025"
+mes_filtro <- "202508"
 
-mes_pasta <- "data/tg_julho/"
+mes_pasta <- str_c("data/",mes_filtro,"/")
 
 print(paste("📅 Mês de referência definido:", mes_filtro))
 ```
@@ -77,15 +78,14 @@ print(paste("📅 Mês de referência definido:", mes_filtro))
 #| echo: true
 #| eval: true
 
-dados_receita <- read_excel(str_c(mes_pasta,"tg_receita.xlsx")) %>% 
+dados_receita <- read_excel(str_c(mes_pasta, "tg_receita.xlsx"), skip = 5) %>% 
   clean_names() %>% 
-  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
-dados_receita$mes_lancamento %>% unique() %>% fct_inorder()
-
-
-# Criar variáveis derivadas
-dados_receita <- dados_receita %>% 
+  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE") %>%
   mutate(
+    # Conversão de data
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1),
+    # Variáveis derivadas existentes
     tipo_modalidade = ifelse(
       nre1_categoria_economica_codigo %in% c(7, 8), 
       "intra", 
@@ -119,16 +119,17 @@ transferencia
 
 # Buscar todos os arquivos de despesa
 arq_despesa <- list.files(path = mes_pasta, pattern = 'tg_despesa', full.names = TRUE)
-
-dados_despesa <- map_df(arq_despesa, read_excel) %>%
+dados_despesa <- map_df(arq_despesa, ~ read_excel(.x, skip = 5, col_types = "text")) %>%
   clean_names() %>%
-  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE")
-dados_despesa$mes_lancamento %>% unique() %>% fct_inorder() 
-
-
-# Criar variáveis derivadas
-dados_despesa <- dados_despesa %>%
+  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE") %>%
   mutate(
+    # Converter colunas numéricas específicas
+    across(contains("saldo"), as.numeric),
+    across(contains("valor"), as.numeric),
+    mes_lancamento = as.numeric(mes_lancamento),
+    # Conversão de data
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1),
+    # Variáveis derivadas existentes
     tipo_modalidade = ifelse(
       modalidade_aplicacao_codigo == 91,
       "intra",
@@ -150,14 +151,12 @@ dados_despesa <- dados_despesa %>%
       orgao_uge_orgao_maximo_codigo %in% c(29000) ~ "DEFENSORIA PÚBLICA",
       TRUE ~ orgao_uge_poder_nome
     ),
-      transferencia = ifelse(
+    transferencia = ifelse(
       modalidade_aplicacao_codigo %in% c('30', '31', '32', '35', '36', '40', '41', '42', '45', '46'), 
       "_transferencia", 
       "aplicacao_direta"
     )
   )
-
-print(paste("✅ Dados de despesa carregados:", nrow(dados_despesa), "registros"))
 ```
 
 ## 📋 Dados de Restos a Pagar
@@ -167,11 +166,11 @@ print(paste("✅ Dados de despesa carregados:", nrow(dados_despesa), "registros"
 #| eval: true
 
 # RP Anexo 07
-dados_rp_anexo_07 <- read_excel(str_c(mes_pasta,"tg_rp_anexo_07.xlsx")) %>% 
-  clean_names()
-
-dados_rp_anexo_07 <- dados_rp_anexo_07 %>%  
+dados_rp_anexo_07 <- read_excel(str_c(mes_pasta, "tg_rp_anexo_07.xlsx"), skip = 5) %>% 
+  clean_names() %>%
   mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1),
     tipo_modalidade = ifelse(
       modalidade_aplicacao_codigo == 91, 
       "intra", 
@@ -183,20 +182,31 @@ dados_rp_anexo_07 <- dados_rp_anexo_07 %>%
       TRUE ~ orgao_uge_poder_nome
     )
   )
-dados_rp_anexo_07$mes_lancamento %>% unique() %>% fct_inorder() 
 
 # RP Anexo 12
-dados_rp_anexo_12 <- read_excel(str_c(mes_pasta,"tg_rp_anexo_12.xlsx")) %>% 
-  clean_names()
+dados_rp_anexo_12 <- read_excel(str_c(mes_pasta, "tg_rp_anexo_12.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
 # RP Anexo 08
-dados_rp_anexo_08 <- read_excel(str_c(mes_pasta,"tg_rp_anexo_08.xlsx")) %>% 
-  clean_names()
+dados_rp_anexo_08 <- read_excel(str_c(mes_pasta, "tg_rp_anexo_08.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
+# RP Anexo 03 RCL
+dados_rp_anexo_03_rcl <- read_excel(str_c(mes_pasta, "tg_rp_anexo_03_rcl.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
-dados_rp_anexo_03_rcl <- read_excel(str_c(mes_pasta,"tg_rp_anexo_03_rcl.xlsx")) %>% 
-  clean_names()
-dados_rp_anexo_03_rcl$mes_lancamento %>% unique() %>% fct_inorder() 
 
 
 
@@ -215,59 +225,96 @@ print(paste("   - Anexo 03 RCL:", nrow(dados_rp_anexo_03_rcl), "registros"))
 
 
 # Buscar todos os arquivos de despesa
-arq_tabela_04<- list.files(path = mes_pasta, pattern = 'tabela_04_p', full.names = TRUE)
-
-dados_tabela_04 <- map_df(arq_tabela_04, read_excel) %>%
-  clean_names() 
-
-
-
-
-
+arq_tabela_04 <- list.files(path = mes_pasta, pattern = 'tabela_04_p', full.names = TRUE)
+dados_tabela_04 <- map_df(arq_tabela_04, ~ read_excel(.x, skip = 5, col_types = "text")) %>%
+  clean_names()  %>%
+  mutate(
+    # Converter colunas numéricas específicas do DCL 2a
+    saldo_r_conta_contabil = as.numeric(saldo_r_conta_contabil),
+    mes_lancamento = as.numeric(mes_lancamento),
+    # Conversão de data
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 # Dados filtro RREO - demais UGs
-dados_tabela_04_filtro_rreo <- read_excel(str_c(mes_pasta,"tg_rreo_tabela_04_filtro_rreo.xlsx")) %>% 
+dados_tabela_04_filtro_rreo <- read_excel(str_c(mes_pasta, "tg_rreo_tabela_04_filtro_rreo.xlsx"), skip = 5) %>% 
   clean_names() %>% 
-  mutate(ug = "demais")
+  mutate(
+    ug = "demais",
+    saldo_r_conta_contabil = as.numeric(saldo_r_conta_contabil),
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
-
-    
-    
 # Dados NDD (Natureza de Despesa Detalhada)
-dados_ndd <- read_excel(str_c(mes_pasta,"tg_anexo_06_rreo_despesas_primarias_ndd.xlsx")) %>% 
-  clean_names()
+dados_ndd <- read_excel(str_c(mes_pasta, "tg_anexo_06_rreo_despesas_primarias_ndd.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
 # Dados Categoria/Grupo
-dados_categoria_grupo <- read_excel(str_c(mes_pasta,"tg_anexo_06_rreo_despesas_primarias_categoria_grupo.xlsx")) %>% 
-  clean_names()
-
-
-
+dados_categoria_grupo <- read_excel(str_c(mes_pasta, "tg_anexo_06_rreo_despesas_primarias_categoria_grupo.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
 # RPN - Juros
-tg_RPN_juros <- read_excel(str_c(mes_pasta,"tg_RPN_juros.xlsx")) %>% 
-  clean_names()
+tg_RPN_juros <- read_excel(str_c(mes_pasta, "tg_RPN_juros.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 dados_juros <- tg_RPN_juros
-dados_juros$mes_lancamento %>% unique() %>% fct_inorder()
+
 # RPN - Disponibilidades
-tg_RPN_disponibilidades <- read_excel("data/tg_julho/tg_RPN_disponibilidades.xlsx") %>% 
-  clean_names()
-tg_RPN_disponibilidades$mes_lancamento %>% unique() %>% fct_inorder()
+tg_RPN_disponibilidades <- read_excel(paste0(mes_pasta, "tg_RPN_disponibilidades.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
-dados_ndd <- read_excel(str_c(mes_pasta,"tg_anexo_06_rreo_despesas_primarias_ndd.xlsx"))%>% clean_names()
+# DCL 1
+dcl_1 <- read_excel(str_c(mes_pasta, "dcl_1.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
-dcl_1 <- read_excel(str_c(mes_pasta,"dcl_1.xlsx")) %>% clean_names()
+# DCL 2a
+arq_dcl_2a <- list.files(path = mes_pasta, pattern = 'dcl_2a', full.names = TRUE)
+dcl_2a <- map_df(arq_dcl_2a, ~ read_excel(.x, skip = 5, col_types = "text")) %>%
+  clean_names() %>%
+  mutate(
+    # Converter colunas numéricas específicas do DCL 2a
+    saldo_r_conta_contabil = as.numeric(saldo_r_conta_contabil),
+    mes_lancamento = as.numeric(mes_lancamento),
+    orgao_uge_tipo_administracao_codigo = as.numeric(orgao_uge_tipo_administracao_codigo),
+    orgao_uge_codigo = as.numeric(orgao_uge_codigo),
+    ug_executora_codigo = as.numeric(ug_executora_codigo),
+    # Conversão de data
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
+# DCL 2b
 
-
-dcl_2a <- read_excel(str_c(mes_pasta,"dcl_2a.xlsx")) %>% clean_names()
-
-
-
-arq_dcl_2b<- list.files(path = "data/tg_julho/", pattern = 'dcl_2b', full.names = TRUE)
-
-dcl_2b <- map_df(arq_dcl_2b, read_excel) %>%
-  clean_names() 
-
-
+arq_dcl_2b <- list.files(path = mes_pasta, pattern = 'dcl_2b', full.names = TRUE)
+dcl_2b <- map_df(arq_dcl_2b, ~ read_excel(.x, skip = 5, col_types = "text")) %>%
+  clean_names() %>%
+  mutate(
+    # Converter colunas numéricas específicas do DCL 2b
+    saldo_r_conta_contabil = as.numeric(saldo_r_conta_contabil),
+    mes_lancamento = as.numeric(mes_lancamento),
+    orgao_uge_tipo_administracao_codigo = as.numeric(orgao_uge_tipo_administracao_codigo),
+    orgao_uge_codigo = as.numeric(orgao_uge_codigo),
+    ug_executora_codigo = as.numeric(ug_executora_codigo),
+    # Conversão de data
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
 
 
@@ -539,42 +586,12 @@ consolidar_criterios <- function() {
     summarise(valor = sum(valor, na.rm = TRUE), .groups = "drop") %>%
     arrange(mes_lancamento, relatorio, anexo_codigo, detalhe, ordem) %>%
     mutate(
-      # Converter mes_lancamento para data (último dia do mês)
-      data = case_when(
-        grepl("JAN", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-01-31")),
-        grepl("FEV", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-02-28")),
-        grepl("MAR", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-03-31")),
-        grepl("ABR", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-04-30")),
-        grepl("MAI", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-05-31")),
-        grepl("JUN", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-06-30")),
-        grepl("JUL", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-07-31")),
-        grepl("AGO", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-08-31")),
-        grepl("SET", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-09-30")),
-        grepl("OUT", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-10-31")),
-        grepl("NOV", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-11-30")),
-        grepl("DEZ", mes_lancamento) ~ as.Date(paste0(str_extract(mes_lancamento, "\\d{4}"), "-12-31")),
-        TRUE ~ as.Date(NA)
-      ),
+      # Converter mes_lancamento para data (último dia do mês) - método simplificado
+      data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1),
       # Criar chave única
-      chave = paste0(str_extract(mes_lancamento, "\\d{4}"), 
-                     case_when(
-                       grepl("JAN", mes_lancamento) ~ "01",
-                       grepl("FEV", mes_lancamento) ~ "02", 
-                       grepl("MAR", mes_lancamento) ~ "03",
-                       grepl("ABR", mes_lancamento) ~ "04",
-                       grepl("MAI", mes_lancamento) ~ "05",
-                       grepl("JUN", mes_lancamento) ~ "06",
-                       grepl("JUL", mes_lancamento) ~ "07",
-                       grepl("AGO", mes_lancamento) ~ "08",
-                       grepl("SET", mes_lancamento) ~ "09",
-                       grepl("OUT", mes_lancamento) ~ "10",
-                       grepl("NOV", mes_lancamento) ~ "11",
-                       grepl("DEZ", mes_lancamento) ~ "12",
-                       TRUE ~ "00"
-                     ),
-                     "_", tolower(relatorio), "_", tolower(anexo_codigo), "_", tolower(detalhe), "_", ordem)
+      chave = paste0(mes_lancamento, "_", tolower(relatorio), "_", tolower(anexo_codigo), "_", tolower(detalhe), "_", ordem)
     ) %>%
-    select(chave, mes_lancamento, data, dataframe_nome, dataframe_filtros, relatorio, anexo_codigo, 
+    select(chave, mes_lancamento, data_lancamento, dataframe_nome, dataframe_filtros, relatorio, anexo_codigo, 
            anexo_nome, detalhe, print, filtro, metrica, 
            item_informacao_nome, item_informacao_codigo, 
            orgao_uge_tipo_administracao_nome, orgao_uge_tipo_administracao_codigo, 
@@ -582,22 +599,8 @@ consolidar_criterios <- function() {
   
   # Criar nome da dataframe baseado no mês mais recente
   mes_recente <- max(resultado$mes_lancamento)
-  ano <- str_extract(mes_recente, "\\d{4}")
-  mes_num <- case_when(
-    grepl("JAN", mes_recente) ~ "01",
-    grepl("FEV", mes_recente) ~ "02",
-    grepl("MAR", mes_recente) ~ "03",
-    grepl("ABR", mes_recente) ~ "04",
-    grepl("MAI", mes_recente) ~ "05",
-    grepl("JUN", mes_recente) ~ "06",
-    grepl("JUL", mes_recente) ~ "07",
-    grepl("AGO", mes_recente) ~ "08",
-    grepl("SET", mes_recente) ~ "09",
-    grepl("OUT", mes_recente) ~ "10",
-    grepl("NOV", mes_recente) ~ "11",
-    grepl("DEZ", mes_recente) ~ "12",
-    TRUE ~ "00"
-  )
+  ano <- substr(as.character(mes_recente), 1, 4)
+  mes_num <- substr(as.character(mes_recente), 5, 6)
   
   nome_df <- paste0("criterios_consolidados_", ano, "_", mes_num)
   
@@ -606,7 +609,6 @@ consolidar_criterios <- function() {
   
   return(resultado)
 }
-
 ```
 
 ## Calcular operações
@@ -682,16 +684,29 @@ calcular_operacoes <- function(dados_consolidados = NULL, ...) {
 # 📋 RREO Anexo 01 - Balanço Orçamentário {#sec-anexo-07}
 
 ```{r}
-datatable(dados_despesa %>% filter(mes_lancamento == mes_filtro, tipo_modalidade != "intra", item_informacao_nome == "DESPESAS EMPENHADAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
+datatable(dados_despesa %>% filter(mes_lancamento == mes_filtro, tipo_modalidade != "intra", item_informacao_nome == "DESPESAS PAGAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
   colnames = c("refinanciamento", "Grupo código", "Grupo Nome", "Despesa empenhada"))%>% formatRound("despesa_empenhada", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
+
+Você estava tentando fazer o pivot com dados **não agregados**, onde cada combinação de chaves tinha milhares de registros. Agregando primeiro com `sum()`, você terá apenas **12 linhas** (uma para cada combinação única).
 
 ```{r}
 agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo <- c( "tipo_modalidade"  ,"refinanciamento","categoria_economica_despesa_codigo", "categoria_economica_despesa_nome", "grupo_despesa_codigo_grupo", "grupo_despesa_nome")
 
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(mes_lancamento == mes_filtro), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo)
+dados_agregados <- dados_despesa %>% 
+  filter(mes_lancamento == mes_filtro) %>%
+  group_by(across(all_of(c(agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo, "item_informacao_nome")))) %>%
+  summarise(
+    saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+dt_formatada(
+  tabela_pivotada(dados_agregados, agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), 
+  agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo
+)
 ```
 
 # 📋 RREO Anexo 03 - RCL
@@ -2357,7 +2372,7 @@ datatable(despesa_mde <- aplicar_criterios(dados_despesa, criterios_rreo_A08_mde
   ) %>% 
   summarise(valor = sum(valor, na.rm = TRUE)) )
 
-print(paste("💰 Despesas MDE principais:", formatar_numero(despesa_mde)))
+print(paste("💰 Despesas MDE principais:", (despesa_mde)))
 ```
 
 ### Complementação FUNDEB
@@ -2436,11 +2451,11 @@ resumo_aplicacao <- data.frame(
     "✅ Mínimo Constitucional"
   ),
   Valor = c(
-    formatar_numero(despesa_mde),
-    formatar_numero(complementacao_fundeb),
-    formatar_numero(despesa_mde_rp),
-    formatar_numero(total_despesas_mde),
-    formatar_numero(rli_atual),
+    (despesa_mde),
+    (complementacao_fundeb),
+    (despesa_mde_rp),
+    (total_despesas_mde),
+   (rli_atual),
     paste0(round(percentual_aplicacao, 2), "%"),
     "18,00%"
   ),
@@ -3250,7 +3265,18 @@ datatable(validacao_aplicacao,
 ```{r tabela_3}
 agrupado_despesa_orgao <- c("orgao_uge_orgao_maximo_codigo", "orgao_uge_orgao_maximo_nome")
 
-dt_formatada(tabela_pivotada(dados_despesa %>% filter(resultado_eof_codigo == 6), agrupado_despesa_orgao),agrupado_despesa_orgao)
+dados_agregados_orgao <- dados_despesa %>% 
+  filter(resultado_eof_codigo == 6) %>%
+  group_by(across(all_of(c(agrupado_despesa_orgao, "item_informacao_nome")))) %>%
+  summarise(
+    saldo_r_item_informacao = sum(saldo_r_item_informacao, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+dt_formatada(
+  tabela_pivotada(dados_agregados_orgao, agrupado_despesa_orgao),
+  agrupado_despesa_orgao
+)
 ```
 
 # 📋 RREO Tabela 04
@@ -3998,7 +4024,166 @@ cat("\n🎯 CLASSIFICAÇÃO PRONTA PARA USO!\n")
 ```
 
 ```{r}
- write.csv2( consolidar_criterios() %>% select(-filtro, -dataframe_filtros), "criterios_consolidados_clean.csv", row.names = FALSE)
- 
- write.csv2 (tabela_04_clean %>% filter( linhas != "outros") %>% select(linhas, disponibilidade_inicial, receitas_b, despesas_c, demais_fluxos_clean, disponibilidade_bruta_clean, rpp_exercicios_anteriores_f, rpp_exercicio_f1, rpnp_exercicios_anteriores_g, demais_obrigacoes_financeiras_1_clean, disponibilidade_antes_insc_rp_clean) %>% adorn_totals(where = "row"), "tabela_04.csv", row.names = FALSE)
+ write.csv( consolidar_criterios() %>% select(-filtro, -dataframe_filtros), str_c(mes_pasta,"criterios_consolidados_clean.csv"), row.names = FALSE)
+ # 
+ # write.csv2 (tabela_04_clean %>% filter( linhas != "outros") %>% select(linhas, disponibilidade_inicial, receitas_b, despesas_c, demais_fluxos_clean, disponibilidade_bruta_clean, rpp_exercicios_anteriores_f, rpp_exercicio_f1, rpnp_exercicios_anteriores_g, demais_obrigacoes_financeiras_1_clean, disponibilidade_antes_insc_rp_clean) %>% adorn_totals(where = "row"), "tabela_04.csv", row.names = FALSE)
+```
+
+```{r}
+criterios_consolidados_clean <- read_csv("data/202508/criterios_consolidados_clean.csv")
+```
+
+```{r rcl_ate_mes}
+# Somar saldos da receita líquida e abater saldos das despesas empenhadas e rp cancelado
+
+formatar_numero(  criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "receitas_rcl",
+                           item_informacao_codigo == "5",
+                           ordem < "10") %>% 
+                    summarise(valor = sum(valor))
+                  -
+                    criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "receitas_rcl",
+                           item_informacao_codigo == "5",
+                           ordem %in% c("11","12","13","14","15")) %>% 
+                    summarise(valor = sum(valor))
+                 # subtrair
+                   -
+                    criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "despesas_rcl",
+                           ordem == "01",
+                           item_informacao_codigo %in% c(25)) %>%
+                    summarise(valor = sum(valor))
+               # adicionar
+                    + 
+                    criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "rpcancelados_rcl",
+                           item_informacao_codigo == "51") %>% 
+                    summarise(valor = sum(valor))
+                    )
+```
+
+```{r}
+( criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "receitas_rcl",
+                           item_informacao_codigo == "5",
+                           ordem <= "10") %>% 
+                    summarise(valor = sum(valor)/1000))
+```
+
+```{r}
+
+criterios_consolidados_clean %>% filter(relatorio == "rreo", anexo_codigo == "A04") %>% filter(item_informacao_codigo %in% c(5,25)) %>% group_by(detalhe) %>%  summarise(valor = sum(valor))
+
+
+
+  formatar_numero(  
+  criterios_consolidados_clean %>%
+    filter(
+      relatorio == "rreo",
+      anexo_codigo == "A04",
+      detalhe == "receitas_rgps",
+      item_informacao_codigo == "5") %>%
+    summarise(valor = sum(valor)) 
+ # subtrair
+   - 
+    criterios_consolidados_clean %>%
+    filter(
+      relatorio == "rreo",
+      anexo_codigo == "A04",
+      detalhe == "despesas_rgps",
+      item_informacao_codigo %in% c(25)) %>%
+    summarise(valor = sum(valor)))
+
+
+
+```
+
+```{r}
+
+  formatar_numero(  
+  criterios_consolidados_clean %>%
+    filter(
+      relatorio == "rreo",
+      anexo_codigo == "A04",
+      detalhe == "receitas_civil_militar_rpps",
+      item_informacao_codigo == "5") %>%
+    summarise(valor = sum(valor)) 
+ # subtrair
+   - 
+    criterios_consolidados_clean %>%
+    filter(
+      relatorio == "rreo",
+      anexo_codigo == "A04",
+      detalhe == "despesas_civil_militar_rpps",
+      item_informacao_codigo %in% c(25)) %>%
+    summarise(valor = sum(valor)))
+```
+
+```{r}
+formatar_numero(  
+  criterios_consolidados_clean %>%
+    filter(
+      relatorio == "rreo",
+      anexo_codigo == "A04",
+      detalhe == "receitas_fcdf",
+      item_informacao_codigo == "5") %>%
+    summarise(valor = sum(valor)) 
+ # subtrair
+   - 
+    criterios_consolidados_clean %>%
+    filter(
+      relatorio == "rreo",
+      anexo_codigo == "A04",
+      detalhe == "despesas_fcdf",
+      item_informacao_codigo %in% c(25)) %>%
+    summarise(valor = sum(valor)))
+```
+
+```{r minimo_saude}
+
+total_consolidado*1000/((  criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "receitas_rcl",
+                           item_informacao_codigo == "5",
+                           ordem < "10") %>% 
+                    summarise(valor = sum(valor))
+                  -
+                    criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "receitas_rcl",
+                           item_informacao_codigo == "5",
+                           ordem %in% c("11","12","13","14","15")) %>% 
+                    summarise(valor = sum(valor))
+                 # subtrair
+                   -
+                    criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "despesas_rcl",
+                           ordem == "01",
+                           item_informacao_codigo %in% c(25)) %>%
+                    summarise(valor = sum(valor))
+               # adicionar
+                    + 
+                    criterios_consolidados_clean %>%
+                    filter(relatorio == "rreo",
+                           anexo_codigo == "A03",
+                           detalhe == "rpcancelados_rcl",
+                           item_informacao_codigo == "51") %>% 
+                    summarise(valor = sum(valor))
+                    )*0.15)*100
+
 ```
