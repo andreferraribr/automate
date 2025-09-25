@@ -157,6 +157,15 @@ dados_despesa <- map_df(arq_despesa, ~ read_excel(.x, skip = 5, col_types = "tex
       "aplicacao_direta"
     )
   )
+
+
+# RGF Anexo 1
+rgf_a01 <- read_excel(str_c(mes_pasta, "rgf_a01.xlsx"), skip = 5) %>% 
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 ```
 
 ## 📋 Dados de Restos a Pagar
@@ -206,6 +215,8 @@ dados_rp_anexo_03_rcl <- read_excel(str_c(mes_pasta, "tg_rp_anexo_03_rcl.xlsx"),
     mes_lancamento = as.numeric(mes_lancamento),
     data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
   )
+
+
 
 
 
@@ -684,6 +695,1053 @@ calcular_operacoes <- function(dados_consolidados = NULL, ...) {
 # 📋 RREO Anexo 01 - Balanço Orçamentário {#sec-anexo-07}
 
 ```{r}
+criterios_rreo_A01_receitas_bo  <- list(
+  
+  # ========== RECEITAS CORRENTES ==========
+  
+  # RECEITAS CORRENTES
+  `01_receitas_correntes` = list(
+    criterio = "nre1_categoria_economica_codigo == 1"
+  ),
+  
+  # IMPOSTOS, TAXAS E CONTRIBUIÇÕES DE MELHORIA
+  `02_impostos_taxas_contrib_melhoria` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 1 &
+    nre3_especie_receita_codigo_especie %in% c(1, 2, 3)
+    "
+  ),
+  
+  # IMPOSTOS
+  `03_impostos` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 1 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # TAXAS
+  `04_taxas` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 1 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # CONTRIBUIÇÕES
+  `05_contribuicoes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 2
+    "
+  ),
+  
+  # CONTRIBUIÇÕES SOCIAIS
+  `06_contribuicoes_sociais` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 2 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # CONTRIBUIÇÕES DE INTERVENÇÃO NO DOMÍNIO ECONÔMICO
+  `07_contrib_intervencao_dominio_economico` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 2 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # RECEITA PATRIMONIAL
+  `08_receita_patrimonial` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3
+    "
+  ),
+  
+  # EXPLORAÇÃO DO PATRIMÔNIO IMOBILIÁRIO DO ESTADO
+  `09_exploracao_patrimonio_imobiliario` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # VALORES MOBILIÁRIOS
+  `10_valores_mobiliarios` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # DELEGAÇÃO DE SERVIÇOS PÚBLICOS
+  `11_delegacao_servicos_publicos` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 3
+    "
+  ),
+  
+  # EXPLORAÇÃO DE RECURSOS NATURAIS
+  `12_exploracao_recursos_naturais` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 4
+    "
+  ),
+  
+  # EXPLORAÇÃO DO PATRIMÔNIO INTANGÍVEL
+  `13_exploracao_patrimonio_intangivel` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 5
+    "
+  ),
+  
+  # CESSÃO DE DIREITOS
+  `14_cessao_direitos` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 6
+    "
+  ),
+  
+  # DEMAIS RECEITAS PATRIMONIAIS
+  `15_demais_receitas_patrimoniais` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 9
+    "
+  ),
+  
+  # RECEITA AGROPECUÁRIA
+  `16_receita_agropecuaria` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 4
+    "
+  ),
+  
+  # RECEITA INDUSTRIAL
+  `17_receita_industrial` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 5
+    "
+  ),
+  
+  # RECEITAS DE SERVIÇOS
+  `18_receitas_servicos` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 6
+    "
+  ),
+  
+  # SERVIÇOS ADMINISTRATIVOS E COMERCIAIS GERAIS
+  `19_servicos_admin_comerciais` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '161')"
+  ),
+  
+  # SERVIÇOS E ATIVIDADES REFERENTES À NAVEGAÇÃO E AO TRANSPORTE
+  `20_servicos_navegacao_transporte` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '162')"
+  ),
+  
+  # SERVIÇOS E ATIVIDADES REFERENTES À SAÚDE
+  `21_servicos_saude` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '163')"
+  ),
+  
+  # SERVIÇOS E ATIVIDADES FINANCEIRAS
+  `22_servicos_financeiros` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '164')"
+  ),
+  
+  # OUTROS SERVIÇOS
+  `23_outros_servicos` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '169')"
+  ),
+  
+  # TRANSFERÊNCIAS CORRENTES
+  `24_transferencias_correntes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DA UNIÃO E DE SUAS ENTIDADES
+  `25_transf_uniao_entidades` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DOS ESTADOS E DO DISTRITO FEDERAL E DE SUAS ENTIDADES
+  `26_transf_estados_df_entidades` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DOS MUNICÍPIOS E DE SUAS ENTIDADES
+  `27_transf_municipios_entidades` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 &
+    nre3_especie_receita_codigo_especie == 3
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DE INSTITUIÇÕES PRIVADAS
+  `28_transf_instituicoes_privadas` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 &
+    nre3_especie_receita_codigo_especie == 4
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DE OUTRAS INSTITUIÇÕES PÚBLICAS
+  `29_transf_outras_instituicoes_publicas` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 &
+    nre3_especie_receita_codigo_especie == 5
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DO EXTERIOR
+  `30_transf_exterior` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 &
+    nre3_especie_receita_codigo_especie == 6
+    "
+  ),
+  
+  # DEMAIS TRANSFERÊNCIAS CORRENTES
+  `31_demais_transf_correntes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 7 &
+    nre3_especie_receita_codigo_especie == 9
+    "
+  ),
+  
+  # OUTRAS RECEITAS CORRENTES
+  `32_outras_receitas_correntes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 9
+    "
+  ),
+  
+  # MULTAS ADMINISTRATIVAS, CONTRATUAIS E JUDICIAIS
+  `33_multas_admin_contratuais` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # INDENIZAÇÕES, RESTITUIÇÕES E RESSARCIMENTOS
+  `34_indenizacoes_restituicoes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # BENS, DIREITOS E VALORES INCORPORADOS AO PATRIMÔNIO PÚBLICO
+  `35_bens_direitos_valores` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 3
+    "
+  ),
+  
+  # MULTAS E JUROS DE MORA DAS RECEITAS DE CAPITAL
+  `36_multas_juros_mora_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 4
+    "
+  ),
+  
+  # DEMAIS RECEITAS CORRENTES
+  `37_demais_receitas_correntes` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 9
+    "
+  ),
+  
+  # RECEITAS CORRENTES A CLASSIFICAR
+  `38_receitas_correntes_classificar` = list(
+    criterio = "
+    nre2_origem_receita_codigo_origem == 8 &
+    nre3_especie_receita_codigo_especie == 8
+    "
+  ),
+  
+  # ========== RECEITAS DE CAPITAL ==========
+  
+  # RECEITAS DE CAPITAL
+`39_receitas_capital` = list(
+  criterio = "
+  nre1_categoria_economica_codigo == 2 &
+  !(startsWith(natureza_receita_codigo_completo, '21110201') |
+    startsWith(natureza_receita_codigo_completo, '21210201'))
+  "
+),
+  
+ # OPERAÇÕES DE CRÉDITO
+`40_operacoes_credito` = list(
+  criterio = "
+  nre1_categoria_economica_codigo == 2 & 
+  nre2_origem_receita_codigo_origem == 1 &
+  !(startsWith(natureza_receita_codigo_completo, '21110201') |
+    startsWith(natureza_receita_codigo_completo, '21210201'))
+  "
+),
+
+# OPERAÇÕES DE CRÉDITO INTERNAS
+`41_operacoes_credito_internas` = list(
+  criterio = "
+  nre1_categoria_economica_codigo == 2 & 
+  nre2_origem_receita_codigo_origem == 1 &
+  nre3_especie_receita_codigo_especie == 1 &
+  !startsWith(natureza_receita_codigo_completo, '21110201')
+  "
+),
+
+# OPERAÇÕES DE CRÉDITO EXTERNAS
+`42_operacoes_credito_externas` = list(
+  criterio = "
+  nre1_categoria_economica_codigo == 2 & 
+  nre2_origem_receita_codigo_origem == 1 &
+  nre3_especie_receita_codigo_especie == 2 &
+  !startsWith(natureza_receita_codigo_completo, '21210201')
+  "
+),
+  
+  # ALIENAÇÃO DE BENS
+  `43_alienacao_bens` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 2
+    "
+  ),
+  
+  # ALIENAÇÃO DE BENS MÓVEIS
+  `44_alienacao_bens_moveis` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 2 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # ALIENAÇÃO DE BENS IMÓVEIS
+  `45_alienacao_bens_imoveis` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 2 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # ALIENAÇÃO DE BENS INTANGÍVEIS
+  `46_alienacao_bens_intangiveis` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '223')"
+  ),
+  
+  # AMORTIZAÇÕES DE EMPRÉSTIMOS
+  `47_amortizacoes_emprestimos` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 3
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DE CAPITAL
+  `48_transferencias_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DOS ESTADOS E DO DISTRITO FEDERAL E DE SUAS ENTIDADES (CAPITAL)
+  `49_transf_estados_df_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DOS MUNICÍPIOS E DE SUAS ENTIDADES (CAPITAL)
+  `50_transf_municipios_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4 &
+    nre3_especie_receita_codigo_especie == 3
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DE INSTITUIÇÕES PRIVADAS (CAPITAL)
+  `51_transf_instituicoes_privadas_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4 &
+    nre3_especie_receita_codigo_especie == 4
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DE OUTRAS INSTITUIÇÕES PÚBLICAS (CAPITAL)
+  `52_transf_outras_instituicoes_publicas_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4 &
+    nre3_especie_receita_codigo_especie == 5
+    "
+  ),
+  
+  # TRANSFERÊNCIAS DO EXTERIOR (CAPITAL)
+  `53_transf_exterior_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4 &
+    nre3_especie_receita_codigo_especie == 6
+    "
+  ),
+  
+  # DEMAIS TRANSFERÊNCIAS DE CAPITAL
+  `54_demais_transf_capital` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 4 &
+    nre3_especie_receita_codigo_especie == 9
+    "
+  ),
+  
+  # OUTRAS RECEITAS DE CAPITAL
+  `55_outras_receitas_capital` = list(
+    criterio = "
+    nre2_origem_receita_codigo_origem == 9 &
+    nre1_categoria_economica_codigo == 2
+    "
+  ),
+  
+  # RESULTADO DO BANCO CENTRAL DO BRASIL
+  `56_resultado_banco_central` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 2 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # REMUNERAÇÃO DAS DISPONIBILIDADES DO TESOURO
+  `57_remuneracao_disponibilidades_tesouro` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '293')"
+  ),
+  
+  # ========== RECEITAS INTRA-ORÇAMENTÁRIAS ==========
+  
+  # RECEITAS CORRENTES INTRA
+  `58_receitas_correntes_intra` = list(
+    criterio = "nre1_categoria_economica_codigo == 7"
+  ),
+  
+  # IMPOSTOS, TAXAS E CONTRIBUIÇÕES DE MELHORIA INTRA
+  `59_impostos_taxas_contrib_melhoria_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 1
+    "
+  ),
+  
+  # IMPOSTOS INTRA
+  `60_impostos_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 1 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # TAXAS INTRA
+  `61_taxas_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 1 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # CONTRIBUIÇÕES INTRA
+  `62_contribuicoes_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 2
+    "
+  ),
+  
+  # CONTRIBUIÇÕES SOCIAIS INTRA
+  `63_contribuicoes_sociais_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 2 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # CONTRIBUIÇÕES ECONÔMICAS INTRA
+  `64_contribuicoes_economicas_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 2 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # RECEITA PATRIMONIAL INTRA
+  `65_receita_patrimonial_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 3
+    "
+  ),
+  
+  # EXPLORAÇÃO PATRIMÔNIO IMOBILIÁRIO INTRA
+  `66_exploracao_patrimonio_imobiliario_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # VALORES MOBILIÁRIOS INTRA
+  `67_valores_mobiliarios_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # DELEGAÇÃO SERVIÇOS PÚBLICOS INTRA
+  `68_delegacao_servicos_publicos_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 3 &
+    nre3_especie_receita_codigo_especie == 3
+    "
+  ),
+  
+  # RECEITA INDUSTRIAL INTRA
+  `69_receita_industrial_intra` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '75')"
+  ),
+  
+  # RECEITA DE SERVIÇOS INTRA
+  `70_receita_servicos_intra` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '76')"
+  ),
+  
+  # SERVIÇOS ADMINISTRATIVOS COMERCIAIS INTRA
+  `71_servicos_admin_comerciais_intra` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '761')"
+  ),
+  
+  # SERVIÇOS E ATIVIDADES REFERENTES À SAÚDE INTRA
+  `72_servicos_saude_intra` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '763')"
+  ),
+  
+  # SERVIÇOS E ATIVIDADES FINANCEIRAS INTRA
+  `73_servicos_financeiros_intra` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '764')"
+  ),
+  
+  # OUTROS SERVIÇOS INTRA
+  `74_outros_servicos_intra` = list(
+    criterio = "startsWith(natureza_receita_codigo_completo, '769')"
+  ),
+  
+  # OUTRAS RECEITAS CORRENTES INTRA
+  `75_outras_receitas_correntes_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 9
+    "
+  ),
+  
+  # MULTAS ADMINISTRATIVAS, CONTRATUAIS E JUDICIAIS INTRA
+  `76_multas_admin_contratuais_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 1
+    "
+  ),
+  
+  # INDENIZAÇÕES, RESTITUIÇÕES E RESSARCIMENTOS INTRA
+  `77_indenizacoes_restituicoes_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 2
+    "
+  ),
+  
+  # DEMAIS RECEITAS CORRENTES INTRA
+  `78_demais_receitas_correntes_intra` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 7 & 
+    nre2_origem_receita_codigo_origem == 9 &
+    nre3_especie_receita_codigo_especie == 9
+    "
+  ),
+  
+  # ========== SUBTOTAIS E OPERAÇÕES DE REFINANCIAMENTO ==========
+  
+  # SUBTOTAL DAS RECEITAS (III) = (I + II)
+  `79_subtotal_receitas` = list(
+    criterio = "
+    nre1_categoria_economica_codigo %in% c(1, 2, 7, 8) &
+    !(startsWith(natureza_receita_codigo_completo, '21110201') |
+      startsWith(natureza_receita_codigo_completo, '21210201') |
+      startsWith(natureza_receita_codigo_completo, '81110201') |
+      startsWith(natureza_receita_codigo_completo, '81210201'))
+    "
+  ),
+  
+  # OPERAÇÕES DE CRÉDITO - REFINANCIAMENTO (IV)
+  `80_operacoes_credito_refinanciamento` = list(
+    criterio = "
+    startsWith(natureza_receita_codigo_completo, '21110201') |
+    startsWith(natureza_receita_codigo_completo, '21210201') |
+    startsWith(natureza_receita_codigo_completo, '81110201') |
+    startsWith(natureza_receita_codigo_completo, '81210201')
+    "
+  ),
+  
+  # OPERAÇÕES DE CRÉDITO INTERNAS - REFINANCIAMENTO
+  `81_operacoes_credito_internas_refinanciamento` = list(
+    criterio = "
+    startsWith(natureza_receita_codigo_completo, '21110201') |
+    startsWith(natureza_receita_codigo_completo, '81110201')
+    "
+  ),
+  
+  # MOBILIÁRIA - REFINANCIAMENTO (CRÉDITO INTERNO)
+  `82_mobiliaria_refinanciamento_interno` = list(
+    criterio = "
+    startsWith(natureza_receita_codigo_completo, '21110201') |
+    startsWith(natureza_receita_codigo_completo, '81110201')
+    "
+  ),
+  
+  # OPERAÇÕES DE CRÉDITO EXTERNAS - REFINANCIAMENTO
+  `83_operacoes_credito_externas_refinanciamento` = list(
+    criterio = "
+    startsWith(natureza_receita_codigo_completo, '212102') |
+    startsWith(natureza_receita_codigo_completo, '812102')
+    "
+  ),
+  
+  # MOBILIÁRIA - REFINANCIAMENTO (CRÉDITO EXTERNO)
+  `84_mobiliaria_refinanciamento_externo` = list(
+    criterio = "
+    startsWith(natureza_receita_codigo_completo, '212102') |
+    startsWith(natureza_receita_codigo_completo, '812102')
+    "
+  ),
+  
+  # SUBTOTAL COM REFINANCIAMENTO (V) = (III + IV)
+  `85_subtotal_com_refinanciamento` = list(
+    criterio = "nre1_categoria_economica_codigo %in% c(1, 2, 7, 8)"
+  )
+)
+datatable(aplicar_criterios(dados_receita, criterios_rreo_A01_receitas_bo))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+```
+
+```{r}
+criterios_rreo_A01_despesas_bo <- list(
+  
+  # ========== DESPESAS (Exceto Intra-Orçamentárias) (IX) ==========
+  
+  # DESPESAS (Exceto Intra-Orçamentárias) (IX)
+  `01_despesas_exceto_intra` = list(
+    criterio = "
+    modalidade_aplicacao_codigo != 91 &
+    !(elemento_despesa_codigo %in% c('76', '77') &
+      subfuncao_governo_codigo %in% c('841', '842', '843', '844', '846') &
+      fonte_recursos_codigo == '443')
+    "
+  ),
+  
+  # ========== DESPESAS CORRENTES ==========
+  
+  # DESPESAS CORRENTES
+  `02_despesas_correntes` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # PESSOAL E ENCARGOS SOCIAIS
+  `03_pessoal_encargos_sociais` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 1 &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # JUROS E ENCARGOS DA DÍVIDA
+  `04_juros_encargos_divida` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 2 &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # OUTRAS DESPESAS CORRENTES
+  `05_outras_despesas_correntes` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 3 &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # TRANSFERÊNCIA A ESTADOS, DF E MUNICÍPIOS
+  `06_transferencia_estados_df_municipios` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 3 &
+    modalidade_aplicacao_codigo %in% c('30', '31', '32', '40', '41', '42', '43', '44', '45', '46') &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # BENEFÍCIOS PREVIDENCIÁRIOS
+  `07_beneficios_previdenciarios` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 3 &
+    modalidade_aplicacao_codigo != 91 &
+    unidade_orcamentaria_codigo %in% c('55902', '40904', '33904', '25917')
+    "
+  ),
+  
+  # DEMAIS DESPESAS CORRENTES
+  `08_demais_despesas_correntes` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 3 &
+    modalidade_aplicacao_codigo != 91 &
+    !(modalidade_aplicacao_codigo %in% c('30', '31', '32', '40', '41', '42', '43', '44', '45', '46')) &
+    !(unidade_orcamentaria_codigo %in% c('55902', '40904', '33904', '25917'))
+    "
+  ),
+  
+  # ========== DESPESAS DE CAPITAL ==========
+  
+  # DESPESAS DE CAPITAL (corrigido)
+  `09_despesas_capital` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    modalidade_aplicacao_codigo != 91 &
+    !(elemento_despesa_codigo %in% c('76', '77') &
+      subfuncao_governo_codigo %in% c('841', '842', '843', '844', '846') &
+      fonte_recursos_codigo == '443')
+    "
+  ),
+  
+  # INVESTIMENTOS
+  `10_investimentos` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    grupo_despesa_codigo_grupo == 4 &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # INVERSÕES FINANCEIRAS
+  `11_inversoes_financeiras` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    grupo_despesa_codigo_grupo == 5 &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # AMORTIZAÇÃO DA DÍVIDA
+  `12_amortizacao_divida` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    grupo_despesa_codigo_grupo == 6 &
+    modalidade_aplicacao_codigo != 91 &
+    !(elemento_despesa_codigo %in% c('76', '77') &
+      subfuncao_governo_codigo %in% c('841', '842', '843', '844', '846') &
+      fonte_recursos_codigo == '443')
+    "
+  ),
+  
+  # ========== RESERVA DE CONTINGÊNCIA ==========
+  
+  # RESERVA DE CONTINGÊNCIA
+  `13_reserva_contingencia` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 9 &
+    modalidade_aplicacao_codigo != 91
+    "
+  ),
+  
+  # ========== DESPESAS INTRA-ORÇAMENTÁRIAS ==========
+  
+  # DESPESAS INTRA-ORÇAMENTÁRIAS (X)
+  `14_despesas_intra` = list(
+    criterio = "modalidade_aplicacao_codigo == 91"
+  ),
+  
+  # DESPESAS CORRENTES INTRA
+  `15_despesas_correntes_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # PESSOAL E ENCARGOS SOCIAIS INTRA
+  `16_pessoal_encargos_sociais_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 1 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # JUROS E ENCARGOS DA DÍVIDA INTRA
+  `17_juros_encargos_divida_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 2 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # OUTRAS DESPESAS CORRENTES INTRA
+  `18_outras_despesas_correntes_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 3 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # BENEFÍCIOS PREVIDENCIÁRIOS INTRA
+  `19_beneficios_previdenciarios_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 3 &
+    modalidade_aplicacao_codigo == 91 &
+    unidade_orcamentaria_codigo %in% c('55902', '40904', '33904', '25917')
+    "
+  ),
+  
+  # DEMAIS DESPESAS CORRENTES INTRA
+  `20_demais_despesas_correntes_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 3 &
+    grupo_despesa_codigo_grupo == 3 &
+    modalidade_aplicacao_codigo == 91 &
+    !(unidade_orcamentaria_codigo %in% c('55902', '40904', '33904', '25917'))
+    "
+  ),
+  
+  # DESPESAS DE CAPITAL INTRA
+  `21_despesas_capital_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # INVESTIMENTOS INTRA
+  `22_investimentos_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    grupo_despesa_codigo_grupo == 4 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # INVERSÕES FINANCEIRAS INTRA
+  `23_inversoes_financeiras_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    grupo_despesa_codigo_grupo == 5 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # AMORTIZAÇÃO DA DÍVIDA INTRA
+  `24_amortizacao_divida_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 4 &
+    grupo_despesa_codigo_grupo == 6 &
+    modalidade_aplicacao_codigo == 91 &
+    !(elemento_despesa_codigo %in% c('76', '77') &
+      subfuncao_governo_codigo %in% c('841', '842', '843', '844', '846') &
+      fonte_recursos_codigo == '443')
+    "
+  ),
+  
+  # RESERVA DE CONTINGÊNCIA INTRA
+  `25_reserva_contingencia_intra` = list(
+    criterio = "
+    categoria_economica_despesa_codigo == 9 &
+    modalidade_aplicacao_codigo == 91
+    "
+  ),
+  
+  # ========== SUBTOTAIS ==========
+  
+  # SUBTOTAL DAS DESPESAS (XI) = (IX + X)
+  `26_subtotal_despesas` = list(
+    criterio = "
+    categoria_economica_despesa_codigo %in% c(3, 4, 9) &
+    !(elemento_despesa_codigo %in% c('76', '77') &
+      subfuncao_governo_codigo %in% c('841', '842', '843', '844', '846') &
+      fonte_recursos_codigo == '443')
+    "
+  ),
+  
+  # ========== AMORTIZAÇÃO DA DÍVIDA - REFINANCIAMENTO ==========
+  
+  # AMORTIZAÇÃO DA DÍVIDA - REFINANCIAMENTO (XII)
+  `27_amortizacao_divida_refinanciamento` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == 6 &
+    elemento_despesa_codigo %in% c('76', '77') &
+    subfuncao_governo_codigo %in% c('841', '842', '843', '844', '846') &
+    fonte_recursos_codigo == '443'
+    "
+  ),
+  
+  # AMORTIZAÇÃO DA DÍVIDA INTERNA
+  `28_amortizacao_divida_interna` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == 6 &
+    elemento_despesa_codigo %in% c('76', '77') &
+    subfuncao_governo_codigo %in% c('841', '843', '846') &
+    fonte_recursos_codigo == '443'
+    "
+  ),
+  
+  # DÍVIDA MOBILIÁRIA
+  `29_divida_mobiliaria` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == 6 &
+    elemento_despesa_codigo == '76' &
+    subfuncao_governo_codigo %in% c('841', '843', '846') &
+    fonte_recursos_codigo == '443'
+    "
+  ),
+  
+  # OUTRAS DÍVIDAS
+  `30_outras_dividas` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == 6 &
+    elemento_despesa_codigo == '77' &
+    subfuncao_governo_codigo %in% c('841', '843', '846') &
+    fonte_recursos_codigo == '443'
+    "
+  ),
+  
+  # AMORTIZAÇÃO DA DÍVIDA EXTERNA
+  `31_amortizacao_divida_externa` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == 6 &
+    elemento_despesa_codigo %in% c('76', '77') &
+    subfuncao_governo_codigo %in% c('842', '844') &
+    fonte_recursos_codigo == '443'
+    "
+  ),
+  
+  # DÍVIDA MOBILIÁRIA (EXTERNA)
+  `32_divida_mobiliaria_externa` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == 6 &
+    elemento_despesa_codigo == '76' &
+    subfuncao_governo_codigo %in% c('842', '844') &
+    fonte_recursos_codigo == '443'
+    "
+  ),
+  
+  # OUTRAS DÍVIDAS (EXTERNA)
+  `33_outras_dividas_externa` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == 6 &
+    elemento_despesa_codigo == '77' &
+    subfuncao_governo_codigo %in% c('842', '844') &
+    fonte_recursos_codigo == '443'
+    "
+  ),
+  
+  # SUBTOTAL COM REFINANCIAMENTO (XIII) = (XI + XII)
+  `34_subtotal_com_refinanciamento` = list(
+    criterio = "categoria_economica_despesa_codigo %in% c(3, 4, 9)"
+  )
+)
+datatable(aplicar_criterios(dados_despesa, criterios_rreo_A01_despesas_bo))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+
+bo_depsesa <- (aplicar_criterios(dados_despesa, criterios_rreo_A01_despesas_bo))
+
+datatable(bo_depsesa %>% filter(item_informacao_codigo == "9") %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+
+
+datatable(dados_despesa %>%filter(item_informacao_codigo == 9, tipo_modalidade != "intra") %>% group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo,grupo_despesa_nome , refinanciamento, tipo_modalidade) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )
+
+
+datatable(dados_despesa %>%filter(item_informacao_codigo == 9, tipo_modalidade != "intra") %>% group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome,  refinanciamento, tipo_modalidade) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )
+```
+
+```{r}
 datatable(dados_despesa %>% filter(mes_lancamento == mes_filtro, tipo_modalidade != "intra", item_informacao_nome == "DESPESAS PAGAS") %>% group_by(refinanciamento, grupo_despesa_codigo_grupo, grupo_despesa_nome) %>% summarise(despesa_empenhada = sum(saldo_r_item_informacao, na.rm = TRUE) )  %>% adorn_totals("row"), rownames = FALSE,
   colnames = c("refinanciamento", "Grupo código", "Grupo Nome", "Despesa empenhada"))%>% formatRound("despesa_empenhada", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
@@ -707,6 +1765,13 @@ dt_formatada(
   tabela_pivotada(dados_agregados, agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo), 
   agrupado_despesa_tipo_modalidade_refinanciamento_categoria_grupo
 )
+```
+
+# 📋 RREO Anexo 02 - Função e Subfunção
+
+```{r}
+datatable(dados_despesa %>% group_by(funcao_governo_codigo, funcao_governo_nome, refinanciamento) %>% filter(item_informacao_codigo == 25) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)) %>% adorn_totals() )%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )%>% 
+  DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
 
 # 📋 RREO Anexo 03 - RCL
@@ -2436,8 +3501,13 @@ print(paste("📋 Total RP MDE:", formatar_numero(despesa_mde_rp)))
 #| eval: true
 
 # Cálculo do percentual total aplicado em MDE
-total_despesas_mde <- despesa_mde + complementacao_fundeb 
-percentual_aplicacao <- (total_despesas_mde / rli_atual) * 100
+total_despesas_mde <- despesa_mde + complementacao_fundeb
+percentual_aplicacao <- (as.numeric(total_despesas_mde) / as.numeric(rli_atual)) *100
+
+# Função para formatar valores em R$ (com as.numeric para dataframes)
+formatar_real <- function(valor) {
+  paste0("R$ ", format(as.numeric(valor), big.mark = ".", decimal.mark = ",", scientific = FALSE))
+}
 
 # Tabela resumo
 resumo_aplicacao <- data.frame(
@@ -2446,18 +3516,16 @@ resumo_aplicacao <- data.frame(
     "🎯 Complementação FUNDEB (30%)",
     "📋 Restos a Pagar MDE",
     "📊 Total Despesas MDE",
-    "📈 RLI (Base de Cálculo)",
-    "🎯 Percentual Aplicado",
-    "✅ Mínimo Constitucional"
-  ),
+    "📈 18% da RLI (Base de Cálculo)",
+    "🎯 Percentual Aplicado"),
+  
   Valor = c(
-    (despesa_mde),
-    (complementacao_fundeb),
-    (despesa_mde_rp),
-    (total_despesas_mde),
-   (rli_atual),
-    paste0(round(percentual_aplicacao, 2), "%"),
-    "18,00%"
+    formatar_real(despesa_mde),
+    formatar_real(complementacao_fundeb),
+    formatar_real(despesa_mde_rp),
+    formatar_real(total_despesas_mde),
+    formatar_real(rli_atual),
+    paste0(round(as.numeric(percentual_aplicacao), 2), "%")
   ),
   Status = c(
     "✅ Calculado",
@@ -2465,19 +3533,34 @@ resumo_aplicacao <- data.frame(
     "✅ Calculado",
     "✅ Consolidado",
     "✅ Base",
-    ifelse(percentual_aplicacao >= 18, "✅ Atendido", "❌ Não Atendido"),
-    "📋 Referência"
-  )
+    ifelse(as.numeric(percentual_aplicacao) >= 100, "✅ Atendido", "❌ Não Atendido")
+  ),
+  stringsAsFactors = FALSE
 )
 
+
+# Renderizar tabela
 kable(resumo_aplicacao, 
       caption = "🎯 Resumo da Aplicação em MDE",
-      format = "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+      format = "html",
+      col.names = c("Item", "Valor", "Status"),
+      align = c("l", "r", "c")) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE
+  ) %>%
   row_spec(0, bold = TRUE, background = "#f8f9fa") %>%
   row_spec(6, bold = TRUE, 
-           background = ifelse(percentual_aplicacao >= 18, "#d4edda", "#f8d7da"),
-           color = ifelse(percentual_aplicacao >= 18, "#155724", "#721c24"))
+           background = ifelse(as.numeric(percentual_aplicacao) >= 100, "#d4edda", "#f8d7da"),
+           color = ifelse(as.numeric(percentual_aplicacao) >= 100, "#155724", "#721c24")) %>%
+  column_spec(2, width = "200px")
+
+# Resultado resumido
+cat("\n=== RESULTADO FINAL ===\n")
+cat("Total de Despesas MDE: R$", format(as.numeric(total_despesas_mde), big.mark = ".", decimal.mark = ","), "\n")
+cat("18% da RLI (Base): R$", format(as.numeric(rli_atual), big.mark = ".", decimal.mark = ","), "\n")
+cat("Percentual Aplicado:", round(as.numeric(percentual_aplicacao), 2), "%\n")
+cat("Situação:", ifelse(as.numeric(percentual_aplicacao) >= 100, "✅ ATENDE", "❌ NÃO ATENDE"), "ao mínimo constitucional\n")
 ```
 
 # 📋 RREO Anexo 12 - Saúde.
@@ -3336,7 +4419,7 @@ if(!"linhas" %in% names(tabela_04)) {
                                      "101", "102", "103", "104", "105", "106", "107", "108", "109", "110",
                                      "111", "112", "113", "114", "115", "116", "118", "119", "120", "121",
                                      "124", "127", "128", "129", "131", "135", "136", "137", "138", "139",
-                                     "140", "141", "177", "178", "180", "181", "182", "183", "449") ~ "7_fundos_orgaos_programa",
+                                     "140", "141", "144", "145", "177", "178", "180", "181", "182", "183", "449") ~ "7_fundos_orgaos_programa",
         (fonte_recursos_codigo %in% c("034", "121") & tg_orgao_fonte %notin% c("000278_133","000278_152")) ~ "7_fundos_orgaos_programa",
         fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
         fonte_recursos_codigo %in% c("490", "'-9", "'-7") ~ "9_nao_classificados",
@@ -3581,7 +4664,7 @@ if(!"linhas" %in% names(dados_tabela_04_filtro_rreo)) {
                                      "101", "102", "103", "104", "105", "106", "107", "108", "109", "110",
                                      "111", "112", "113", "114", "115", "116", "118", "119", "120", "121",
                                      "124", "127", "128", "129", "131", "135", "136", "137", "138", "139",
-                                     "140", "141", "177", "178", "180", "181", "182", "183", "449") ~ "7_fundos_orgaos_programa",
+                                     "140", "141", "144", "145", "177", "178", "180", "181", "182", "183", "449") ~ "7_fundos_orgaos_programa",
         fonte_recursos_codigo %in% c("034", "121") & tg_orgao_fonte %notin% c("000278_133","000278_152") ~ "7_fundos_orgaos_programa",
         fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
         fonte_recursos_codigo %in% c("490", "'-9", "'-7") ~ "9_nao_classificados",
@@ -4185,5 +5268,216 @@ total_consolidado*1000/((  criterios_consolidados_clean %>%
                            item_informacao_codigo == "51") %>% 
                     summarise(valor = sum(valor))
                     )*0.15)*100
+
+```
+
+# RGF Anexo 1 - Pessoal
+
+```{r}
+# ===============================================================================
+# CRITÉRIOS RGF ANEXO 1 - DESPESA COM PESSOAL
+# ===============================================================================
+
+criterios_rgf_A01_pessoal_rgfa01 <- list(
+  
+  # PESSOAL TOTAL
+  `01  Pessoal Total` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' | (grupo_despesa_codigo_grupo == '3' & elemento_despesa_codigo == '34')"
+  ),
+  
+  # VENCIMENTOS, VANTAGENS E OUTRAS DESPESAS VARIÁVEIS
+  `02  Vencimentos, Vantagens e Outras Despesas Variáveis` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & !elemento_despesa_codigo %in% c('01', '03', '34') & !(elemento_despesa_codigo %in% c('13', '07') & natureza_despesa_detalhada_codigo %in% c('31909213', '31909207')) & !str_detect(natureza_despesa_detalhada_codigo, '0599') & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34') & !str_detect(natureza_despesa_detalhada_codigo, '0505|0506|0507|0508')"
+  ),
+  
+  # OBRIGAÇÕES PATRONAIS
+  `03  Obrigações Patronais` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('13', '07') & natureza_despesa_detalhada_codigo %in% c('31909213', '31909207')"
+  ),
+  
+  # BENEFÍCIOS PREVIDENCIÁRIOS ATIVO
+  `04  Benefícios Previdenciários ATIVO` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0599') & natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')"
+  ),
+  
+  # APOSENTADORIAS, RESERVA E REFORMAS
+  `05  Aposentadorias, Reserva e Reformas` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('01') & str_detect(natureza_despesa_detalhada_nome, 'APOSENT|RPPS|RESER|REMUNER|REFOR|MILITAR') & natureza_despesa_detalhada_codigo %in% c('31901702', '31909109', '31909118', '31909123', '31909124', '31909128', '31909129', '31909201', '31909403', '31909404', '31909413', '31909414')"
+  ),
+  
+  # PENSÕES
+  `06  Pensões` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('03') & str_detect(natureza_despesa_detalhada_nome, 'SENT.JUDICIAL|SENTENCA|PENS|MILIT|RPPS|CIVIL|PRECATORIOS') & natureza_despesa_detalhada_codigo %in% c('31909110', '31909113', '31909119', '31909131', '31909136', '31909137', '31909203', '31909216', '31909220', '31909221', '31909406', '31909413')"
+  ),
+  
+  # OUTRAS DESPESAS COM INATIVOS
+  `07  Outras Despesas com Inativos` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34') & str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !str_detect(natureza_despesa_detalhada_codigo, '0599') & !str_detect(natureza_despesa_detalhada_codigo, '0505|0506|0507|0508') & natureza_despesa_detalhada_codigo %in% c('31901702', '31909109', '31909112', '31909115', '31909118', '31909123', '31909124', '31909128', '31909129', '31909403', '31909404', '31909413', '31909110', '31909113', '31909119', '31909131', '31909136', '31909137', '31909130', '31909221', '31909406')"
+  ),
+  
+  # BENEFÍCIOS PREVIDENCIÁRIOS INATIVO  
+  `08  Benefícios Previdenciários INATIVO` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0505|0506|0507|0508')"
+  ),
+  
+  # OUTRAS DESPESAS DE PESSOAL DECORRENTES DE CONTRATOS DE TERCEIRIZAÇÃO
+  `09  Outras Despesas de Pessoal - Terceirização` = list(
+    criterio = "grupo_despesa_codigo_grupo %in% c('1', '3') & elemento_despesa_codigo == '34'"
+  ),
+  
+  # DECORRENTES DE DECISÃO JUDICIAL
+  `10  Decorrentes de Decisão Judicial` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '91' & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069')"
+  ),
+  
+  # INATIVOS E PENSIONISTAS COM RECURSOS VINCULADOS
+  `11  Inativos e Pensionistas com Recursos Vinculados` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & fonte_recursos_codigo %in% c('023', '024', '055', '056', '069') & elemento_despesa_codigo %in% c('01', '03') & !elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34') & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')"
+  ),
+  
+  # INDENIZAÇÕES POR DEMISSÃO E INCENTIVOS À DEMISSÃO VOLUNTÁRIA
+  `12  Indenizações por Demissão e Incentivos` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '94' & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069')"
+  ),
+  
+  # DESPESAS DE EXERCÍCIOS ANTERIORES
+  `13  Despesas de Exercícios Anteriores` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '92' & !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069') & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')"
+  ),
+  
+  # FILTROS ESPECÍFICOS APLICADOS
+  
+  # Filtro Amapá
+  `14  FILTRO_AMAPA` = list(
+    criterio = "unidade_orcamentaria_codigo == '73113' & plano_orcamentario_codigo_po == '0004' & acao_governo_codigo %in% c('0179', '0181', '214H')"
+  ),
+  
+  # Filtro Elementos de Despesa de Outros Inativos
+  `15  FILTRO_ELEMENTOS_OUTROS_INATIVOS` = list(
+    criterio = "elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34')"
+  ),
+  
+  # Filtro Fontes dos Recursos Vinculados
+  `16  FILTRO_FONTES_RECURSOS_VINCULADOS` = list(
+    criterio = "fonte_recursos_codigo %in% c('023', '024', '055', '056', '069')"
+  ),
+  
+  # Filtro GDF
+  `17  FILTRO_GDF` = list(
+    criterio = "unidade_orcamentaria_codigo == '73901'"
+  ),
+  
+  # Filtro Roraima
+  `18  FILTRO_RORAIMA` = list(
+    criterio = "unidade_orcamentaria_codigo == '73113' & plano_orcamentario_codigo_po == '0003' & acao_governo_codigo %in% c('0179', '0181', '214H')"
+  ),
+  
+  # Filtro Termos de Outros Inativos
+  `19  FILTRO_TERMOS_OUTROS_INATIVOS` = list(
+    criterio = "str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')"
+  )
+)
+
+# ===============================================================================
+# FUNÇÃO PARA APLICAR CRITÉRIOS - CORRIGIDA
+# ===============================================================================
+aplicar_criterios_rgf_anexo1 <- function(dados, criterios) {
+  
+  library(dplyr)
+  library(purrr)
+  library(rlang)
+  
+  # Detectar automaticamente a métrica
+  metrica <- names(dados)[grepl("^(saldo|movim)", names(dados), ignore.case = TRUE)][1]
+  
+  if (is.na(metrica)) {
+    stop("Não foi possível detectar coluna de valores (saldo_r_* ou movim*)")
+  }
+  
+  # Aplicar cada critério
+  resultado <- map_df(names(criterios), function(categoria) {
+    
+    cat("Aplicando critério:", categoria, "\n")
+    
+    crit <- criterios[[categoria]]
+    
+    tryCatch({
+      # Aplicar filtro usando rlang::parse_expr
+      dados_filtrados <- dados %>%
+        filter(!!rlang::parse_expr(crit$criterio))
+      
+      # Agregar por categoria
+      dados_filtrados %>%
+        summarise(
+          valor_total = sum(.data[[metrica]], na.rm = TRUE),
+          registros = n(),
+          .groups = "drop"
+        ) %>%
+        mutate(
+          categoria = categoria,
+          metrica = metrica
+        )
+      
+    }, error = function(e) {
+      cat("Erro no critério", categoria, ":", e$message, "\n")
+      # Retornar linha vazia em caso de erro
+      data.frame(
+        categoria = categoria,
+        metrica = metrica,
+        valor_total = 0,
+        registros = 0
+      )
+    })
+  })
+  
+  return(resultado)
+}
+```
+
+```{r}
+# ===============================================================================
+# MUTATE RGF ANEXO 1 - CATEGORIZAÇÃO POR REGIÃO/PODER
+# ===============================================================================
+
+# Adicionar coluna de categorização baseada nos grupos personalizados
+rgf_a01 <- rgf_a01 %>%
+  mutate(
+    categoria_pessoal = case_when(
+      
+      # DESPESAS RESSALVADAS (aplicar primeiro - mais específico)
+      natureza_despesa_detalhada_codigo %in% c(
+        "31900503", "31900504", "31900505", "31900506", 
+        "31900507", "31900508", "31900501", "31900502"
+      ) ~ "ressalvadas",
+      
+      # PODER EXECUTIVO FEDERAL (aplicar filtros específicos depois)
+      unidade_orcamentaria_codigo == "73113" & 
+      plano_orcamentario_codigo_po == "0004" &
+      acao_governo_codigo %in% c("0179", "0181", "214H") ~ "AP",
+      
+      unidade_orcamentaria_codigo == "73113" & 
+      plano_orcamentario_codigo_po == "0003" & 
+      acao_governo_codigo %in% c("0179", "0181", "214H") ~ "RR",
+      
+      unidade_orcamentaria_codigo == "73901" ~ "DF",
+      
+      uo_poder == "0" &
+      !uo_orgao_maximo_codigo %in% c("34000","59000") ~ "executivo",
+        
+      
+      # PODER EXECUTIVO FEDERAL (restante - após aplicar filtros específicos)
+      # Assumindo que existe campo de poder ou similar
+      TRUE ~ "demais"
+    )
+  )
+```
+
+```{r}
+datatable(aplicar_criterios(rgf_a01 %>% filter(unidade_orcamentaria_codigo == "73901"), criterios_rgf_A01_pessoal_rgfa01))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+      
+      
+```
+
+```{r}
 
 ```
