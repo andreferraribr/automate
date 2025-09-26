@@ -5274,50 +5274,69 @@ total_consolidado*1000/((  criterios_consolidados_clean %>%
 # RGF Anexo 1 - Pessoal
 
 ```{r}
-# ===============================================================================
-# CRITÉRIOS RGF ANEXO 1 - DESPESA COM PESSOAL
+# CRITÉRIOS RGF ANEXO 1 - DESPESA COM PESSOAL (ESTRUTURA HIERÁRQUICA CORRETA)
 # ===============================================================================
 
-criterios_rgf_A01_pessoal_rgfa01 <- list(
+criterios_rgf_anexo1_pessoal <- list(
   
   # PESSOAL TOTAL
   `01  Pessoal Total` = list(
     criterio = "grupo_despesa_codigo_grupo == '1' | (grupo_despesa_codigo_grupo == '3' & elemento_despesa_codigo == '34')"
   ),
   
-  # VENCIMENTOS, VANTAGENS E OUTRAS DESPESAS VARIÁVEIS
-  `02  Vencimentos, Vantagens e Outras Despesas Variáveis` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & !elemento_despesa_codigo %in% c('01', '03', '34') & !(elemento_despesa_codigo %in% c('13', '07') & natureza_despesa_detalhada_codigo %in% c('31909213', '31909207')) & !str_detect(natureza_despesa_detalhada_codigo, '0599') & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34') & !str_detect(natureza_despesa_detalhada_codigo, '0505|0506|0507|0508')"
-  ),
+# VENCIMENTOS, VANTAGENS E OUTRAS DESPESAS VARIÁVEIS
+`02  Vencimentos, Vantagens e Outras Despesas Variáveis` = list(
+  criterio = "
+  # BASE: Grupo Despesa = 1 (PESSOAL E ENCARGOS SOCIAIS)
+  grupo_despesa_codigo_grupo == '1' &
   
+  # EXCLUSÃO NÍVEL 1: Elemento Despesa NOT IN (01:APOSENT.RPPS, RESER.REMUNER. E REFOR.MILITAR, 03:PENSOES DO RPPS E DO MILITAR, 34:OUTRAS DESPESAS DE PESSOAL - TERCEIRIZACAO)
+  !elemento_despesa_codigo %in% c('01', '03', '34') &
+  
+  # EXCLUSÃO NÍVEL 1: Filtro Obrigações Patronais vg2024 (AND NOT)
+  !(grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('13', '07')) &
+  
+  # EXCLUSÃO NÍVEL 1: Filtro Pessoal ATIVO - Benefícios Previdenciários v2024 (AND NOT)
+  !(grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0599')) &
+  
+  # EXCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Termos de Outros Inativos vg2024 (AND NOT)
+  !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') &
+  
+  # EXCLUSÃO NÍVEL 2 (DENTRO DE TERMOS INATIVOS): Filtro - Anexo 1 - Elementos de Despesa de Outros Inativos vg2024 (AND NOT)
+  !(str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32')) &
+  
+  # EXCLUSÃO NÍVEL 2 (DENTRO DE ELEMENTOS INATIVOS): Filtro Pessoal INATIVO - Benefícios Previdenciários vg2024 (AND NOT)
+  !(str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32') & elemento_despesa_codigo == '05' & (str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508')))
+  "
+),
   # OBRIGAÇÕES PATRONAIS
   `03  Obrigações Patronais` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('13', '07') & natureza_despesa_detalhada_codigo %in% c('31909213', '31909207')"
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('13', '07') | natureza_despesa_detalhada_codigo %in% c('31909213', '31919213', '31909207')"
   ),
   
   # BENEFÍCIOS PREVIDENCIÁRIOS ATIVO
   `04  Benefícios Previdenciários ATIVO` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0599') & natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')"
+    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0599') | natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')"
   ),
   
   # APOSENTADORIAS, RESERVA E REFORMAS
   `05  Aposentadorias, Reserva e Reformas` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('01') & str_detect(natureza_despesa_detalhada_nome, 'APOSENT|RPPS|RESER|REMUNER|REFOR|MILITAR') & natureza_despesa_detalhada_codigo %in% c('31901702', '31909109', '31909118', '31909123', '31909124', '31909128', '31909129', '31909201', '31909403', '31909404', '31909413', '31909414')"
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '01' | natureza_despesa_detalhada_codigo %in% c('31901702', '31909109', '31909112', '31909115', '31909118', '31909123', '31909124', '31909128', '31909129', '31909201', '31909403', '31909404', '31909413', '31909414')"
   ),
   
   # PENSÕES
   `06  Pensões` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('03') & str_detect(natureza_despesa_detalhada_nome, 'SENT.JUDICIAL|SENTENCA|PENS|MILIT|RPPS|CIVIL|PRECATORIOS') & natureza_despesa_detalhada_codigo %in% c('31909110', '31909113', '31909119', '31909131', '31909136', '31909137', '31909203', '31909216', '31909220', '31909221', '31909406', '31909413')"
+    criterio = "grupo_despesa_codigo_grupo == '1' & (elemento_despesa_codigo == '03' | natureza_despesa_detalhada_codigo %in% c('31909110', '31909113', '31909116', '31909119', '31909131', '31909136', '31909137', '31909130', '31909203', '31909220', '31909221', '31909406', '31909413'))"
   ),
   
   # OUTRAS DESPESAS COM INATIVOS
   `07  Outras Despesas com Inativos` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34') & str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !str_detect(natureza_despesa_detalhada_codigo, '0599') & !str_detect(natureza_despesa_detalhada_codigo, '0505|0506|0507|0508') & natureza_despesa_detalhada_codigo %in% c('31901702', '31909109', '31909112', '31909115', '31909118', '31909123', '31909124', '31909128', '31909129', '31909403', '31909404', '31909413', '31909110', '31909113', '31909119', '31909131', '31909136', '31909137', '31909130', '31909221', '31909406')"
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32') & str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !(str_detect(natureza_despesa_detalhada_codigo, '0599') & natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')) & !(str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508'))"
   ),
   
   # BENEFÍCIOS PREVIDENCIÁRIOS INATIVO  
   `08  Benefícios Previdenciários INATIVO` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0505|0506|0507|0508')"
+    criterio = "grupo_despesa_codigo_grupo == '1' & (elemento_despesa_codigo == '05' | (str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508')))"
   ),
   
   # OUTRAS DESPESAS DE PESSOAL DECORRENTES DE CONTRATOS DE TERCEIRIZAÇÃO
@@ -5327,22 +5346,73 @@ criterios_rgf_A01_pessoal_rgfa01 <- list(
   
   # DECORRENTES DE DECISÃO JUDICIAL
   `10  Decorrentes de Decisão Judicial` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '91' & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069')"
+    criterio = "
+    # BASE: Grupo Despesa = 1 (PESSOAL E ENCARGOS SOCIAIS)
+    grupo_despesa_codigo_grupo == '1' &
+    
+    # INCLUSÃO: Elemento Despesa = 91 (SENTENÇAS JUDICIAIS)
+    elemento_despesa_codigo == '91' &
+    
+    # EXCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Termos de Outros Inativos vg2024 (AND NOT)
+    !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') &
+    
+    # EXCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Fontes dos Recursos Vinculados vg2024 (AND NOT)
+    !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069')
+    "
   ),
   
   # INATIVOS E PENSIONISTAS COM RECURSOS VINCULADOS
   `11  Inativos e Pensionistas com Recursos Vinculados` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & fonte_recursos_codigo %in% c('023', '024', '055', '056', '069') & elemento_despesa_codigo %in% c('01', '03') & !elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34') & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')"
+    criterio = "
+    # BASE: Grupo Despesa = 1 (PESSOAL E ENCARGOS SOCIAIS)
+    grupo_despesa_codigo_grupo == '1' &
+    
+    # INCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Fontes dos Recursos Vinculados vg2024
+    fonte_recursos_codigo %in% c('023', '024', '055', '056', '069') &
+    
+    # INCLUSÃO: Elemento Despesa = 01 ou 03 (APOSENTADORIAS e PENSÕES)
+    elemento_despesa_codigo %in% c('01', '03') &
+    
+    # EXCLUSÃO NÍVEL 2 (DENTRO DE FONTES): Filtro - Anexo 1 - Elementos de Despesa de Outros Inativos vg2024 (AND NOT)
+    !elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32') &
+    
+    # EXCLUSÃO NÍVEL 2 (DENTRO DE FONTES): Filtro - Anexo 1 - Termos de Outros Inativos vg2024 (AND NOT)
+    !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')
+    "
   ),
   
   # INDENIZAÇÕES POR DEMISSÃO E INCENTIVOS À DEMISSÃO VOLUNTÁRIA
   `12  Indenizações por Demissão e Incentivos` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '94' & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069')"
+    criterio = "
+    # BASE: Grupo Despesa = 1 (PESSOAL E ENCARGOS SOCIAIS)
+    grupo_despesa_codigo_grupo == '1' &
+    
+    # INCLUSÃO: Elemento Despesa = 94 (INDENIZAÇÕES E RESTITUIÇÕES TRABALHISTAS)
+    elemento_despesa_codigo == '94' &
+    
+    # EXCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Termos de Outros Inativos vg2024 (AND NOT)
+    !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') &
+    
+    # EXCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Fontes dos Recursos Vinculados vg2024 (AND NOT)
+    !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069')
+    "
   ),
   
   # DESPESAS DE EXERCÍCIOS ANTERIORES
   `13  Despesas de Exercícios Anteriores` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '92' & !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069') & !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')"
+    criterio = "
+    # BASE: Grupo Despesa = 1 (PESSOAL E ENCARGOS SOCIAIS)
+    grupo_despesa_codigo_grupo == '1' &
+    
+    # INCLUSÃO: Elemento Despesa = 92 (DESPESAS DE EXERCÍCIOS ANTERIORES)
+    elemento_despesa_codigo == '92' &
+    
+    # EXCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Fontes dos Recursos Vinculados vg2024 (AND NOT)
+    !fonte_recursos_codigo %in% c('023', '024', '055', '056', '069') &
+    
+    # EXCLUSÃO NÍVEL 1: Filtro - Anexo 1 - Termos de Outros Inativos vg2024 (AND NOT)
+    !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')
+    "
   ),
   
   # FILTROS ESPECÍFICOS APLICADOS
@@ -5374,64 +5444,26 @@ criterios_rgf_A01_pessoal_rgfa01 <- list(
   
   # Filtro Termos de Outros Inativos
   `19  FILTRO_TERMOS_OUTROS_INATIVOS` = list(
-    criterio = "str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989')"
+    criterio = "str_detect(natureza_despesa_detalhada_nome, 'APOSENT') | str_detect(natureza_despesa_detalhada_nome, 'INAT') | str_detect(natureza_despesa_detalhada_nome, 'REFORMA') | str_detect(natureza_despesa_detalhada_nome, 'PEN') | str_detect(natureza_despesa_detalhada_nome, 'LEI 7.963/1989')"
+  ),
+  
+  # Filtro Obrigações Patronais
+  `20  FILTRO_OBRIGACOES_PATRONAIS` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('13', '07') | natureza_despesa_detalhada_codigo %in% c('31909213', '31919213', '31909207')"
+  ),
+  
+  # Filtro Pessoal ATIVO - Benefícios Previdenciários
+  `21  FILTRO_PESSOAL_ATIVO_BENEFICIOS` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0599') & natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')"
+  ),
+  
+  # Filtro Pessoal INATIVO - Benefícios Previdenciários
+  `22  FILTRO_PESSOAL_INATIVO_BENEFICIOS` = list(
+    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '05' & (str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508'))"
   )
 )
 
-# ===============================================================================
-# FUNÇÃO PARA APLICAR CRITÉRIOS - CORRIGIDA
-# ===============================================================================
-aplicar_criterios_rgf_anexo1 <- function(dados, criterios) {
-  
-  library(dplyr)
-  library(purrr)
-  library(rlang)
-  
-  # Detectar automaticamente a métrica
-  metrica <- names(dados)[grepl("^(saldo|movim)", names(dados), ignore.case = TRUE)][1]
-  
-  if (is.na(metrica)) {
-    stop("Não foi possível detectar coluna de valores (saldo_r_* ou movim*)")
-  }
-  
-  # Aplicar cada critério
-  resultado <- map_df(names(criterios), function(categoria) {
-    
-    cat("Aplicando critério:", categoria, "\n")
-    
-    crit <- criterios[[categoria]]
-    
-    tryCatch({
-      # Aplicar filtro usando rlang::parse_expr
-      dados_filtrados <- dados %>%
-        filter(!!rlang::parse_expr(crit$criterio))
-      
-      # Agregar por categoria
-      dados_filtrados %>%
-        summarise(
-          valor_total = sum(.data[[metrica]], na.rm = TRUE),
-          registros = n(),
-          .groups = "drop"
-        ) %>%
-        mutate(
-          categoria = categoria,
-          metrica = metrica
-        )
-      
-    }, error = function(e) {
-      cat("Erro no critério", categoria, ":", e$message, "\n")
-      # Retornar linha vazia em caso de erro
-      data.frame(
-        categoria = categoria,
-        metrica = metrica,
-        valor_total = 0,
-        registros = 0
-      )
-    })
-  })
-  
-  return(resultado)
-}
+
 ```
 
 ```{r}
@@ -5480,4 +5512,44 @@ datatable(aplicar_criterios(rgf_a01 %>% filter(unidade_orcamentaria_codigo == "7
 
 ```{r}
 
+df_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "DF"), criterios_rgf_anexo1_pessoal))
+
+datatable(df_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+```
+
+```{r}
+
+ap_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "AP"), criterios_rgf_anexo1_pessoal))
+
+datatable(ap_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+
+
+
+rr_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "RR"), criterios_rgf_anexo1_pessoal))
+
+datatable(rr_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+
+
+
+executivo_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "executivo", item_informacao_codigo == 25), criterios_rgf_anexo1_pessoal))
+
+datatable(executivo_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+
+
+ressalvadas_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "ressalvadas"), criterios_rgf_anexo1_pessoal))
+
+datatable(ressalvadas_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+```
+
+```{r}
+rgf_a01 %>%
+            filter(
+              grupo_despesa_codigo_grupo == '1' &
+                !elemento_despesa_codigo %in% c('01', '03', '34') &
+                !(elemento_despesa_codigo %in% c('13', '07') &
+                    natureza_despesa_detalhada_codigo %in% c('31909213', '31909207')) &
+                !(str_detect(natureza_despesa_detalhada_codigo, '0599') &
+                    natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')) &
+                !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32') &
+                !(str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508'))) %>% group_by( categoria_pessoal) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao))
 ```
