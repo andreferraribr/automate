@@ -5542,3 +5542,13 @@ rgf_a01 %>%
                 !str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7.963/1989') & !elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32') &
                 !(str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508'))) %>% group_by( categoria_pessoal) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao))
 ```
+
+DESCOBERTA IMPORTANTE: O código de classificação de falsos positivos estava ERRADO! As PENSÕES verdadeiras (R\$ 56,46B) foram classificadas como falso positivo porque o padrão \\bPENS não está capturando corretamente. Situação real:
+
+PEN captura 56 naturezas totalizando R\$ 194,21B Dessas, \~R\$ 137,75B são PENSÕES VERDADEIRAS E \~R\$ 56,46B são compensações/dependências/penosas (falsos positivos)
+
+Principais problemas identificados:
+
+REFORMA - R\$ 1,19M em "REFORMA AGRÁRIA" (falso positivo confirmado) PEN - R\$ 3,84B em "COMPENSAÇÕES" (falso positivo confirmado) PEN - R\$ 137,75B em PENSÕES (são VERDADEIROS, não falsos!)
+
+Análise do print do TG: O Tesouro Gerencial usa o operador "Contém" que é equivalente ao nosso padrão sem word boundaries, confirmando que eles têm o mesmo
