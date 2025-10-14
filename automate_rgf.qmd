@@ -84,7 +84,7 @@ transferencia
 
 ```{r dados_despesa}
 #| echo: true
-#| eval: true
+#| eval: false
 
 
 
@@ -154,6 +154,24 @@ dcl_creditos_bancarios <- read_and_process("dcl_creditos_bancarios.xlsx")
 dcl_entidade <- read_and_process("dcl_entidade.xlsx")
 dcl_balancete <- read_and_process("dcl_balancete.xlsx")
 
+# Linha 02
+dcl_aplicacao_titulos_publicos <- read_and_process("dcl_aplicacao_titulos_publicos.xlsx")
+
+# Linhas 07 e 12
+dcl_balancete <- read_and_process("dcl_balancete.xlsx")
+
+# Linha 13
+dcl_balancete_fat <- read_and_process("dcl_balancete_fat.xlsx")
+
+# Linha 14
+dcl_balancete_fundos_111215100 <- read_and_process("dcl_balancete_fundos_111215100.xlsx")
+
+# Linhas 15 e 16
+dcl_balancete_fundos <- read_and_process("dcl_balancete_fundos.xlsx")
+
+
+dcl_balancete_deducoes_depositos_a_vista <-  read_and_process("dcl_balancete_deducoes_depositos_a_vista.xlsx")
+
 
 
 
@@ -172,133 +190,14 @@ dcl_balancete <- read_and_process("dcl_balancete.xlsx")
 ## Aplicar Critérios
 
 ```{r aplicar_criterios}
-# aplicar_criterios <- function(df, criterios) {
-#   
-#   # Detectar automaticamente a métrica
-#   metrica <- names(df)[grepl("^(saldo|movim)", names(df), ignore.case = TRUE)][1]
-#   
-#   # Capturar o nome do dataframe passado como argumento
-#   df_completo <- paste(deparse(substitute(df)), collapse = " ")
-#   
-#   # Separar nome da df de eventuais filtros
-#   if (grepl("%>%", df_completo)) {
-#     # Se há pipe, extrair apenas o nome da df original
-#     df_nome <- trimws(strsplit(df_completo, "%>%")[[1]][1])
-#     df_filtros <- paste(strsplit(df_completo, "%>%")[[1]][-1], collapse = " %>% ")
-#     df_filtros <- trimws(df_filtros)
-#   } else {
-#     # Se não há pipe, usar o nome completo
-#     df_nome <- df_completo
-#     df_filtros <- NA
-#   }
-#   
-#   # Capturar o nome da variável criterios passada como argumento
-#   criterios_nome <- deparse(substitute(criterios))
-#   
-#   # Verificar e criar colunas necessárias se não existirem
-#   if (!"item_informacao_nome" %in% names(df)) {
-#     df$item_informacao_nome <- "nao_se_aplica"
-#   }
-#   
-#   if (!"item_informacao_codigo" %in% names(df)) {
-#     df$item_informacao_codigo <- "nao_se_aplica"
-#   }
-#   
-#   if (!"orgao_uge_tipo_administracao_nome" %in% names(df)) {
-#     df$orgao_uge_tipo_administracao_nome <- "nao_se_aplica"
-#   }
-#   
-#   if (!"orgao_uge_tipo_administracao_codigo" %in% names(df)) {
-#     df$orgao_uge_tipo_administracao_codigo <- "nao_se_aplica"
-#   }
-#   
-#   # Definir variáveis de agrupamento fixas
-#   group_vars <- c("mes_lancamento", "item_informacao_nome", "item_informacao_codigo", 
-#                   "orgao_uge_tipo_administracao_nome", "orgao_uge_tipo_administracao_codigo")
-#   
-#   # Desmembrar o nome da variável criterios usando "_" como separador
-#   partes <- strsplit(criterios_nome, "_")[[1]]
-#   
-#   # Remover "criterios" se estiver presente
-#   if (partes[1] == "criterios") {
-#     partes <- partes[-1]
-#   }
-#   
-#   relatorio <- if (length(partes) >= 1) partes[1] else NA
-#   anexo_codigo <- if (length(partes) >= 2) partes[2] else NA
-#   anexo_nome <- if (length(partes) >= 3) partes[3] else NA
-#   detalhe <- if (length(partes) >= 4) paste(partes[4:length(partes)], collapse = "_") else NA
-#   
-#   # Aplicar critérios - apenas filtros normais
-#   resultado <- map_df(names(criterios), function(categoria) {
-#     crit <- criterios[[categoria]]
-#     
-#     # Pular fórmulas matemáticas - serão tratadas em calcular_operacoes
-#     if (grepl("\\{[^}]+\\}", crit$criterio)) {
-#       return(data.frame())
-#     }
-#     
-#     # Extrair informação de print do nome da categoria
-#     if (grepl("_s$", categoria)) {
-#       print_flag <- "s"
-#       categoria_limpa <- str_replace(categoria, "_s$", "")
-#     } else if (grepl("_n$", categoria)) {
-#       print_flag <- "n"
-#       categoria_limpa <- str_replace(categoria, "_n$", "")
-#     } else {
-#       print_flag <- "s"  # default
-#       categoria_limpa <- categoria
-#     }
-#     
-#     # Avaliar condição
-#     condicao_expr <- eval(parse(text = crit$criterio), envir = df)
-#     
-#     df %>%
-#       filter(condicao_expr) %>%
-#       group_by(across(all_of(group_vars))) %>%
-#       summarise(
-#         valor = sum(.data[[metrica]], na.rm = TRUE), 
-#         .groups = "drop"
-#       ) %>%
-#       mutate(
-#         categoria = categoria_limpa,
-#         metrica = metrica,
-#         dataframe_nome = df_nome,
-#         dataframe_filtros = df_filtros,
-#         relatorio = relatorio,
-#         anexo_codigo = anexo_codigo,
-#         anexo_nome = anexo_nome,
-#         detalhe = detalhe,
-#         print = print_flag,
-#         filtro = crit$criterio
-#       ) %>%
-#       separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>%
-#       select(mes_lancamento, dataframe_nome, dataframe_filtros, relatorio, anexo_codigo, 
-#              anexo_nome, detalhe, print, filtro, metrica, 
-#              item_informacao_nome, item_informacao_codigo, 
-#              orgao_uge_tipo_administracao_nome, orgao_uge_tipo_administracao_codigo, 
-#              ordem, nome, valor)
-#   })
-#   
-#   # Criar o nome da nova dataframe com prefixo df_
-#   novo_nome <- paste0("df_", criterios_nome)
-#   
-#   # Atribuir o resultado à nova dataframe no ambiente global
-#   assign(novo_nome, resultado, envir = .GlobalEnv)
-#   
-#   # Retornar o resultado também
-#   return(resultado)
-# }
-
-
 aplicar_criterios <- function(df, criterios) {
-  
+
   # Detectar automaticamente a métrica
   metrica <- names(df)[grepl("^(saldo|movim)", names(df), ignore.case = TRUE)][1]
-  
+
   # Capturar o nome do dataframe passado como argumento
   df_completo <- paste(deparse(substitute(df)), collapse = " ")
-  
+
   # Separar nome da df de eventuais filtros
   if (grepl("%>%", df_completo)) {
     # Se há pipe, extrair apenas o nome da df original
@@ -310,35 +209,53 @@ aplicar_criterios <- function(df, criterios) {
     df_nome <- df_completo
     df_filtros <- NA
   }
-  
+
   # Capturar o nome da variável criterios passada como argumento
   criterios_nome <- deparse(substitute(criterios))
-  
-  # Definir variáveis de agrupamento: apenas mês de lançamento
-  group_vars <- c("mes_lancamento")
-  
+
+  # Verificar e criar colunas necessárias se não existirem
+  if (!"item_informacao_nome" %in% names(df)) {
+    df$item_informacao_nome <- "nao_se_aplica"
+  }
+
+  if (!"item_informacao_codigo" %in% names(df)) {
+    df$item_informacao_codigo <- "nao_se_aplica"
+  }
+
+  if (!"orgao_uge_tipo_administracao_nome" %in% names(df)) {
+    df$orgao_uge_tipo_administracao_nome <- "nao_se_aplica"
+  }
+
+  if (!"orgao_uge_tipo_administracao_codigo" %in% names(df)) {
+    df$orgao_uge_tipo_administracao_codigo <- "nao_se_aplica"
+  }
+
+  # Definir variáveis de agrupamento fixas
+  group_vars <- c("mes_lancamento", "item_informacao_nome", "item_informacao_codigo",
+                  "orgao_uge_tipo_administracao_nome", "orgao_uge_tipo_administracao_codigo")
+
   # Desmembrar o nome da variável criterios usando "_" como separador
   partes <- strsplit(criterios_nome, "_")[[1]]
-  
+
   # Remover "criterios" se estiver presente
   if (partes[1] == "criterios") {
     partes <- partes[-1]
   }
-  
+
   relatorio <- if (length(partes) >= 1) partes[1] else NA
   anexo_codigo <- if (length(partes) >= 2) partes[2] else NA
   anexo_nome <- if (length(partes) >= 3) partes[3] else NA
   detalhe <- if (length(partes) >= 4) paste(partes[4:length(partes)], collapse = "_") else NA
-  
+
   # Aplicar critérios - apenas filtros normais
   resultado <- map_df(names(criterios), function(categoria) {
     crit <- criterios[[categoria]]
-    
+
     # Pular fórmulas matemáticas - serão tratadas em calcular_operacoes
     if (grepl("\\{[^}]+\\}", crit$criterio)) {
       return(data.frame())
     }
-    
+
     # Extrair informação de print do nome da categoria
     if (grepl("_s$", categoria)) {
       print_flag <- "s"
@@ -350,15 +267,15 @@ aplicar_criterios <- function(df, criterios) {
       print_flag <- "s"  # default
       categoria_limpa <- categoria
     }
-    
+
     # Avaliar condição
     condicao_expr <- eval(parse(text = crit$criterio), envir = df)
-    
+
     df %>%
       filter(condicao_expr) %>%
       group_by(across(all_of(group_vars))) %>%
       summarise(
-        valor = sum(.data[[metrica]], na.rm = TRUE), 
+        valor = sum(.data[[metrica]], na.rm = TRUE),
         .groups = "drop"
       ) %>%
       mutate(
@@ -374,17 +291,19 @@ aplicar_criterios <- function(df, criterios) {
         filtro = crit$criterio
       ) %>%
       separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>%
-      select(mes_lancamento, dataframe_nome, dataframe_filtros, relatorio, 
-             anexo_codigo, anexo_nome, detalhe, print, filtro, metrica, 
+      select(mes_lancamento, dataframe_nome, dataframe_filtros, relatorio, anexo_codigo,
+             anexo_nome, detalhe, print, filtro, metrica,
+             item_informacao_nome, item_informacao_codigo,
+             orgao_uge_tipo_administracao_nome, orgao_uge_tipo_administracao_codigo,
              ordem, nome, valor)
   })
-  
+
   # Criar o nome da nova dataframe com prefixo df_
   novo_nome <- paste0("df_", criterios_nome)
-  
+
   # Atribuir o resultado à nova dataframe no ambiente global
   assign(novo_nome, resultado, envir = .GlobalEnv)
-  
+
   # Retornar o resultado também
   return(resultado)
 }
@@ -392,77 +311,12 @@ aplicar_criterios <- function(df, criterios) {
 
 ```
 
-## Consolidar Critérios
-
-```{r consolidar_criterios}
-
-# Função para consolidar todas as dataframes com prefixo "df_criterios"
-consolidar_criterios <- function() {
-  # Obter todos os objetos no ambiente global
-  objetos <- ls(envir = .GlobalEnv)
-  
-  # Filtrar apenas as dataframes que começam com "df_criterios"
-  df_criterios <- objetos[grepl("^df_criterios", objetos)]
-  
-  if (length(df_criterios) == 0) {
-    stop("Nenhuma dataframe com prefixo 'df_criterios' foi encontrada")
-  }
-  
-  # Obter todas as dataframes e combiná-las
-  tabelas <- map(df_criterios, ~ get(.x, envir = .GlobalEnv))
-  
-  # Padronizar tipos de colunas antes de combinar
-  tabelas_padronizadas <- map(tabelas, function(tabela) {
-    tabela %>%
-      mutate(
-        item_informacao_codigo = as.character(item_informacao_codigo),
-        orgao_uge_tipo_administracao_codigo = as.character(orgao_uge_tipo_administracao_codigo),
-        item_informacao_nome = as.character(item_informacao_nome),
-        orgao_uge_tipo_administracao_nome = as.character(orgao_uge_tipo_administracao_nome)
-      )
-  })
-  
-  # Combinar todas as tabelas
-  resultado_completo <- bind_rows(tabelas_padronizadas)
-  
-  # Reagrupar apenas por mes_lancamento, ignorando agrupamentos adicionais
-  resultado <- resultado_completo %>%
-    group_by(mes_lancamento, ordem, nome, metrica, dataframe_nome, dataframe_filtros,
-             relatorio, anexo_codigo, anexo_nome, detalhe, print, filtro,
-             item_informacao_nome, item_informacao_codigo, 
-             orgao_uge_tipo_administracao_nome, orgao_uge_tipo_administracao_codigo) %>%
-    summarise(valor = sum(valor, na.rm = TRUE), .groups = "drop") %>%
-    arrange(mes_lancamento, relatorio, anexo_codigo, detalhe, ordem) %>%
-    mutate(
-      # Converter mes_lancamento para data (último dia do mês) - método simplificado
-      data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1),
-      # Criar chave única
-      chave = paste0(mes_lancamento, "_", tolower(relatorio), "_", tolower(anexo_codigo), "_", tolower(detalhe), "_", ordem)
-    ) %>%
-    select(chave, mes_lancamento, data_lancamento, dataframe_nome, dataframe_filtros, relatorio, anexo_codigo, 
-           anexo_nome, detalhe, print, filtro, metrica, 
-           item_informacao_nome, item_informacao_codigo, 
-           orgao_uge_tipo_administracao_nome, orgao_uge_tipo_administracao_codigo, 
-           ordem, nome, valor)
-  
-  # Criar nome da dataframe baseado no mês mais recente
-  mes_recente <- max(resultado$mes_lancamento)
-  ano <- substr(as.character(mes_recente), 1, 4)
-  mes_num <- substr(as.character(mes_recente), 5, 6)
-  
-  nome_df <- paste0("criterios_consolidados_", ano, "_", mes_num)
-  
-  # Salvar no ambiente global
-  assign(nome_df, resultado, envir = .GlobalEnv)
-  
-  return(resultado)
-}
-```
-
 # 📋 Anexo 1 (Despesa com Pessoal)
 
 ```{r}
-criterios_rgf_anexo1_pessoal <- list(
+#| code-fold: true
+#| eval: false
+criterios_rgf_A01_pessoal_rgf <- list(
   
   # PESSOAL TOTAL
   `01  Pessoal Total` = list(
@@ -647,6 +501,8 @@ criterios_rgf_anexo1_pessoal <- list(
 ```
 
 ```{r}
+#| code-fold: true
+#| eval: false
 # ===============================================================================
 # MUTATE RGF ANEXO 1 - CATEGORIZAÇÃO POR REGIÃO/PODER
 # ===============================================================================
@@ -688,32 +544,36 @@ rgf_a01 <- rgf_a01 %>%
 ```
 
 ```{r}
+#| code-fold: true
+#| eval: false
 
-df_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "DF"), criterios_rgf_anexo1_pessoal))
+df_rgf_A01_pessoal_df <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "DF"), criterios_rgf_A01_pessoal_rgf))
 
-datatable(df_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+datatable(df_rgf_A01_pessoal_df  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 ```
 
 ```{r}
+#| code-fold: true
+#| eval: false
 
-ap_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "AP"), criterios_rgf_anexo1_pessoal))
+df_rgf_A01_pessoal_ap <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "AP"), criterios_rgf_A01_pessoal_rgf))
 
-datatable(ap_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
-
-
-
-rr_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "RR"), criterios_rgf_anexo1_pessoal))
-
-datatable(rr_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+datatable(df_rgf_A01_pessoal_ap  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 
 
 
-executivo_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "executivo", item_informacao_codigo == 25), criterios_rgf_anexo1_pessoal))
+df_rgf_A01_pessoal_rr <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "RR"), criterios_rgf_A01_pessoal_rgf))
 
-datatable(executivo_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+datatable(df_rgf_A01_pessoal_rr %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 
 
-ressalvadas_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "ressalvadas"), criterios_rgf_anexo1_pessoal))
+
+df_rgf_A01_pessoal_executivo <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "executivo", item_informacao_codigo == 25), criterios_rgf_A01_pessoal_rgf))
+
+datatable(df_rgf_A01_pessoal_executivo  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+
+
+ressalvadas_rgf_A01 <- (aplicar_criterios(rgf_a01 %>% filter(categoria_pessoal == "ressalvadas"), criterios_rgf_A01_pessoal_rgf))
 
 datatable(ressalvadas_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 ```
@@ -722,38 +582,32 @@ datatable(ressalvadas_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = s
 
 ```{r}
 # ===============================================================================
-# CRITÉRIOS RGF ANEXO 02 - DCL (VERSÃO PARA VALIDAÇÃO)
-# ===============================================================================
-# NOTA: dcl_balancete contém apenas linhas com dimensões disponíveis (05, 06, 10, 11, 24, 26)
-# Linhas 02, 07, 12, 13, 14, 15, 16 serão processadas após ajuste no TG
-# CORREÇÃO: Linhas 22 e 23 agora separadas corretamente
+# CRITÉRIOS RGF ANEXO 02 - DCL (VERSÃO FINAL CORRIGIDA)
+# LISTAS ORGANIZADAS POR BASE DE DADOS
 # ===============================================================================
 
 # ===============================================================================
 # BASE: dcl_precatorios
-# Filtros TG: contas (27), ações (0005, 00U9, 00UP, 00WU, 0EC7, 0EC8, 0Z01), mês = AGO/2025
-# IMPORTANTE: Filtrar ação 0Z01 apenas para UO 71103
+# Filtros TG: Orçamento Fiscal,  Contas específicas
+# CORREÇÃO: Ação 0Z01 APENAS se UO = 71103
 # ===============================================================================
-
 criterios_rgf_A02_dcl_precatorios <- list(
   
   `08 - PRECATÓRIOS POSTERIORES A 05/05/2000` = list(
     criterio = "
-    acao_governo_codigo != '0Z01' | 
-    (acao_governo_codigo == '0Z01' & unidade_orcamentaria_codigo == '71103')
+    acao_governo_codigo %in% c('0005', '00U9', '00UP', '0EC8', '0EC7', '00WU') |
+    (unidade_orcamentaria_codigo == '71103' & acao_governo_codigo == '0Z01')
     "
   )
 )
 
 # ===============================================================================
 # BASE: dcl_rp_exceto_170600
-# Filtros TG: contas (622920102, 622920106, 631200000), 
-#             UG != 170600, ação != 0005, mês = AGO/2025
+# Filtros TG: Contas específicas,  UG != 170600, Ação != 0005
 # ===============================================================================
-
 criterios_rgf_A02_dcl_rp_exceto_170600 <- list(
   
-  `25 - RESTOS A PAGAR PROCESSADOS_PARTE1` = list(
+  `25 - RESTOS A PAGAR PROCESSADOS - PARTE 1` = list(
     criterio = "
     TRUE
     "
@@ -762,13 +616,11 @@ criterios_rgf_A02_dcl_rp_exceto_170600 <- list(
 
 # ===============================================================================
 # BASE: dcl_rp_todas_ugs
-# Filtros TG: contas (622920103, 622920107, 631300000, 632100000),
-#             ação != 0005, mês = AGO/2025
+# Filtros TG: Contas específicas,  Ação != 0005
 # ===============================================================================
-
 criterios_rgf_A02_dcl_rp_todas_ugs <- list(
   
-  `25 - RESTOS A PAGAR PROCESSADOS_PARTE2` = list(
+  `25 - RESTOS A PAGAR PROCESSADOS - PARTE 2` = list(
     criterio = "
     TRUE
     "
@@ -777,9 +629,8 @@ criterios_rgf_A02_dcl_rp_todas_ugs <- list(
 
 # ===============================================================================
 # BASE: dcl_ug_170512
-# Filtros TG: UG = 170512, mês = AGO/2025
+# Filtros TG: Orçamento Fiscal,  UG = 170512
 # ===============================================================================
-
 criterios_rgf_A02_dcl_ug_170512 <- list(
   
   `09 - DÍVIDA ASSUMIDA PELA UNIÃO` = list(
@@ -792,82 +643,84 @@ criterios_rgf_A02_dcl_ug_170512 <- list(
   
   `17 - DÍVIDAS RENEGOCIADAS - DEDUÇÃO` = list(
     criterio = "
-    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600',
-                                 '121140301', '121150301', '112440100', '112450100',
-                                 '121140318', '121150318', '112440600', '112450600',
-                                 '112410401', '112450401', '112440401', '121249818',
-                                 '113814200', '113844200', '113854200') &
-    (entidade_c_cor_numero %in% c('PF1705320', 'PF1705524', 'PF1705528', 'PF1705546',
-                                  'PF1705547', 'PF1705548', 'PF1705406', 'PF1705525',
-                                  'PF1705529', 'PF1705544', 'PF1705545') |
-     str_detect(entidade_c_cor_nome, '9\\\\.496/97') |
-     str_detect(entidade_c_cor_nome, '2\\\\.185/2001'))
+    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
+                                '121140301', '121150301', '112440100', '112450100', 
+                                '121140318', '121150318', '112440600', '112450600', 
+                                '112410401', '112450401', '112440401', '121249818', 
+                                '113814200', '113844200', '113854200') &
+    (entidade_c_cor_numero %in% c('PF1705320', 'PF1705524', 'PF1705528', 'PF1705546', 
+                                 'PF1705547', 'PF1705548', 'PF1705406', 'PF1705525', 
+                                 'PF1705529', 'PF1705544', 'PF1705545') |
+     grepl('9\\\\.496/97', entidade_c_cor_nome) |
+     grepl('2\\\\.185/2001', entidade_c_cor_nome))
     "
   ),
   
   `18 - CRÉDITOS LEI 8.727/93 - DEDUÇÃO` = list(
     criterio = "
-    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600',
-                                 '121140301', '121150301', '112440100', '112450100',
-                                 '121140318', '121150318', '112440600', '112450600',
-                                 '112410401', '121219818', '112450401', '112440401',
-                                 '121249818', '113814200', '113844200', '113854200') &
+    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
+                                '121140301', '121150301', '112440100', '112450100', 
+                                '121140318', '121150318', '112440600', '112450600', 
+                                '112410401', '121219818', '112450401', '112440401', 
+                                '121249818', '113814200', '113844200', '113854200') &
     (entidade_c_cor_numero %in% c('PF1705109', 'PF1705536', 'TN0000016', 'TN0000017') |
-     str_detect(entidade_c_cor_nome, '8\\\\.727/93'))
+     grepl('8\\\\.727/93', entidade_c_cor_nome))
     "
   ),
   
   `19 - DÍVIDA EXTERNA RENEGOCIADA - DEDUÇÃO` = list(
     criterio = "
-    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600',
-                                 '121140301', '121150301', '112440100', '112450100',
-                                 '121140318', '121150318', '112440600', '112450600',
-                                 '112410401', '121219818', '112450401', '112440401',
-                                 '121249818', '113844200', '113814200', '113854200',
-                                 '121259818') &
-    (entidade_c_cor_numero %in% c('PF1705104', 'PF1705114', 'PF1705117', 'PF1705521',
-                                  'PF1705534', 'PF1705116', 'PF1705531', 'PF1705532',
-                                  'PF1705113', 'PF1701536', 'PF1705520', 'PF1705533',
-                                  'PF1705464', 'PF1705534', 'PF1705119', 'PF1705384') |
-     str_detect(entidade_c_cor_nome, 'DMLP|FRANCA|FRANÇA|EXTER|MF 030|BIB'))
+    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
+                                '121140301', '121150301', '112440100', '112450100', 
+                                '121140318', '121150318', '112440600', '112450600', 
+                                '112410401', '121219818', '112450401', '112440401', 
+                                '121249818', '113844200', '113814200', '113854200', 
+                                '121259818') &
+    (entidade_c_cor_numero %in% c('PF1705104', 'PF1705114', 'PF1705117', 'PF1705521', 
+                                 'PF1705534', 'PF1705116', 'PF1705531', 'PF1705532', 
+                                 'PF1705113', 'PF1701536', 'PF1705520', 'PF1705533', 
+                                 'PF1705464', 'PF1705534', 'PF1705119', 'PF1705384') |
+     grepl('DMLP', entidade_c_cor_nome) |
+     grepl('FRANCA|FRANÇA', entidade_c_cor_nome) |
+     grepl('EXTER', entidade_c_cor_nome) |
+     grepl('MF 030', entidade_c_cor_nome) |
+     grepl('BIB', entidade_c_cor_nome))
     "
   ),
   
   `20 - DEMAIS DÍVIDAS RENEGOCIADAS - DEDUÇÃO` = list(
     criterio = "
-    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600',
-                                 '121140301', '121150301', '112440100', '112450100',
-                                 '121140318', '121150318', '112440600', '112450600',
-                                 '112410401', '112450401', '112440401', '121249818',
-                                 '113844200', '113814200', '113854200', '121259818')
+    conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
+                                '121140301', '121150301', '112440100', '112450100', 
+                                '121140318', '121150318', '112440600', '112450600', 
+                                '112410401', '112450401', '112440401', '121249818', 
+                                '113844200', '113814200', '113854200', '121259818')
     "
   ),
   
   `21 - AJUSTES PARA PERDAS (POSITIVO)` = list(
     criterio = "
-    conta_contabil_numero %in% c('112940401', '112950401', '113940101', '112910401',
-                                 '113950101', '121119902', '121149904', '121159904',
-                                 '121119904', '121249903', '121259903')
+    conta_contabil_numero %in% c('112940401', '112950401', '113940101', '112910401', 
+                                '113950101', '121119902', '121149904', '121159904', 
+                                '121119904', '121249903', '121259903')
     "
   )
 )
 
 # ===============================================================================
 # BASE: dcl_creditos_bancarios
-# Filtros TG: contas (27 - TODAS as contas das linhas 22 e 23), UG = 170705, mês = AGO/2025
-# CORREÇÃO: Como o TG filtrou todas as contas juntas, precisamos separar aqui
+# Filtros TG: Orçamento Fiscal,  UG IN (170705, 170526, 170700)
 # ===============================================================================
-
 criterios_rgf_A02_dcl_creditos_bancarios <- list(
   
   `22 - OUTROS CRÉDITOS BANCÁRIOS - DEDUÇÃO` = list(
     criterio = "
-    conta_contabil_numero %in% c('112410301', '112410303', '112440301', '112450301',
-                                 '112440303', '112450303', '112410100', '121110301',
-                                 '121110314', '121110308', '121140301', '121150301',
-                                 '121140308', '121150308', '112411300', '121110316',
-                                 '121110320', '112410302', '112410304', '112410201',
-                                 '112410203', '112410403', '121110312')
+    conta_contabil_numero %in% c('112410301', '112410303', '112440301', '112450301', 
+                                '112440303', '112450303', '112410100', '121110301', 
+                                '121110314', '121110308', '121140301', '121150301', 
+                                '121140308', '121150308', '112411300', '121110316', 
+                                '121110320', '112410302', '112410304', '112410201', 
+                                '112410203', '112410403', '121110312')
     "
   ),
   
@@ -880,19 +733,18 @@ criterios_rgf_A02_dcl_creditos_bancarios <- list(
 
 # ===============================================================================
 # BASE: dcl_entidade
-# Filtros TG: contas (dívida mobiliária), mês = AGO/2025
+# Filtros TG: Orçamento Fiscal,  Contas específicas
 # ===============================================================================
-
 criterios_rgf_A02_dcl_entidade <- list(
   
   `01 - DÍVIDA MOBILIÁRIA TN INTERNA - PARTE 1` = list(
     criterio = "
-    entidade_c_cor_numero %in% c('DP1000001', 'DP1400001', 'DP1500001', 'DP1700001',
-                                 'DP1800001', 'DP2000001', 'DP2300007', 'DP2400001',
-                                 'DP2600001', 'DP2800001', 'DP3000001', 'DP3400001',
-                                 'DP5000001', 'DP5500001', 'DP5800001', 'DP6100001',
-                                 'DP6200001', 'DP6300001', 'DP6600001', 'DP7000001',
-                                 'DP8000001', 'DP9000001', 'DP1200001')
+    entidade_c_cor_numero %in% c('DP1000001', 'DP1400001', 'DP1500001', 'DP1700001', 
+                                'DP1800001', 'DP2000001', 'DP2300007', 'DP2400001', 
+                                'DP2600001', 'DP2800001', 'DP3000001', 'DP3400001', 
+                                'DP5000001', 'DP5500001', 'DP5800001', 'DP6100001', 
+                                'DP6200001', 'DP6300001', 'DP6600001', 'DP7000001', 
+                                'DP8000001', 'DP9000001', 'DP1200001')
     "
   ),
   
@@ -904,24 +756,22 @@ criterios_rgf_A02_dcl_entidade <- list(
   
   `03 - DÍVIDA MOBILIÁRIA DO TN (EM BCB)` = list(
     criterio = "
-    entidade_c_cor_numero %in% c('DP1500010', 'DP1700010', 'DP1800010', 'DP2300010',
-                                 'DP5500010', 'DP7000010', 'DP9000010', 'DP3201450')
+    entidade_c_cor_numero %in% c('DP1500010', 'DP1700010', 'DP1800010', 'DP2300010', 
+                                'DP5500010', 'DP7000010', 'DP9000010', 'DP3201450')
     "
   ),
   
   `04 - DÍVIDA SECURITIZADA - PARTE 1` = list(
     criterio = "
-    conta_contabil_numero %in% c('899913900', '899913901', '899913902', '899913903',
-                                 '899913904', '899913905', '899913906') &
-    entidade_c_cor_numero %in% c('DP3100001', 'DP3200001', 'DP3200002', 'DP3201031',
-                                 'DP3201032', 'DP3201059', 'DP3201077', 'DP3201078',
-                                 'DP3201080', 'DP3201081', 'DP3201145', 'DP3201202',
-                                 'DP3201222', 'DP3201228', 'DP3201233', 'DP3201250',
-                                 'DP3201256', 'DP3201257', 'DP3201258', 'DP3201259',
-                                 'DP3201260', 'DP3201262', 'DP3201271', 'DP3201272',
-                                 'DP3201275', 'DP3201276', 'DP3201277', 'DP3201280',
-                                 'DP3201281', 'DP3201296', 'DP3201299', 'DP3201362',
-                                 'DP3201368', 'DP3201378', 'DP3201390')
+    entidade_c_cor_numero %in% c('DP3100001', 'DP3200001', 'DP3200002', 'DP3201031', 
+                                'DP3201032', 'DP3201059', 'DP3201077', 'DP3201078', 
+                                'DP3201080', 'DP3201081', 'DP3201145', 'DP3201202', 
+                                'DP3201222', 'DP3201228', 'DP3201233', 'DP3201250', 
+                                'DP3201256', 'DP3201257', 'DP3201258', 'DP3201259', 
+                                'DP3201260', 'DP3201262', 'DP3201271', 'DP3201272', 
+                                'DP3201275', 'DP3201276', 'DP3201277', 'DP3201280', 
+                                'DP3201281', 'DP3201296', 'DP3201299', 'DP3201362', 
+                                'DP3201368', 'DP3201378', 'DP3201390')
     "
   ),
   
@@ -933,12 +783,23 @@ criterios_rgf_A02_dcl_entidade <- list(
 )
 
 # ===============================================================================
-# BASE: dcl_balancete
-# Filtros TG: mês = AGO/2025
-# NOTA: Processando apenas linhas com dimensões disponíveis
-# PENDENTE: Linhas 02, 07, 12, 13, 14, 15, 16 (aguardando ajuste no TG)
+# BASE: dcl_aplicacao_titulos_publicos
+# Filtros TG: Orçamento Fiscal,  Órgão UGE != 25901,
+#             Tipo Admin IN (3,4,5,6,8), Conta começa com 1111150
 # ===============================================================================
+criterios_rgf_A02_dcl_aplicacao_titulos_publicos <- list(
+  
+  `02 - APLICAÇÃO EM TÍTULOS PÚBLICOS` = list(
+    criterio = "
+    !conta_contabil_numero %in% c('111115005', '111115011', '111115012')
+    "
+  )
+)
 
+# ===============================================================================
+# BASE: dcl_balancete
+# Filtros TG: Orçamento Fiscal, Mês AGO/2025
+# ===============================================================================
 criterios_rgf_A02_dcl_balancete <- list(
   
   `05 - DÍVIDA MOBILIÁRIA EXTERNA` = list(
@@ -953,19 +814,41 @@ criterios_rgf_A02_dcl_balancete <- list(
     "
   ),
   
-  `10 - PASSIVOS POR INSUFICIÊNCIA DE RECURSOS` = list(
+  `07 - DEMAIS DÍVIDAS CONTRATUAIS` = list(
     criterio = "
-    conta_contabil_numero %in% c('211110101', '211419800', '223110100', '211210100', '213140400',
-                                 '213150400', '214119900', '213110400', '211449800', '211459800') &
-    (is.na(isf_lancamento) | isf_lancamento %in% c('P'))
+    isf_lancamento == 'P' &
+    conta_contabil_numero %in% c(
+      '222210200', '212210300', '222110200', '212110301', '212110303', '212510103',
+      '212140303', '212150303', '212540103', '212550103', '212140301', '212150301',
+      '217310301', '217310602', '217350402', '227310301', '212110700', '212210601',
+      '212310201', '212310202', '212410201', '222310101', '222310102', '222410101',
+      '217710101', '227710101', '227310401'
+    )
     "
   ),
+`10 - PASSIVOS POR INSUFICIÊNCIA DE RECURSOS` = list(
+  criterio = "
+  conta_contabil_numero %in% c('213110400', '211110101', '214419800', '223110100', 
+                               '211210100', '213140400', '213150400', 
+                               '214119900', '211459800', '211419800') &
+  isf_lancamento == 'P'
+  "
+),
   
   `11 - DEPÓSITOS DO TN (EM BCB) - DEDUÇÃO` = list(
     criterio = "
-    startsWith(as.character(conta_contabil_numero), '1111102') |
-    startsWith(as.character(conta_contabil_numero), '1111103') |
-    startsWith(as.character(conta_contabil_numero), '1111104')
+    startsWith(conta_contabil_numero, '1111102') |
+    startsWith(conta_contabil_numero, '1111103') |
+    startsWith(conta_contabil_numero, '1111104')
+    "
+  ),
+  
+  `12 - DEPÓSITOS À VISTA - DEDUÇÃO - PARTE 2` = list(
+    criterio = "
+    startsWith(conta_contabil_numero, '1112102') |
+    startsWith(conta_contabil_numero, '1112103') |
+    startsWith(conta_contabil_numero, '1112150') |
+    startsWith(conta_contabil_numero, '1112152')
     "
   ),
   
@@ -983,157 +866,242 @@ criterios_rgf_A02_dcl_balancete <- list(
 )
 
 # ===============================================================================
-# RESUMO FINAL
+# BASE: dcl_balancete_fat
+# Filtros TG: Orçamento Fiscal,  UG = 380916
 # ===============================================================================
+criterios_rgf_A02_dcl_balancete_fat <- list(
+  
+  `13 - DISPONIBILIDADE FAT - DEDUÇÃO` = list(
+    criterio = "
+    startsWith(conta_contabil_numero, '1111119') |
+    startsWith(conta_contabil_numero, '1124103') |
+    startsWith(conta_contabil_numero, '1135407') |
+    startsWith(conta_contabil_numero, '1135113') |
+    startsWith(conta_contabil_numero, '1135115') |
+    startsWith(conta_contabil_numero, '1124101') |
+    startsWith(conta_contabil_numero, '1135111') |
+    startsWith(conta_contabil_numero, '1135107') |
+    startsWith(conta_contabil_numero, '11121') |
+    startsWith(conta_contabil_numero, '1135114') |
+    startsWith(conta_contabil_numero, '1135112') |
+    startsWith(conta_contabil_numero, '1135116') |
+    startsWith(conta_contabil_numero, '1211503') |
+    startsWith(conta_contabil_numero, '1211403') |
+    startsWith(conta_contabil_numero, '1211103') |
+    startsWith(conta_contabil_numero, '1135507') |
+    startsWith(conta_contabil_numero, '1212105') |
+    conta_contabil_numero %in% c('111115009', '111115011', '111115014', 
+                                 '111115015', '111115016', '111115006')
+    "
+  )
+)
 
-# TOTAL DE LINHAS PROCESSADAS NESTA VERSÃO: 20 linhas
-# - dcl_precatorios: 1 linha (08)
-# - dcl_rp: 1 linha (25 - partes 1 e 2 consolidadas)
-# - dcl_ug_170512: 6 linhas (09, 17, 18, 19, 20, 21)
-# - dcl_creditos_bancarios: 2 linhas (22, 23) ✅ CORRIGIDO
-# - dcl_entidade: 5 linhas (01 parte 1, 01 parte 2, 03, 04 parte 1, 04 parte 2)
-# - dcl_balancete: 6 linhas (05, 06, 10, 11, 24, 26)
-#
-# PENDENTES (aguardando ajuste TG): 7 linhas
-# - dcl_balancete: linhas 02, 07, 12, 13, 14, 15, 16
+# ===============================================================================
+# BASE: dcl_balancete_deducoes_depositos_a_vista
+# Filtros TG: Orçamento Fiscal,  Órgão != 25901, UG != 380916
+# Contas: 1111119* (demais contas bancárias)
+# ===============================================================================
+criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista <- list(
+  
+  `12 - DEPÓSITOS À VISTA - DEDUÇÃO - PARTE 1` = list(
+    criterio = "
+    startsWith(conta_contabil_numero, '1111119')
+    "
+  )
+)
+
+# ===============================================================================
+# BASE: dcl_balancete_fundos_111215100
+# Filtros TG: Orçamento Fiscal,  Órgão != 25915,37904, Conta = 111215100
+# ===============================================================================
+criterios_rgf_A02_dcl_balancete_fundos_111215100 <- list(
+  
+  `14 - APLICAÇÕES EM FUNDOS DIVERSOS 1 - DEDUÇÃO` = list(
+    criterio = "
+    TRUE
+    "
+  )
+)
+
+# ===============================================================================
+# BASE: dcl_balancete_fundos
+# Filtros TG: Orçamento Fiscal,  Órgão != 25915,37904, Tipo Admin = 7
+# ===============================================================================
+criterios_rgf_A02_dcl_balancete_fundos <- list(
+  
+  `15 - APLICAÇÕES EM FUNDOS DIVERSOS 2 - DEDUÇÃO` = list(
+    criterio = "
+    startsWith(conta_contabil_numero, '23')
+    "
+  ),
+  
+  `16 - APLICAÇÕES EM FUNDOS DIVERSOS 3 - DEDUÇÃO` = list(
+    criterio = "
+    startsWith(conta_contabil_numero, '1111102') |
+    startsWith(conta_contabil_numero, '1111103') |
+    startsWith(conta_contabil_numero, '1111104') |
+    startsWith(conta_contabil_numero, '1111119') |
+    conta_contabil_numero %in% c('111210200', '111210300', '111215000', '111215200') |
+    c_con_subgrupo_3_nome %in% c('INVESTIMENTOS', 'IMOBILIZADO', 'INTANGIVEL', 'DIFERIDO')
+    "
+  )
+)
 ```
 
 ```{r}
 # ===============================================================================
-# APLICAR CRITÉRIOS RGF ANEXO 02 (DCL) - VERSÃO VALIDAÇÃO
+# PROCESSAMENTO DOS CRITÉRIOS DCL
 # ===============================================================================
-# NOTA: Processando apenas linhas com bases de dados prontas
-# PENDENTES: dcl_balancete linhas 02, 07, 12, 13, 14, 15, 16
-# ===============================================================================
-
-
-
-cat("🚀 INICIANDO PROCESSAMENTO DOS CRITÉRIOS DCL - VERSÃO VALIDAÇÃO\n")
-cat(paste(rep("=", 80), collapse = ""), "\n\n")
 
 # ===============================================================================
 # 1. dcl_precatorios
 # ===============================================================================
-
-cat("📊 [1/7] Processando: dcl_precatorios\n")
 df_criterios_rgf_A02_dcl_precatorios <- aplicar_criterios(
   df = dcl_precatorios,
   criterios = criterios_rgf_A02_dcl_precatorios
 )
-cat("   ✅ Concluído - 1 linha processada (08)\n\n")
 
 # ===============================================================================
 # 2. dcl_rp_exceto_170600
 # ===============================================================================
-
-cat("📊 [2/7] Processando: dcl_rp_exceto_170600\n")
 df_criterios_rgf_A02_dcl_rp_exceto_170600 <- aplicar_criterios(
   df = dcl_rp_exceto_170600,
   criterios = criterios_rgf_A02_dcl_rp_exceto_170600
 )
-cat("   ✅ Concluído - Parte 1 da linha 25\n\n")
 
 # ===============================================================================
 # 3. dcl_rp_todas_ugs
 # ===============================================================================
-
-cat("📊 [3/7] Processando: dcl_rp_todas_ugs\n")
 df_criterios_rgf_A02_dcl_rp_todas_ugs <- aplicar_criterios(
   df = dcl_rp_todas_ugs,
   criterios = criterios_rgf_A02_dcl_rp_todas_ugs
 )
-cat("   ✅ Concluído - Parte 2 da linha 25\n\n")
 
 # ===============================================================================
 # 4. dcl_ug_170512
 # ===============================================================================
-
-cat("📊 [4/7] Processando: dcl_ug_170512\n")
 df_criterios_rgf_A02_dcl_ug_170512 <- aplicar_criterios(
   df = dcl_ug_170512,
   criterios = criterios_rgf_A02_dcl_ug_170512
 )
-cat("   ✅ Concluído - 6 linhas processadas (09, 17, 18, 19, 20, 21)\n\n")
 
 # ===============================================================================
 # 5. dcl_creditos_bancarios
 # ===============================================================================
-
-cat("📊 [5/7] Processando: dcl_creditos_bancarios\n")
 df_criterios_rgf_A02_dcl_creditos_bancarios <- aplicar_criterios(
   df = dcl_creditos_bancarios,
   criterios = criterios_rgf_A02_dcl_creditos_bancarios
 )
-cat("   ✅ Concluído - 2 linhas processadas (22, 23)\n\n")
 
 # ===============================================================================
 # 6. dcl_entidade
 # ===============================================================================
-
-cat("📊 [6/7] Processando: dcl_entidade\n")
 df_criterios_rgf_A02_dcl_entidade <- aplicar_criterios(
   df = dcl_entidade,
   criterios = criterios_rgf_A02_dcl_entidade
 )
-cat("   ✅ Concluído - 5 linhas processadas (01-parte1, 01-parte2, 03, 04-parte1, 04-parte2)\n\n")
 
 # ===============================================================================
 # 7. dcl_balancete
 # ===============================================================================
-
-cat("📊 [7/7] Processando: dcl_balancete\n")
 df_criterios_rgf_A02_dcl_balancete <- aplicar_criterios(
   df = dcl_balancete,
   criterios = criterios_rgf_A02_dcl_balancete
 )
-cat("   ✅ Concluído - 6 linhas processadas (05, 06, 10, 11, 24, 26)\n")
-cat("   ⚠️  PENDENTES: 7 linhas (02, 07, 12, 13, 14, 15, 16)\n\n")
 
 # ===============================================================================
-# 8. CONSOLIDAR RESULTADOS
+# 8. dcl_aplicacao_titulos_publicos
 # ===============================================================================
+df_criterios_rgf_A02_dcl_aplicacao_titulos_publicos <- aplicar_criterios(
+  df = dcl_aplicacao_titulos_publicos,
+  criterios = criterios_rgf_A02_dcl_aplicacao_titulos_publicos
+)
 
-cat("📊 Consolidando resultados...\n")
+# ===============================================================================
+# 9. dcl_balancete_fat
+# ===============================================================================
+df_criterios_rgf_A02_dcl_balancete_fat <- aplicar_criterios(
+  df = dcl_balancete_fat,
+  criterios = criterios_rgf_A02_dcl_balancete_fat
+)
 
-# Consolidar dcl_rp (partes 1 e 2)
+# ===============================================================================
+# 10. dcl_balancete_fundos_111215100
+# ===============================================================================
+df_criterios_rgf_A02_dcl_balancete_fundos_111215100 <- aplicar_criterios(
+  df = dcl_balancete_fundos_111215100,
+  criterios = criterios_rgf_A02_dcl_balancete_fundos_111215100
+)
+
+# ===============================================================================
+# 11. dcl_balancete_fundos
+# ===============================================================================
+df_criterios_rgf_A02_dcl_balancete_fundos <- aplicar_criterios(
+  df = dcl_balancete_fundos,
+  criterios = criterios_rgf_A02_dcl_balancete_fundos
+)
+
+# ===============================================================================
+# 12. dcl_balancete_deducoes_depositos_a_vista
+# ===============================================================================
+df_criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista <- aplicar_criterios(
+  df = dcl_balancete_deducoes_depositos_a_vista,
+  criterios = criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista
+)
+
+# ===============================================================================
+# 13. CONSOLIDAR dcl_rp (Linha 25 - partes 1 e 2)
+# ===============================================================================
 df_criterios_rgf_A02_dcl_rp <- bind_rows(
   df_criterios_rgf_A02_dcl_rp_exceto_170600,
   df_criterios_rgf_A02_dcl_rp_todas_ugs
 ) %>%
   mutate(
-    # Remover sufixos _PARTE1 e _PARTE2 do nome
-    nome = str_replace(nome, "_PARTE[12]$", "")
+    nome = str_replace(nome, " - PARTE [12]$", "")
   ) %>%
   group_by(mes_lancamento, dataframe_nome, dataframe_filtros, relatorio, 
            anexo_codigo, anexo_nome, detalhe, print, filtro, metrica, 
            ordem, nome) %>%
   summarise(valor = sum(valor, na.rm = TRUE), .groups = "drop")
 
-cat("   ✅ dcl_rp consolidado (partes 1 e 2)\n\n")
+# ===============================================================================
+# 14. CONSOLIDAR Linha 12 - Depósitos à Vista (partes 1 e 2)
+# ===============================================================================
+df_criterios_rgf_A02_dcl_depositos_vista <- bind_rows(
+  df_criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista,
+  df_criterios_rgf_A02_dcl_balancete %>% 
+    filter(str_detect(nome, "^12 -"))
+) %>%
+  mutate(
+    nome = str_replace(nome, " - PARTE [12]$", "")
+  ) %>%
+  group_by(mes_lancamento, dataframe_nome, dataframe_filtros, relatorio, 
+           anexo_codigo, anexo_nome, detalhe, print, filtro, metrica, 
+           ordem, nome) %>%
+  summarise(valor = sum(valor, na.rm = TRUE), .groups = "drop")
 
-# Consolidar todos os resultados
+# ===============================================================================
+# 15. CONSOLIDAR TODOS OS RESULTADOS
+# ===============================================================================
 df_rgf_A02_dcl_consolidado <- bind_rows(
   df_criterios_rgf_A02_dcl_precatorios,
   df_criterios_rgf_A02_dcl_rp,
   df_criterios_rgf_A02_dcl_ug_170512,
   df_criterios_rgf_A02_dcl_creditos_bancarios,
   df_criterios_rgf_A02_dcl_entidade,
-  df_criterios_rgf_A02_dcl_balancete
+  df_criterios_rgf_A02_dcl_balancete %>% 
+    filter(!str_detect(nome, "^12 -")),  # Excluir linha 12 parte 2 do balancete
+  df_criterios_rgf_A02_dcl_aplicacao_titulos_publicos,
+  df_criterios_rgf_A02_dcl_balancete_fat,
+  df_criterios_rgf_A02_dcl_balancete_fundos_111215100,
+  df_criterios_rgf_A02_dcl_balancete_fundos,
+  df_criterios_rgf_A02_dcl_depositos_vista  # Usar consolidado da linha 12
 ) %>%
   arrange(mes_lancamento, ordem)
 
-cat("   ✅ Consolidação geral concluída\n\n")
-
 # ===============================================================================
-# 9. RESUMO FINAL
+# 14. RESUMO POR BASE
 # ===============================================================================
-
-cat("\n✅ PROCESSAMENTO CONCLUÍDO!\n")
-cat(paste(rep("=", 80), collapse = ""), "\n\n")
-
-cat("📋 RESUMO POR BASE:\n")
-cat(paste(rep("-", 80), collapse = ""), "\n")
-
 resumo <- df_rgf_A02_dcl_consolidado %>%
   group_by(dataframe_nome) %>%
   summarise(
@@ -1144,26 +1112,16 @@ resumo <- df_rgf_A02_dcl_consolidado %>%
   ) %>%
   arrange(dataframe_nome)
 
-print(resumo)
-
-cat("\n📊 TOTAL GERAL:\n")
-cat(paste(rep("-", 80), collapse = ""), "\n")
-cat("Linhas processadas:", n_distinct(df_rgf_A02_dcl_consolidado$ordem), "linhas\n")
-cat("Total de registros:", nrow(df_rgf_A02_dcl_consolidado), "\n")
-cat("Meses processados:", n_distinct(df_rgf_A02_dcl_consolidado$mes_lancamento), "\n")
-
-cat("\n📊 LINHAS PROCESSADAS:\n")
-cat(paste(rep("-", 80), collapse = ""), "\n")
-
+# ===============================================================================
+# 15. LINHAS PROCESSADAS
+# ===============================================================================
 linhas_processadas <- df_rgf_A02_dcl_consolidado %>%
   distinct(ordem, nome) %>%
   arrange(ordem)
 
-print(linhas_processadas, n = Inf)
-
-cat("\n📊 VALORES POR LINHA:\n")
-cat(paste(rep("-", 80), collapse = ""), "\n")
-
+# ===============================================================================
+# 16. VALORES POR LINHA
+# ===============================================================================
 valores_linhas <- df_rgf_A02_dcl_consolidado %>%
   group_by(ordem, nome) %>%
   summarise(
@@ -1173,27 +1131,9 @@ valores_linhas <- df_rgf_A02_dcl_consolidado %>%
   ) %>%
   arrange(ordem)
 
-print(valores_linhas, n = Inf)
-
-cat("\n✨ DATAFRAMES CRIADOS:\n")
-cat("  • df_criterios_rgf_A02_dcl_precatorios\n")
-cat("  • df_criterios_rgf_A02_dcl_rp_exceto_170600\n")
-cat("  • df_criterios_rgf_A02_dcl_rp_todas_ugs\n")
-cat("  • df_criterios_rgf_A02_dcl_rp (CONSOLIDADO RP)\n")
-cat("  • df_criterios_rgf_A02_dcl_ug_170512\n")
-cat("  • df_criterios_rgf_A02_dcl_creditos_bancarios\n")
-cat("  • df_criterios_rgf_A02_dcl_entidade\n")
-cat("  • df_criterios_rgf_A02_dcl_balancete\n")
-cat("  • df_rgf_A02_dcl_consolidado (CONSOLIDADO GERAL)\n")
-
 # ===============================================================================
-# 10. VERIFICAÇÃO DE QUALIDADE
+# 17. VERIFICAÇÃO DE QUALIDADE
 # ===============================================================================
-
-cat("\n🔍 VERIFICAÇÃO DE QUALIDADE:\n")
-cat(paste(rep("=", 80), collapse = ""), "\n\n")
-
-# Verificar valores
 valores_check <- df_rgf_A02_dcl_consolidado %>%
   summarise(
     registros_total = n(),
@@ -1203,14 +1143,6 @@ valores_check <- df_rgf_A02_dcl_consolidado %>%
     registros_com_valor_negativo = sum(valor < 0, na.rm = TRUE)
   )
 
-cat("Total de registros:", valores_check$registros_total, "\n")
-cat("Valores NA:", valores_check$registros_com_valor_na, "\n")
-cat("Valores = 0:", valores_check$registros_com_valor_zero, "\n")
-cat("Valores > 0:", valores_check$registros_com_valor_positivo, "\n")
-cat("Valores < 0:", valores_check$registros_com_valor_negativo, "\n")
-
-# Verificar linhas sem dados
-cat("\n🔍 Linhas sem valores:\n")
 linhas_sem_dados <- df_rgf_A02_dcl_consolidado %>%
   group_by(ordem, nome) %>%
   summarise(
@@ -1220,35 +1152,12 @@ linhas_sem_dados <- df_rgf_A02_dcl_consolidado %>%
   filter(valor_total == 0 | is.na(valor_total)) %>%
   arrange(ordem)
 
-if (nrow(linhas_sem_dados) > 0) {
-  print(linhas_sem_dados)
-} else {
-  cat("✅ Todas as linhas têm valores\n")
-}
-
 # ===============================================================================
-# 11. LINHAS PENDENTES
+# 18. EXIBIR RESULTADOS
 # ===============================================================================
 
-cat("\n⚠️  LINHAS PENDENTES (dcl_balancete):\n")
-cat(paste(rep("=", 80), collapse = ""), "\n\n")
-
-cat("As seguintes linhas serão processadas após ajuste no TG:\n")
-cat("  • Linha 02 - Aplicação em Títulos Públicos\n")
-cat("  • Linha 07 - Demais Dívidas Contratuais\n")
-cat("  • Linha 12 - Depósitos à Vista - DEDUÇÃO\n")
-cat("  • Linha 13 - Disponibilidade FAT - DEDUÇÃO\n")
-cat("  • Linha 14 - Aplicações em Fundos Diversos 1 - DEDUÇÃO\n")
-cat("  • Linha 15 - Aplicações em Fundos Diversos 2 - DEDUÇÃO\n")
-cat("  • Linha 16 - Aplicações em Fundos Diversos 3 - DEDUÇÃO\n\n")
-
-cat("Dimensões necessárias no dcl_balancete.xlsx:\n")
-cat("  1. Órgão UGE → Código\n")
-cat("  2. Órgão UGE → Tipo Administração → Código\n")
-cat("  3. UG Executora → Código\n\n")
-
-cat("✨ Processamento DCL (validação) finalizado com sucesso!\n")
-cat("📊 Total processado: 20 linhas | Pendentes: 7 linhas\n")
+datatable(valores_linhas) %>% 
+  formatRound(c("valor_total", "valor_absoluto"), 2, mark = ".", dec.mark = ",")
 ```
 
 # 📋 Anexo 5
@@ -1256,6 +1165,8 @@ cat("📊 Total processado: 20 linhas | Pendentes: 7 linhas\n")
 A coluna "demais_obrigacoes_new" foi criada a partir do reltatório do Tesouro Gerencial "dados_tabela_04_filtro_rreo".
 
 ```{r tabela_4}
+#| code-fold: true
+#| eval: false
 
 tabela_04 <- dados_tabela_04
 
@@ -1577,6 +1488,8 @@ demais_obrigacoes_new <- dados_tabela_04_filtro_rreo %>%
 ```
 
 ```{r}
+#| code-fold: true
+#| eval: false
 # =============================================================================
 # CONSOLIDAR TABELA FINAL
 # =============================================================================
@@ -1659,343 +1572,8 @@ datatable(tabela_04_clean %>% filter( linhas != "outros") %>% select(linhas, dis
 ------------------------------------------------------------------------
 
 ```{r}
-datatable(tabela_04_clean %>% filter( linhas != "outros") %>% adorn_totals(where = "row")) %>% 
-    formatRound(c(colnames(tabela_04_clean)) ,
-         
-        2, 
-        mark = ".", 
-        dec.mark = ","
-    )
-```
-
-```{r}
-options(OutDec = ",")
-options(scipen = 999)
-
-formatar_numero <- function(x) {
-  format(x, big.mark = ".", decimal.mark = ",", scientific = FALSE, nsmall = 2)
-}
-
-# =============================================================================
-# FUNÇÃO PARA CLASSIFICAR FONTES COM LÓGICA CORRIGIDA
-# =============================================================================
-
-classificar_fontes_recursos <- function(df) {
-  
-  # Criar o campo tg_orgao_fonte se não existir
-  if(!"tg_orgao_fonte" %in% names(df)) {
-    df <- df %>% 
-      mutate(tg_orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc, "_", detalhe_orgao_central_id_fonte))
-  }
-  
-  # Aplicar classificação com prioridades corretas
-  df <- df %>%
-    mutate(
-      linhas = case_when(
-        
-        # =================================================================
-        # PRIMEIRO: CASOS ESPECÍFICOS (condições mais restritivas)
-        # =================================================================
-        
-        # Fontes 034, 121, 122, 123 com órgãos específicos → DÍVIDA
-        fonte_recursos_codigo %in% c("034", "121", "122", "123") & 
-        tg_orgao_fonte %in% c("000278_133","000278_152","000278_153","000278_154") ~ "5_divida",
-        
-        # Fontes 034, 121 com outros órgãos → FUNDOS/ÓRGÃOS/PROGRAMA  
-        fonte_recursos_codigo %in% c("034", "121") & 
-        tg_orgao_fonte %notin% c("000278_133","000278_152","000278_153","000278_154") ~ "7_fundos_orgaos_programa",
-        
-        # Fontes 122, 123 com outros órgãos → SEGURIDADE
-        fonte_recursos_codigo %in% c("122", "123") & 
-        tg_orgao_fonte %notin% c("000278_153","000278_154") ~ "2_seguridade_exceto_previdencia",
-        
-        # =================================================================
-        # SEGUNDO: CASOS GERAIS (sem sobreposições)
-        # =================================================================
-        
-        # Recursos não vinculados
-        fonte_recursos_codigo %in% c("000") ~ "0_nao_vinculados",
-        
-        # Educação
-        fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",
-        
-        # Seguridade social (exceto previdência) - REMOVIDAS 034, 121, 122, 123
-        fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", 
-                                     "035", "040", "048", "049", "094", "126", "155", "156", "179", "184") ~ "2_seguridade_exceto_previdencia",
-        
-        # RPPS
-        fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",
-        
-        # RGPS  
-        fonte_recursos_codigo %in% c("054") ~ "4_rgps",
-        
-        # Dívida - REMOVIDAS 034, 121, 122, 123 (tratadas acima)
-        fonte_recursos_codigo %in% c("400", "401", "443", "444", "448") ~ "5_divida",
-        
-        # Transferências
-        fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", "210", "211", "213",
-                                     "219", "229", "234", "235", "241", "242", "251", 
-                                     "286", "287", "288", "289") ~ "6_transferencias",
-        
-        # ✨ FUNDOS/ÓRGÃOS/PROGRAMA - VERSÃO CORRIGIDA COM FONTE 182
-        fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019",
-                                     "020", "021", "022", "025", "026", "027", "028", "029", "030", "031",
-                                     "032", "033", "037", "038", "039", "041", "042", "043", "044",
-                                     "045", "046", "047", "050", "051", "052", "053", "057", "058", "059",
-                                     "060", "061", "062", "063", "064", "065", "066", "067", "068", "069",
-                                     "070", "071", "072", "073", "074", "075", "076", "077", "078", "079",
-                                     "080", "081", "082", "083", "084", "085", "086", "087", "088", "089",
-                                     "090", "091", "092", "093", "095", "096", "097", "098", "099", "100",
-                                     "101", "102", "103", "104", "105", "106", "107", "108", "109", "110",
-                                     "111", "112", "113", "114", "115", "116", "118", "119", "120",
-                                     "124", "127", "128", "129", "131", "135", "136", "137", "138", "139",
-                                     "140", "141", "177", "178", "180", "181", "182", "183", "449") ~ "7_fundos_orgaos_programa",
-        
-        # Extraorçamentário
-        fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
-        
-        # Não classificados
-        fonte_recursos_codigo %in% c("490", "'-9", "'-7") ~ "9_nao_classificados",
-        
-        # Outros (fallback)
-        TRUE ~ "outros"
-      )
-    )
-  
-  return(df)
-}
-
-# =============================================================================
-# APLICAR CLASSIFICAÇÃO DE LINHAS (FONTES) PARA TABELA_04
-# =============================================================================
-
-if(!"linhas" %in% names(tabela_04)) {
-  tabela_04 <- classificar_fontes_recursos(tabela_04)
-}
-
-# =============================================================================
-# APLICAR CLASSIFICAÇÃO PARA DADOS_TABELA_04_FILTRO_RREO
-# =============================================================================
-
-# Criar campos auxiliares se necessário
-dados_tabela_04_filtro_rreo <- dados_tabela_04_filtro_rreo %>% 
-  mutate(orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte , "_", fonte_recursos_codigo ),
-         tg_orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte  ))
-
-if(!"linhas" %in% names(dados_tabela_04_filtro_rreo)) {
-  dados_tabela_04_filtro_rreo <- classificar_fontes_recursos(dados_tabela_04_filtro_rreo)
-}
-
-# =============================================================================
-# LISTAS DE CONTAS CONTÁBEIS BASEADAS NO EXCEL REAL
-# =============================================================================
-
-# Contas para cada coluna (extraídas do arquivo Excel)
-contas_receitas_b <- c(621200000, 621310000, 621320000, 621330000, 621390000)
-
-contas_despesas_c <- c(622920104, 631400000, 632200000)
-
-contas_disponibilidade_bruta_e <- c(
-  111110100, 111110201, 111110202, 111110203, 111110206, 111110207, 111110208, 
-  111110301, 111110302, 111110303, 111110401, 111110402, 111110403, 111110801, 
-  111110802, 111110901, 111110902, 111111901, 111111903, 111111908, 111111999, 
-  111113002, 111114002, 111114003, 111115003, 111115004, 111115005, 111115006, 
-  111115010, 111115011, 111115012, 111115014, 111115016, 111122001, 111122003, 
-  111210100, 111210200, 111210300, 111215000, 111215100, 111310200, 111310300, 
-  491110101, 491110108, 894320000
-)
-
-contas_rpp_exercicios_anteriores_f <- c(631300000, 632100000)
-
-contas_rpp_exercicio_f1 <- c(632710000)
-
-contas_rpnp_exercicios_anteriores_g <- c(
-  631100000, 631200000, 631510000, 631520000, 631530000, 
-  631810000, 631820000, 631830000, 631840000, 631540000
-)
-
-contas_demais_obrigacoes_h <- c(
-  211110101, 211110104, 211110300, 211110400, 211210100, 211210300, 211210400, 211210500, 
-  211310100, 211410101, 211410102, 211410103, 211410200, 211410301, 211410302, 211410401, 
-  211410600, 211410900, 211411100, 211411200, 211411300, 211420101, 211420103, 211420200, 
-  211420900, 211421200, 211421300, 211421400, 211429800, 211440101, 211440103, 211441300, 
-  211450103, 211451300, 212110303, 212310201, 212310202, 213110100, 213110400, 213120100, 
-  213120400, 213140100, 213140400, 213150100, 213150400, 213210100, 213210400, 214110400, 
-  214110800, 214111100, 214111200, 214111300, 214111401, 214111402, 214119900, 214120200, 
-  214120600, 214120800, 214121000, 214121100, 214121200, 214121300, 214121401, 214121402, 
-  214210101, 214210102, 214210200, 214210500, 214210600, 214210700, 214210800, 214211401, 
-  214211402, 214240101, 214240200, 214240600, 214240901, 214241401, 214241402, 214310100, 
-  214310200, 214310400, 214310600, 214310800, 214311402, 214319900, 214350100, 214350200, 
-  214350400, 214350700, 214350800, 214351401, 214351402, 215140000, 215150000, 215210000, 
-  215240000, 215250000, 215310000, 215340000, 215350000, 215950000, 218110000, 218810101, 
-  218810102, 218810104, 218810105, 218810106, 218810108, 218810109, 218810111, 218810114, 
-  218810115, 218810116, 218810117, 218810118, 218810119, 218810120, 218810121, 218810122, 
-  218810123, 218810124, 218810125, 218810126, 218810127, 218810128, 218810129, 218810130, 
-  218810131, 218810199, 218810301, 218810302, 218810303, 218810304, 218810305, 218810402, 
-  218810405, 218810406, 218810407, 218810408, 218810409, 218810411, 218810412, 218810413, 
-  218810414, 218810415, 218810418, 218810419, 218810435, 218810436, 218810446, 218810447, 
-  218810448, 218810452, 218810453, 218810499, 218810702, 218840409, 218910100, 218910200, 
-  218910300, 218910600, 218910800, 218911300, 218911900, 218912100, 218912300, 218912401, 
-  218912600, 218912700, 218913000, 218913100, 218913601, 218913602, 218913603, 218913609, 
-  218913610, 218913612, 218913613, 218913700, 218913800, 218914500, 218915303, 218915308, 
-  218915309, 218915310, 218915602, 218915700, 218919501, 218919800, 218920100, 218921900, 
-  218925700, 218940100, 218941300, 218941400, 218942700, 218945700, 218950100, 218951400, 
-  218952700, 218955700, 223110400, 228810106, 228810118, 228810128, 228810302, 228810402, 
-  228810406, 228810409, 228810447, 228810701, 228810702, 228911300, 631200000, 631300000, 
-  631520000, 632100000, 894310000
-)
-
-contas_rpnp_exercicio <- c(531710100, 531710200, 531720100)
-
-contas_empenhos_cancelados <- c(631910000)
-
-contas_deducoes_reclassificacao_e1 <- c(491110101, 491110108)
-
-contas_deducoes_limite_saque_e2 <- c(218924001)
-
-contas_deducoes_divida_codiv_e3 <- c(212110201, 212110202, 212110206, 212210200)
-
-contas_deducao_disponibilidade_e0 <- c(111110205)
-
-contas_deducao_demais_obrigacoes_e4 <- c(218914001, 218924001)
-
-contas_para_nota_ted_receber <- c(894320000)
-
-contas_para_nota_ted_liberar <- c(894310000)
-
-contas_demais_obrigacoes_subtracao <- c(631200000, 631300000, 631520000, 632100000, 631540000, 218929031, 218929032, 218929033, 531720100, 531710200, 632710000, 632720000)
-
-# =============================================================================
-# CALCULAR CADA COLUNA
-# =============================================================================
-
-# BASE: Total geral
-base_total <- tabela_04 %>%
-  group_by(linhas) %>%
-  summarise(total_geral = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA (b): RECEITAS
-receitas_b <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_receitas_b) %>%
-  group_by(linhas) %>%
-  summarise(receitas_b = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA (c): DESPESAS
-despesas_c <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_despesas_c) %>%
-  group_by(linhas) %>%
-  summarise(despesas_c = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA (e): DISPONIBILIDADE BRUTA - LIM. SAQUE
-disponibilidade_bruta_e <- tabela_04 %>%
-  filter(c_con_classe_1_codigo == 1, c_con_grupo_2_codigo_grupo == 1, c_con_subgrupo_3_codigo_subgrupo == 1, isf_lancamento == "F", conta_contabil_numero != "111110205") %>%
-  group_by(linhas) %>%
-  summarise(disponibilidade_bruta_e = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA (f): RPP DE EXERCÍCIOS ANTERIORES
-rpp_exercicios_anteriores_f <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_rpp_exercicios_anteriores_f) %>%
-  group_by(linhas) %>%
-  summarise(rpp_exercicios_anteriores_f = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA (f.1): RPP DO EXERCÍCIO
-rpp_exercicio_f1 <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_rpp_exercicio_f1) %>%
-  group_by(linhas) %>%
-  summarise(rpp_exercicio_f1 = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA (g): RPNP DE EXERCÍCIOS ANTERIORES
-rpnp_exercicios_anteriores_g <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_rpnp_exercicios_anteriores_g) %>%
-  group_by(linhas) %>%
-  summarise(rpnp_exercicios_anteriores_g = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA (h): DEMAIS OBRIGAÇÕES
-demais_obrigacoes_h <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_demais_obrigacoes_h, isf_lancamento == "F") %>%
-  group_by(linhas) %>%
-  summarise(demais_obrigacoes_h = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA: RPNP DO EXERCÍCIO
-rpnp_exercicio <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_rpnp_exercicio) %>%
-  group_by(linhas) %>%
-  summarise(rpnp_exercicio = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA: EMPENHOS NÃO LIQUIDADOS CANCELADOS
-empenhos_cancelados <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_empenhos_cancelados) %>%
-  group_by(linhas) %>%
-  summarise(empenhos_cancelados = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA: PARA NOTA - DISPONIBILIDADE POR TED A RECEBER
-disponibilidade_ted_receber <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_para_nota_ted_receber) %>%
-  group_by(linhas) %>%
-  summarise(disponibilidade_ted_receber = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA: PARA NOTA - OBRIGAÇÕES POR TED A LIBERAR
-obrigacoes_ted_liberar <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_para_nota_ted_liberar) %>%
-  group_by(linhas) %>%
-  summarise(obrigacoes_ted_liberar = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA e.1: DEDUÇÕES RECLASSIFICAÇÃO DA RECEITA
-deducoes_reclassificacao_e1 <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_deducoes_reclassificacao_e1) %>%
-  group_by(linhas) %>%
-  summarise(deducoes_reclassificacao_e1 = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA e.2: DEDUÇÕES LIMITE DE SAQUE EXECUTIVO
-deducoes_limite_saque_e2 <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_deducoes_limite_saque_e2, isf_lancamento == "F") %>%
-  group_by(linhas) %>%
-  summarise(deducoes_limite_saque_e2 = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA e.3: DEDUÇÕES DÍVIDA CODIV
-deducoes_divida_codiv_e3 <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_deducoes_divida_codiv_e3) %>%
-  group_by(linhas) %>%
-  summarise(deducoes_divida_codiv_e3 = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA e.0: DEDUÇÃO DA DISPONIBILIDADE LÍQUIDA
-deducao_disponibilidade_e0 <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_deducao_disponibilidade_e0) %>%
-  group_by(linhas) %>%
-  summarise(deducao_disponibilidade_e0 = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA e.4: DEDUÇÃO DAS DEMAIS OBRIGAÇÕES
-deducao_demais_obrigacoes_e4 <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_deducao_demais_obrigacoes_e4) %>%
-  group_by(linhas) %>%
-  summarise(deducao_demais_obrigacoes_e4 = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA: DEMAIS OBRIGAÇÕES FINANCEIRAS SUBTRAÇÃO
-demais_obrigacoes_subtracao <- tabela_04 %>%
-  filter(conta_contabil_numero %in% contas_demais_obrigacoes_subtracao) %>%
-  group_by(linhas) %>%
-  summarise(demais_obrigacoes_subtracao = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# COLUNA: DEMAIS OBRIGAÇÕES FINANCEIRAS NEW (dados_tabela_04_filtro_rreo)
-demais_obrigacoes_new <- dados_tabela_04_filtro_rreo %>%
-  group_by(linhas) %>%
-  summarise(demais_obrigacoes_new = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
-
-# =============================================================================
-# RESUMO DAS CORREÇÕES APLICADAS
-# =============================================================================
-
-cat("\n📊 CLASSIFICAÇÃO DE FONTES - VERSÃO CORRIGIDA APLICADA:\n")
-cat("======================================================\n")
-cat("✅ Lógica condicional para fontes 034/121 implementada\n")
-cat("✅ Prioridades corretas no case_when estabelecidas\n") 
-cat("✅ Fonte 182 (FUNCAP) adicionada à linha_07\n")
-cat("✅ Aplicado a ambos os dataframes: tabela_04 e dados_tabela_04_filtro_rreo\n")
-cat("✅ Taxa de validação: 100% baseada no resultado oficial\n")
-cat("\n🎯 CLASSIFICAÇÃO PRONTA PARA USO!\n")
-```
-
-```{r}
+#| code-fold: true
+#| eval: false
 rgf_a01 %>%
             filter(
               grupo_despesa_codigo_grupo == '1' &
@@ -2017,3 +1595,274 @@ Principais problemas identificados:
 REFORMA - R\$ 1,19M em "REFORMA AGRÁRIA" (falso positivo confirmado) PEN - R\$ 3,84B em "COMPENSAÇÕES" (falso positivo confirmado) PEN - R\$ 137,75B em PENSÕES (são VERDADEIROS, não falsos!)
 
 Análise do print do TG: O Tesouro Gerencial usa o operador "Contém" que é equivalente ao nosso padrão sem word boundaries, confirmando que eles têm o mesmo
+
+```{r}
+#| code-fold: true
+#| eval: false
+# ===============================================================================
+# RGF ANEXO 05 - TABELA 04 - VERSÃO SIMPLES
+# DISPONIBILIDADE DE CAIXA POR FONTE DE RECURSOS
+# ===============================================================================
+
+library(dplyr)
+library(tidyr)
+library(stringr)
+
+# ===============================================================================
+# PASSO 1: CLASSIFICAR LINHAS POR FONTE DE RECURSOS
+# ===============================================================================
+
+tabela_04 <- dados_tabela_04 %>%
+  mutate(
+    # Criar chaves auxiliares
+    orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc, "_",
+                       detalhe_orgao_central_id_fonte, "_",
+                       fonte_recursos_codigo),
+    
+    tg_orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc, "_",
+                          detalhe_orgao_central_id_fonte),
+    
+    # Classificar linhas
+    linhas = case_when(
+      fonte_recursos_codigo == "000" ~ "0_nao_vinculados",
+      
+      fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",
+      
+      fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", 
+                                   "023", "024", "035", "040", "048", "049", "094", 
+                                   "126", "155", "156", "179", "184") ~ 
+        "2_seguridade_exceto_previdencia",
+      
+      fonte_recursos_codigo %in% c("122", "123") & 
+        !tg_orgao_fonte %in% c("000278_153", "000278_154") ~ 
+        "2_seguridade_exceto_previdencia",
+      
+      fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",
+      
+      fonte_recursos_codigo == "054" ~ "4_rgps",
+      
+      fonte_recursos_codigo %in% c("400", "401", "443", "444", "448") ~ "5_divida",
+      
+      fonte_recursos_codigo %in% c("034", "121", "122", "123") & 
+        tg_orgao_fonte %in% c("000278_133", "000278_152", "000278_153", "000278_154") ~ 
+        "5_divida",
+      
+      fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", 
+                                   "210", "211", "213", "219", "229", "234", "235", 
+                                   "241", "242", "251", "286", "287", "288", "289") ~ 
+        "6_transferencias",
+      
+      fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", 
+                                   "016", "018", "019", "020", "021", "022", "025", 
+                                   "026", "027", "028", "029", "030", "031", "032", 
+                                   "033", "034", "037", "038", "039", "041", "042", 
+                                   "043", "044", "045", "046", "047", "050", "051", 
+                                   "052", "053", "057", "058", "059", "060", "061", 
+                                   "062", "063", "064", "065", "066", "067", "068", 
+                                   "069", "070", "071", "072", "073", "074", "075", 
+                                   "076", "077", "078", "079", "080", "081", "082", 
+                                   "083", "084", "085", "086", "087", "088", "089", 
+                                   "090", "091", "092", "093", "095", "096", "097", 
+                                   "098", "099", "100", "101", "102", "103", "104", 
+                                   "105", "106", "107", "108", "109", "110", "111", 
+                                   "112", "113", "114", "115", "116", "118", "119", 
+                                   "120", "121", "124", "127", "128", "129", "131", 
+                                   "135", "136", "137", "138", "139", "140", "141", 
+                                   "144", "145", "177", "178", "180", "181", "182", 
+                                   "183", "449") ~ "7_fundos_orgaos_programa",
+      
+      fonte_recursos_codigo %in% c("034", "121") & 
+        !tg_orgao_fonte %in% c("000278_133", "000278_152") ~ 
+        "7_fundos_orgaos_programa",
+      
+      fonte_recursos_codigo == "491" ~ "8_extraorcamentario",
+      
+      fonte_recursos_codigo %in% c("490", "-9", "-7") ~ "9_nao_classificados",
+      
+      TRUE ~ "outros"
+    )
+  )
+
+# ===============================================================================
+# PASSO 2: CALCULAR COMPONENTES POR LINHA
+# ===============================================================================
+
+# RECEITAS
+col_receitas <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("621200000", "621310000", "621320000", 
+                                     "621330000", "621390000")) %>%
+  group_by(linhas) %>%
+  summarise(b_receitas = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# DESPESAS
+col_despesas <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("622920104", "631400000", "632200000")) %>%
+  group_by(linhas) %>%
+  summarise(c_despesas = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# DISPONIBILIDADE BRUTA
+col_disponibilidade <- tabela_04 %>%
+  filter(c_con_classe_1_codigo == 1,
+         c_con_grupo_2_codigo_grupo == 1,
+         c_con_subgrupo_3_codigo_subgrupo == 1,
+         isf_lancamento == "F",
+         conta_contabil_numero != "111110205") %>%
+  group_by(linhas) %>%
+  summarise(e_disponibilidade_bruta = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# RPP EXERCÍCIOS ANTERIORES
+col_rpp_anteriores <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("631300000", "632100000")) %>%
+  group_by(linhas) %>%
+  summarise(f_rpp_anteriores = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# RPP EXERCÍCIO ATUAL
+col_rpp_exercicio <- tabela_04 %>%
+  filter(conta_contabil_numero == "632710000") %>%
+  group_by(linhas) %>%
+  summarise(f1_rpp_exercicio = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# RPNP EXERCÍCIOS ANTERIORES
+col_rpnp_anteriores <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("631100000", "631200000", "631510000", "631520000", 
+                                     "631530000", "631810000", "631820000", "631830000", 
+                                     "631840000", "631540000")) %>%
+  group_by(linhas) %>%
+  summarise(g_rpnp_anteriores = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# DEMAIS OBRIGAÇÕES
+col_demais_obrig <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c(
+    "211110101", "211110104", "211110300", "211110400", "211210100", "211210300", 
+    "211210400", "211210500", "211310100", "211410101", "211410102", "211410103", 
+    "211410200", "211410301", "211410302", "211410401", "211410600", "211410900", 
+    "211411100", "211411200", "211411300", "211420101", "211420103", "211420200", 
+    "211420900", "211421200", "211421300", "211421400", "211429800", "211440101", 
+    "211440103", "211441300", "211450103", "211451300", "212110303", "212310201", 
+    "212310202", "213110100", "213110400", "213120100", "213120400", "213140100", 
+    "213140400", "213150100", "213150400", "213210100", "213210400", "214110400", 
+    "214110800", "214111100", "214111200", "214111300", "214111401", "214111402", 
+    "214119900", "214120200", "214120600", "214120800", "214121000", "214121100", 
+    "214121200", "214121300", "214121401", "214121402", "214210101", "214210102", 
+    "214210200", "214210500", "214210600", "214210700", "214210800", "214211401", 
+    "214211402", "214240101", "214240200", "214240600", "214240901", "214241401", 
+    "214241402", "214310100", "214310200", "214310400", "214310600", "214310800", 
+    "214311402", "214319900", "214350100", "214350200", "214350400", "214350700", 
+    "214350800", "214351401", "214351402", "215140000", "215150000", "215210000", 
+    "215240000", "215250000", "215310000", "215340000", "215350000", "215950000", 
+    "218110000", "218810101", "218810102", "218810104", "218810105", "218810106", 
+    "218810108", "218810109", "218810111", "218810114", "218810115", "218810116", 
+    "218810117", "218810118", "218810119", "218810120", "218810121", "218810122", 
+    "218810123", "218810124", "218810125", "218810126", "218810127", "218810128", 
+    "218810129", "218810130", "218810131", "218810199", "218810301", "218810302", 
+    "218810303", "218810304", "218810305", "218810402", "218810405", "218810406", 
+    "218810407", "218810408", "218810409", "218810411", "218810412", "218810413", 
+    "218810414", "218810415", "218810418", "218810419", "218810435", "218810436", 
+    "218810446", "218810447", "218810448", "218810452", "218810453", "218810499", 
+    "218810702", "218840409", "218910100", "218910200", "218910300", "218910600", 
+    "218910800", "218911300", "218911900", "218912100", "218912300", "218912401", 
+    "218912600", "218912700", "218913000", "218913100", "218913601", "218913602", 
+    "218913603", "218913609", "218913610", "218913612", "218913613", "218913700", 
+    "218913800", "218914500", "218915303", "218915308", "218915309", "218915310", 
+    "218915602", "218915700", "218919501", "218919800", "218920100", "218921900", 
+    "218925700", "218940100", "218941300", "218941400", "218942700", "218945700", 
+    "218950100", "218951400", "218952700", "218955700", "223110400", "228810106", 
+    "228810118", "228810128", "228810302", "228810402", "228810406", "228810409", 
+    "228810447", "228810701", "228810702", "228911300", "631200000", "631300000", 
+    "631520000", "632100000", "894310000"),
+    isf_lancamento == "F") %>%
+  group_by(linhas) %>%
+  summarise(h_demais_obrigacoes = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# RPNP EXERCÍCIO ATUAL
+col_rpnp_exercicio <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("531710100", "531710200", "531720100")) %>%
+  group_by(linhas) %>%
+  summarise(rpnp_exercicio = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# EMPENHOS CANCELADOS
+col_emp_cancelados <- tabela_04 %>%
+  filter(conta_contabil_numero == "631910000") %>%
+  group_by(linhas) %>%
+  summarise(empenhos_cancelados = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# DEDUÇÕES
+col_deducao_reclassif <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("111113001", "491110101", "491110102", "491110103", 
+                                     "491110108", "491010101", "491010102", "491010103", 
+                                     "491019701", "491019702", "491019703")) %>%
+  group_by(linhas) %>%
+  summarise(e1_deducao_reclassif = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+col_deducao_limite <- tabela_04 %>%
+  filter(conta_contabil_numero == "218924001", isf_lancamento == "F") %>%
+  group_by(linhas) %>%
+  summarise(e2_deducao_limite = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+col_deducao_codiv <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("212110201", "212110202", "212110206", "212210200")) %>%
+  group_by(linhas) %>%
+  summarise(e3_deducao_codiv = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+col_deducao_disp <- tabela_04 %>%
+  filter(conta_contabil_numero == "111110205") %>%
+  group_by(linhas) %>%
+  summarise(e0_deducao_disp = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+col_deducao_obrig <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("218914001", "218924001")) %>%
+  group_by(linhas) %>%
+  summarise(e4_deducao_obrig = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# NOTAS
+col_ted_receber <- tabela_04 %>%
+  filter(conta_contabil_numero == "894320000") %>%
+  group_by(linhas) %>%
+  summarise(nota_ted_receber = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+col_ted_liberar <- tabela_04 %>%
+  filter(conta_contabil_numero == "894310000") %>%
+  group_by(linhas) %>%
+  summarise(nota_ted_liberar = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+col_demais_obrig_sub <- tabela_04 %>%
+  filter(conta_contabil_numero %in% c("631200000", "631300000", "631520000", "632100000", 
+                                     "631540000", "218929031", "218929032", "218929033", 
+                                     "531720100", "531710200", "632710000", "632720000")) %>%
+  group_by(linhas) %>%
+  summarise(demais_obrig_subtracao = sum(saldo_r_conta_contabil, na.rm = TRUE), .groups = 'drop')
+
+# ===============================================================================
+# PASSO 3: CONSOLIDAR TUDO
+# ===============================================================================
+
+tabela04_clean <- col_receitas %>%
+  full_join(col_despesas, by = "linhas") %>%
+  full_join(col_disponibilidade, by = "linhas") %>%
+  full_join(col_rpp_anteriores, by = "linhas") %>%
+  full_join(col_rpp_exercicio, by = "linhas") %>%
+  full_join(col_rpnp_anteriores, by = "linhas") %>%
+  full_join(col_demais_obrig, by = "linhas") %>%
+  full_join(col_rpnp_exercicio, by = "linhas") %>%
+  full_join(col_emp_cancelados, by = "linhas") %>%
+  full_join(col_deducao_reclassif, by = "linhas") %>%
+  full_join(col_deducao_limite, by = "linhas") %>%
+  full_join(col_deducao_codiv, by = "linhas") %>%
+  full_join(col_deducao_disp, by = "linhas") %>%
+  full_join(col_deducao_obrig, by = "linhas") %>%
+  full_join(col_ted_receber, by = "linhas") %>%
+  full_join(col_ted_liberar, by = "linhas") %>%
+  full_join(col_demais_obrig_sub, by = "linhas") %>%
+  replace(is.na(.), 0) %>%
+  mutate(
+    # CALCULAR MÉTRICAS FINAIS
+    resultado_periodo = b_receitas - c_despesas,
+    obrigacoes_totais = f_rpp_anteriores + f1_rpp_exercicio + g_rpnp_anteriores + h_demais_obrigacoes,
+    disponibilidade_liquida = e_disponibilidade_bruta - obrigacoes_totais
+  ) %>%
+  arrange(linhas)
+
+# ===============================================================================
+# PRONTO! tabela04_clean está gerada
+# ===============================================================================
+```
