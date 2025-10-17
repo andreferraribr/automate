@@ -63,7 +63,7 @@ print("✅ Bibliotecas carregadas com sucesso!")
 
 ```{r variaveis_globais}
 # Filtro principal do mês
-mes_filtro <- "202508"
+mes_filtro <- "202509"
 
 mes_pasta <- str_c("data/",mes_filtro,"/")
 
@@ -78,7 +78,7 @@ print(paste("📅 Mês de referência definido:", mes_filtro))
 #| echo: true
 #| eval: true
 
-dados_receita <- read_excel(str_c(mes_pasta, "tg_receita.xlsx"), skip = 5) %>% 
+dados_receita_liquida <- read_excel(str_c(mes_pasta, "tg_receita_liquida.xlsx"), skip = 5) %>% 
   clean_names() %>% 
   filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE") %>%
   mutate(
@@ -97,6 +97,28 @@ dados_receita <- read_excel(str_c(mes_pasta, "tg_receita.xlsx"), skip = 5) %>%
       "nao"
     )
   )
+
+dados_receita_previsao <- read_excel(str_c(mes_pasta, "tg_receita_previsao.xlsx"), skip = 5) %>% 
+  clean_names() %>% 
+  filter(orgao_uge_orcam_fiscal_s_n == "PERTENCE") %>%
+  mutate(
+    # Conversão de data
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1),
+    # Variáveis derivadas existentes
+    tipo_modalidade = ifelse(
+      nre1_categoria_economica_codigo %in% c(7, 8), 
+      "intra", 
+      "exceto intra"
+    ),
+    refinanciamento = ifelse(
+      natureza_receita_codigo_completo %in% c(81110201, 21110201, 21210201), 
+      "sim", 
+      "nao"
+    )
+  )
+
+dados_receita <- rbind(dados_receita_liquida, dados_receita_previsao)
 
 print(paste("✅ Dados de receita carregados:", nrow(dados_receita), "registros"))
 
@@ -1735,7 +1757,7 @@ bo_depsesa <- (aplicar_criterios(dados_despesa, criterios_rreo_A01_despesas_bo))
 datatable(bo_depsesa %>% filter(item_informacao_codigo == "9") %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 
 
-datatable(dados_despesa %>%filter(item_informacao_codigo == 9, tipo_modalidade != "intra") %>% group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo,grupo_despesa_nome , refinanciamento, tipo_modalidade) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )
+datatable(dados_despesa %>%filter(item_informacao_codigo == 23, tipo_modalidade != "intra") %>% group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo,grupo_despesa_nome , refinanciamento, tipo_modalidade) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )
 
 
 datatable(dados_despesa %>%filter(item_informacao_codigo == 9, tipo_modalidade != "intra") %>% group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome,  refinanciamento, tipo_modalidade) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )
@@ -1770,7 +1792,7 @@ dt_formatada(
 # 📋 RREO Anexo 02 - Função e Subfunção
 
 ```{r}
-datatable(dados_despesa %>% group_by(funcao_governo_codigo, funcao_governo_nome, refinanciamento) %>% filter(item_informacao_codigo == 25) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)) %>% adorn_totals() )%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )%>% 
+datatable(dados_despesa %>% group_by(funcao_governo_codigo, funcao_governo_nome, refinanciamento) %>% filter(item_informacao_codigo == 23) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)) %>% adorn_totals() )%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )%>% 
   DT::formatStyle(columns = colnames(.$x$data), fontSize = '75%')
 ```
 
@@ -2006,7 +2028,7 @@ criterios_rreo_A04_rgps_receitas_rgps <- list(
   
   # RECEITAS CORRENTES - DOS EMPREGADORES, TRABALHADORES E DEMAIS SEGURADOS
   `01  Receitas Correntes - Dos Empregadores, Trabalhadores e Demais Segurados` = list(
-    criterio = "natureza_receita_codigo_completo %in% c('12100311', '12100312', '12100313', '12100311') & nre2_origem_receita_codigo_origem %in% c(2)"
+    criterio = "natureza_receita_codigo_completo %in% c('12100311', '12100312', '12100313', '12100311') & nre2_origem_receita_codigo_origem %in% c(2) | startsWith(natureza_receita_codigo_completo, '1214') "
   ),
   
   # RECEITAS CORRENTES - DEMAIS CONTRIBUIÇÕES  
@@ -4418,7 +4440,7 @@ if(!"linhas" %in% names(tabela_04)) {
                                      "090", "091", "092", "093", "095", "096", "097", "098", "099", "100",
                                      "101", "102", "103", "104", "105", "106", "107", "108", "109", "110",
                                      "111", "112", "113", "114", "115", "116", "118", "119", "120", "121",
-                                     "124", "127", "128", "129", "131", "135", "136", "137", "138", "139",
+                                     "124", "127", "128", "129", "131", "132" ,"135", "136", "137", "138", "139",
                                      "140", "141", "144", "145", "177", "178", "180", "181", "182", "183", "449") ~ "7_fundos_orgaos_programa",
         (fonte_recursos_codigo %in% c("034", "121") & tg_orgao_fonte %notin% c("000278_133","000278_152")) ~ "7_fundos_orgaos_programa",
         fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
@@ -5113,7 +5135,7 @@ cat("\n🎯 CLASSIFICAÇÃO PRONTA PARA USO!\n")
 ```
 
 ```{r}
-criterios_consolidados_clean <- read_csv("data/202508/criterios_consolidados_clean.csv")
+criterios_consolidados_clean <- read_csv("data/202509/criterios_consolidados_clean.csv")
 ```
 
 ```{r rcl_ate_mes}
