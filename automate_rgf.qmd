@@ -362,7 +362,6 @@ aplicar_criterios <- function(df, criterios, group_vars = NULL) {
 ```
 
 ```{r aplicar_criterios}
-
 #| code-fold: true
 #| eval: false
 
@@ -755,6 +754,10 @@ datatable(ressalvadas_rgf_A01  %>% group_by(ordem, nome) %>% summarise(valor = s
 ```
 
 ```{r}
+#| code-fold: true
+#| eval: false
+
+
 pessoal <- aplicar_criterios(rgf_a01, criterios_rgf_A01_pessoal_rgf, 
                   group_vars = c("categoria_pessoal"))
 
@@ -2531,7 +2534,7 @@ datatable(tabela_04_clean %>% filter( linhas != "outros") %>% select(linhas, dis
 
 ```{r}
 #| code-fold: true
-#| eval: true
+#| eval: false
 # ===============================================================================
 # RGF ANEXO 5 - DEMONSTRATIVO DAS DISPONIBILIDADES DE CAIXA E DOS RESTOS A PAGAR
 # CÓDIGO REORGANIZADO COM NOMENCLATURA DO TESOURO GERENCIAL
@@ -2742,7 +2745,7 @@ demais_obrigacoes_subtracao <- tabela_04 %>%
 
 ```{r}
 #| code-fold: true
-#| eval: true
+#| eval: false
 # ===============================================================================
 # PASSO 3: CONSOLIDAR TUDO
 # ===============================================================================
@@ -2874,6 +2877,56 @@ datatable(tabela_04_final) %>%
 ```
 
 ```{r}
+
+
+tabela_04 <- dados_rgf_a05
+
+
+
+tabela_04 <- tabela_04 %>% mutate(orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte , "_", fonte_recursos_codigo ))
+
+tabela_04 <- tabela_04 %>% mutate(tg_orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte  ))
+
+# =============================================================================
+# APLICAR CLASSIFICAÇÃO DE LINHAS (FONTES) SE NECESSÁRIO
+# =============================================================================
+
+if(!"linhas" %in% names(tabela_04)) {
+  tabela_04 <- tabela_04 %>%
+    mutate(
+      linhas = case_when(
+        fonte_recursos_codigo %in% c("000") ~ "0_nao_vinculados",
+        fonte_recursos_codigo %in% c("008", "012", "130", "133", "134") ~ "1_educacao",
+        fonte_recursos_codigo %in% c("001", "002", "004", "005", "006", "010", "017", "023", "024", 
+                                     "035", "040", "048", "049", "094", "126", "155", "156", "179", "184") ~  "2_seguridade_exceto_previdencia",
+        fonte_recursos_codigo %in% c("122", "123") & tg_orgao_fonte %notin% c("000278_153","000278_154")  ~  "2_seguridade_exceto_previdencia",
+        fonte_recursos_codigo %in% c("055", "056", "125") ~ "3_rpps",
+        fonte_recursos_codigo %in% c("054") ~ "4_rgps",
+        fonte_recursos_codigo %in% c("400", "401", "443", "444", "448") ~ "5_divida",
+        fonte_recursos_codigo %in% c("034", "121", "122", "123") & tg_orgao_fonte %in% c("000278_133","000278_152","000278_153","000278_154") ~ "5_divida",
+        fonte_recursos_codigo %in% c("201", "202", "203", "206", "207", "208", "209", "210", "211", "213",
+                                     "219", "229", "234", "235", "241", "242", "251", 
+                                     "286", "287", "288", "289") ~ "6_transferencias",
+        fonte_recursos_codigo %in% c("003", "007", "009", "011", "013", "014", "015", "016", "018", "019",
+                                     "020", "021", "022", "025", "026", "027", "028", "029", "030", "031",
+                                     "032", "033", "034", "037", "038", "039", "041", "042", "043", "044",
+                                     "045", "046", "047", "050", "051", "052", "053", "057", "058", "059",
+                                     "060", "061", "062", "063", "064", "065", "066", "067", "068", "069",
+                                     "070", "071", "072", "073", "074", "075", "076", "077", "078", "079",
+                                     "080", "081", "082", "083", "084", "085", "086", "087", "088", "089",
+                                     "090", "091", "092", "093", "095", "096", "097", "098", "099", "100",
+                                     "101", "102", "103", "104", "105", "106", "107", "108", "109", "110",
+                                     "111", "112", "113", "114", "115", "116", "118", "119", "120", "121",
+                                     "124", "127", "128", "129", "131", "132" ,"135", "136", "137", "138", "139",
+                                     "140", "141", "144", "145", "177", "178", "180", "181", "182", "183", "449") ~ "7_fundos_orgaos_programa",
+        (fonte_recursos_codigo %in% c("034", "121") & tg_orgao_fonte %notin% c("000278_133","000278_152")) ~ "7_fundos_orgaos_programa",
+        fonte_recursos_codigo %in% c("491") ~ "8_extraorcamentario",
+        fonte_recursos_codigo %in% c("490", "'-9", "'-7") ~ "9_nao_classificados",
+        TRUE ~ "outros"
+      )
+    )
+}
+
 # ===============================================================================
 # CRITÉRIOS RGF TABELA 04 - DISPONIBILIDADE DE CAIXA E RESTOS A PAGAR
 # ===============================================================================
@@ -3107,59 +3160,148 @@ criterios_rgf_tabela_04 <- list(
 # EXEMPLO DE USO
 # ===============================================================================
 
-# Aplicar todos os critérios
+# ===============================================================================
+# RGF TABELA 04 - DISPONIBILIDADE DE CAIXA E RESTOS A PAGAR
+# Processamento Completo e Validado
+# ===============================================================================
+
+library(dplyr)
+library(tidyr)
+library(readxl)
+library(stringr)
+
+# ===============================================================================
+# FUNÇÃO AUXILIAR
+# ===============================================================================
+
+get_col <- function(df, nome_coluna) {
+  if (nome_coluna %in% names(df)) {
+    return(df[[nome_coluna]])
+  } else {
+    return(0)
+  }
+}
+
+# ===============================================================================
+# ETAPA 1: APLICAR CRITÉRIOS E PIVOTAR
+# ===============================================================================
+
+# Aplicar critérios de filtro
 resultado_tabela_04 <- aplicar_criterios(
   df = tabela_04,
   criterios = criterios_rgf_tabela_04,
-  group_vars = c("linhas")  # Agrupar por 'linhas' conforme código original
+  group_vars = c("linhas")
 )
 
+# Pivotar para formato wide
+tabela_04_wide <- resultado_tabela_04 %>%
+  select(mes_lancamento, linhas, categoria, valor) %>%
+  pivot_wider(names_from = categoria, values_from = valor, values_fill = 0)
 
-datatable(resultado_tabela_04 %>% mutate(colunas = str_c(ordem,nome))  %>% group_by(colunas, linhas) %>% summarise(valor = sum(valor)) %>% pivot_wider(names_from = colunas, values_from = valor) %>% adorn_totals("row") ) 
+# ===============================================================================
+# ETAPA 2: RENOMEAR COLUNAS BÁSICAS
+# ===============================================================================
 
-tabelao <- resultado_tabela_04 %>%
-  group_by(nome, linhas) %>%
-  summarise(valor = sum(valor), .groups = "drop") %>%  # Move .groups here
-  pivot_wider(names_from = nome, values_from = valor, values_fill = 0)
+tabela_04_wide <- tabela_04_wide %>%
+  mutate(
+    # Colunas de receitas e despesas
+    receitas = get_col(., "01_receitas"),
+    despesas = get_col(., "02_despesas"),
+    
+    # Disponibilidade de caixa
+    disponibilidade_caixa_bruta = get_col(., "03_disponibilidade_caixa_bruta"),
+    deducao_receitas_classificar = get_col(., "04_deducao_receitas_classificar"),
+    
+    # Restos a Pagar
+    rp_liquidados_nao_pagos_exercicios_anteriores = 
+      get_col(., "05_rp_liquidados_nao_pagos_exercicios_anteriores"),
+    rp_liquidados_nao_pagos_exercicio = 
+      get_col(., "06_rp_liquidados_nao_pagos_exercicio"),
+    rp_empenhados_nao_liquidados_exercicios_anteriores = 
+      get_col(., "07_rp_empenhados_nao_liquidados_exercicios_anteriores"),
+    
+    # Obrigações
+    demais_obrigacoes_new = get_col(., "21_demais_obrigacoes_new"),
+    demais_obrigacoes_subtracao = get_col(., "22_demais_obrigacoes_subtracao"),
+    
+    # TEDs
+    conta_894310000_disp_recursos_ted_liberar = 
+      get_col(., "15_conta_894310000_disp_recursos_ted_liberar"),
+    conta_894320000_disp_recursos_ted_receber = 
+      get_col(., "16_conta_894320000_disp_recursos_ted_receber")
+  )
 
+# ===============================================================================
+# ETAPA 3: CALCULAR DISPONIBILIDADE BRUTA CLEAN
+# Regras diferentes por tipo de linha
+# ===============================================================================
 
-# Compute the adjusted availability and clean the table
-tabela_04_clean <- tabelao %>%
+tabela_04_clean <- tabela_04_wide %>%
   mutate(
     disponibilidade_bruta_clean = case_when(
+      # Fundos/Órgãos/Programa: ajusta com TEDs
       linhas == "7_fundos_orgaos_programa" ~ 
-        disponibilidade_caixa_bruta + conta_894320000_disp_recursos_ted_receber - conta_894310000_disp_recursos_ted_liberar,
+        disponibilidade_caixa_bruta + 
+        conta_894320000_disp_recursos_ted_receber - 
+        conta_894310000_disp_recursos_ted_liberar,
+      
+      # Não Classificados: deduz receitas a classificar
       linhas == "9_nao_classificados" ~ 
         disponibilidade_caixa_bruta - deducao_receitas_classificar,
+      
+      # Demais linhas: valor direto
       TRUE ~ disponibilidade_caixa_bruta
     )
   )
 
-# Computar demais obrigações ajustadas
-tabela_04_clean <- tabela_04_clean %>% 
+# ===============================================================================
+# ETAPA 4: CALCULAR DEMAIS OBRIGAÇÕES FINANCEIRAS CLEAN
+# Regras diferentes por tipo de linha
+# ===============================================================================
+
+tabela_04_clean <- tabela_04_clean %>%
   mutate(
     demais_obrigacoes_financeiras_clean = case_when(
+      # Fundos/Órgãos/Programa: cálculo simples
       linhas == "7_fundos_orgaos_programa" ~ 
         demais_obrigacoes_new - demais_obrigacoes_subtracao,
+      
+      # Demais linhas: ajusta com TEDs
       TRUE ~ 
         demais_obrigacoes_new - demais_obrigacoes_subtracao + 
-        conta_894310000_disp_recursos_ted_liberar - conta_894320000_disp_recursos_ted_receber
+        conta_894310000_disp_recursos_ted_liberar - 
+        conta_894320000_disp_recursos_ted_receber
     )
   )
 
+# ===============================================================================
+# ETAPA 5: JOIN COM DISPONIBILIDADE INICIAL
+# ===============================================================================
 
+disponibilidade_inicial <- read_excel("disponibilidade_inicial.xlsx")
 
-# Join com disponibilidade inicial
-tabela_04_clean <- left_join(tabela_04_clean, disponibilidade_inicial, by = "linhas")
+tabela_04_clean <- tabela_04_clean %>%
+  left_join(disponibilidade_inicial, by = "linhas")
 
-# Calcular demais fluxos
-tabela_04_clean <- tabela_04_clean %>% 
+# ===============================================================================
+# ETAPA 6: CALCULAR DEMAIS FLUXOS CLEAN
+# Fórmula: Disp. Inicial + Receitas - Despesas - Disp. Bruta Clean
+# ===============================================================================
+
+tabela_04_clean <- tabela_04_clean %>%
   mutate(
-    demais_fluxos_clean = disponibilidade_inicial + receitas - despesas - disponibilidade_bruta_clean
+    demais_fluxos_clean = 
+      disponibilidade_inicial + 
+      receitas - 
+      despesas - 
+      disponibilidade_bruta_clean
   )
 
-# Calcular disponibilidade antes da inscrição de RP
-tabela_04_clean <- tabela_04_clean %>% 
+# ===============================================================================
+# ETAPA 7: CALCULAR DISPONIBILIDADE ANTES DA INSCRIÇÃO DE RP
+# ===============================================================================
+
+tabela_04_clean <- tabela_04_clean %>%
   mutate(
     disponibilidade_antes_insc_rp_clean = 
       disponibilidade_bruta_clean - 
@@ -3169,12 +3311,78 @@ tabela_04_clean <- tabela_04_clean %>%
       demais_obrigacoes_financeiras_clean
   )
 
+# ===============================================================================
+# ETAPA 8: SELECIONAR E ORDENAR COLUNAS FINAIS
+# ===============================================================================
 
+tabela_04_final <- tabela_04_clean %>%
+  select(
+    mes_lancamento,
+    linhas,
+    disponibilidade_inicial,
+    receitas,
+    despesas,
+    demais_fluxos_clean,
+    disponibilidade_bruta_clean,
+    rp_liquidados_nao_pagos_exercicios_anteriores,
+    rp_liquidados_nao_pagos_exercicio,
+    rp_empenhados_nao_liquidados_exercicios_anteriores,
+    demais_obrigacoes_financeiras_clean,
+    disponibilidade_antes_insc_rp_clean
+  ) %>%
+  arrange(linhas)
 
+# ===============================================================================
+# ETAPA 9: VISUALIZAR RESULTADO
+# ===============================================================================
 
-# Ou sem agrupamento adicional (apenas mes_lancamento)
-# resultado_tabela_04 <- aplicar_criterios(
-#   df = tabela_04,
-#   criterios = criterios_rgf_tabela_04
-# )
+cat("\n=== TABELA 04 - RESULTADO FINAL ===\n")
+print(tabela_04_final, n = Inf)
+
+# Formatado em milhões
+tabela_04_formatada <- tabela_04_final %>% filter(linhas != "outros") %>% adorn_totals("row") %>%
+  mutate(
+    across(
+      where(is.numeric) & !matches("mes_lancamento"),
+      ~ round(.x , 2)
+    )
+  )
+
+cat("\n=== TABELA 04 - FORMATADA (R$ Milhões) ===\n")
+print(tabela_04_formatada, n = Inf)
+
+# ===============================================================================
+# ETAPA 10: EXPORTAR
+# ===============================================================================
+
+library(writexl)
+
+write_xlsx(
+  list(
+    "Tabela_04_Final" = tabela_04_final,
+    "Tabela_04_Milhoes" = tabela_04_formatada
+  ),
+  path = "rgf_tabela_04_final.xlsx"
+)
+
+cat("\n✅ Processamento concluído com sucesso!\n")
+cat("📊 Arquivo exportado: rgf_tabela_04_final.xlsx\n")
+
+# ===============================================================================
+# VALIDAÇÃO: COMPARAR COM VALORES OFICIAIS
+# ===============================================================================
+
+cat("\n=== VALIDAÇÃO: LINHA EDUCAÇÃO ===\n")
+tabela_04_formatada %>%
+  filter(linhas == "1_educacao") %>%
+  select(-mes_lancamento) %>%
+  glimpse()
+
+cat("\nValores Oficiais Educação:\n")
+cat("Disp. Inicial: 37.999.587.565\n")
+cat("Receitas: 20.253.777.870\n")
+cat("Despesas: 11.956.266.750\n")
+cat("Demais Fluxos: 20.574.099\n")
+cat("Disp. Bruta: 46.276.524.587\n")
+cat("Disp. Antes RP: 44.588.522.729\n")
 ```
