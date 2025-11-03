@@ -17,6 +17,8 @@ format:
     code-summary: "Mostrar código"
     fig-width: 10
     fig-height: 6
+    tbl-cap-location: top
+    self-contained: true
 ---
 
 # 📚 Carregamento de Bibliotecas e Configurações {#sec-setup}
@@ -39,6 +41,8 @@ library(readr)
 library(scales)
 library(lubridate)
 
+Sys.setlocale("LC_TIME", "pt_BR.UTF-8")
+
 # Configurações globais
 options(OutDec = ".")
 options(scipen = 999)
@@ -52,6 +56,14 @@ options(DT.options =
   )
 )
 
+# Carregar dependências JavaScript para botões
+htmltools::tagList(
+  tags$script(src = "https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"),
+  tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"),
+  tags$script(src = "https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"),
+  tags$link(rel = "stylesheet", href = "https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css")
+)
+
 # Operadores customizados
 `%notin%` <- Negate(`%in%`)
 `%||%` <- function(x, y) if(is.null(x) || length(x) == 0 || is.na(x)) y else x
@@ -63,7 +75,7 @@ print("✅ Bibliotecas carregadas com sucesso!")
 
 ```{r variaveis_globais}
 # Filtro principal do mês
-mes_filtro <- "202509"
+mes_filtro <- "202508"
 
 mes_pasta <- str_c("data/",mes_filtro,"/")
 
@@ -88,14 +100,36 @@ transferencia
 
 
 
+# RCL
+
 # RGF Anexo 1
-rgf_a01 <- read_excel(str_c(mes_pasta, "rgf_a01.xlsx"), skip = 5) %>%
+rreo_a03_rcl_despesas <- read_excel(str_c(mes_pasta, "rreo_a03_rcl_despesas.xlsx"), skip = 5) %>%
   clean_names() %>%
   mutate(
     mes_lancamento = as.numeric(mes_lancamento),
     data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
   )
 
+
+rreo_a03_rcl_receitas <- read_excel(str_c(mes_pasta, "rreo_a03_rcl_receitas.xlsx"), skip = 5) %>%
+  clean_names() %>%
+  mutate(
+    mes_lancamento = as.numeric(mes_lancamento),
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
+
+
+# RGF Anexo 1
+arq_rgf_a01 <- list.files(path = mes_pasta, pattern = 'rgf_a01_', full.names = TRUE)
+rgf_a01 <- map_df(arq_rgf_a01, ~ read_excel(.x, skip = 5, col_types = "text")) %>%
+  clean_names()  %>%
+  mutate(
+  
+    movim_liquido_r_item_informacao = as.numeric(movim_liquido_r_item_informacao),
+    mes_lancamento = as.numeric(mes_lancamento),
+    # Conversão de data
+    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
+  )
 
 
 
@@ -128,7 +162,7 @@ rgf_a04_despesas <- read_excel(str_c(mes_pasta, "rgf_a04_despesas.xlsx"), skip =
 
 ```{r dados_contabeis}
 #| echo: true
-#| eval: true
+#| eval: false
 
 
 
@@ -138,7 +172,7 @@ read_and_process <- function(file) {
     clean_names() %>%
     mutate(
       ug = "demais",
-      movim_liquido_r_conta_contabil = as.numeric(movim_liquido_r_conta_contabil),
+      saldo_r_conta_contabil = as.numeric(saldo_r_conta_contabil),
       mes_lancamento = as.numeric(mes_lancamento),
       data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
     )
@@ -182,13 +216,90 @@ rgf_a02_balancete_deducoes_depositos_a_vista <-  read_and_process("rgf_a02_balan
 ```
 
 ```{r}
+# Função para ler e processar arquivo Excel individual
+# ==============================================================================
+read_and_process <- function(file_path, skip_rows = 5, col_types = "text") {
+ 
+  
+  # Verifica se o arquivo existe
+  if (!file.exists(file_path)) {
+    warning(paste("Arquivo não encontrado:", file_path))
+    return(NULL)
+  }
+  
+  # Lê o arquivo Excel
+  df <- read_excel(
+    path = file_path,
+    skip = skip_rows,
+    col_types = col_types
+  ) %>%
+    clean_names()
+  
+  # Processamento condicional de colunas comuns
+  if ("mes_lancamento" %in% names(df)) {
+    df <- df %>%
+      mutate(
+        mes_lancamento = as.numeric(mes_lancamento),
+        # Conversão de data - último dia do mês
+        data_lancamento = ceiling_date(
+          ymd(paste0(mes_lancamento, "01")), 
+          "month"
+        ) - days(1)
+      )
+  }
+  
+  # Converte automaticamente colunas numéricas
+  # Identifica colunas que contêm valores monetários (em reais)
+  numeric_patterns <- c(
+    "^saldo_r",           # saldo_r_conta_contabil, saldo_r_inicial, etc.
+    "^movim_liquido_r"    # movim_liquido_r_item_informacao
+  )
+  
+  # Identifica colunas que devem ser numéricas
+  cols_to_convert <- names(df)[
+    str_detect(names(df), paste(numeric_patterns, collapse = "|"))
+  ]
+  
+  # Converte para numérico
+  for (col in cols_to_convert) {
+    df <- df %>%
+      mutate(!!sym(col) := as.numeric(!!sym(col)))
+  }
+  
+  return(df)
+}
+
+```
+
+```{r}
+# Lista TODOS os arquivos rgf_a02_*.xlsx
+arq_rgf_a02 <- list.files(
+  path = mes_pasta,
+  pattern = "^rgf_a02_.*\\.xlsx$",
+  full.names = TRUE
+)
+
+# Lê cada arquivo com map
+rgf_a02_list <- map(arq_rgf_a02, function(file) {
+  read_and_process(file)
+})
+
+# Nomeia os dataframes
+names(rgf_a02_list) <- basename(arq_rgf_a02) %>% 
+  str_remove("\\.xlsx$")
+
+# Coloca cada um no ambiente global
+list2env(rgf_a02_list, envir = .GlobalEnv)
+```
+
+```{r}
 # Buscar todos os arquivos de despesa
 arq_rgf_a05 <- list.files(path = mes_pasta, pattern = 'rgf_a05', full.names = TRUE)
-dados_rgf_a05 <- map_df(arq_rgf_a05, ~ read_excel(.x, skip = 5, col_types = "text")) %>%
+rgf_a05 <- map_df(arq_rgf_a05, ~ read_excel(.x, skip = 5, col_types = "text")) %>%
   clean_names()  %>%
   mutate(
     # Converter colunas numéricas específicas do DCL 2a
-    movim_liquido_r_conta_contabil = as.numeric(movim_liquido_r_conta_contabil),
+    saldo_r_conta_contabil = as.numeric(saldo_r_conta_contabil),
     mes_lancamento = as.numeric(mes_lancamento),
     # Conversão de data
     data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
@@ -224,13 +335,16 @@ aplicar_criterios <- function(df, criterios, group_vars = NULL) {
   criterios_nome <- deparse(substitute(criterios))
   
   # Definir variáveis de agrupamento
-  # Se group_vars não foi fornecido, usar apenas mes_lancamento
+  # Se group_vars não foi fornecido, usar mes_lancamento e data_lancamento como padrão
   if (is.null(group_vars)) {
-    group_vars <- "mes_lancamento"
+    group_vars <- c("mes_lancamento", "data_lancamento")
   } else {
-    # Garantir que mes_lancamento esteja sempre incluído
+    # Garantir que mes_lancamento e data_lancamento estejam sempre incluídos
     if (!"mes_lancamento" %in% group_vars) {
       group_vars <- c("mes_lancamento", group_vars)
+    }
+    if (!"data_lancamento" %in% group_vars) {
+      group_vars <- c("data_lancamento", group_vars)
     }
   }
   
@@ -296,7 +410,7 @@ aplicar_criterios <- function(df, criterios, group_vars = NULL) {
           filtro = crit$criterio
         ) %>%
         separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>%
-        select(mes_lancamento, everything())
+        select(any_of(c("mes_lancamento", "data_lancamento")), everything())
     } else {
       # Se não há variáveis de agrupamento, retornar apenas o total
       df %>%
@@ -306,6 +420,7 @@ aplicar_criterios <- function(df, criterios, group_vars = NULL) {
         ) %>%
         mutate(
           mes_lancamento = NA,
+          data_lancamento = NA,
           categoria = categoria_limpa,
           metrica = metrica,
           dataframe_nome = df_nome,
@@ -318,7 +433,7 @@ aplicar_criterios <- function(df, criterios, group_vars = NULL) {
           filtro = crit$criterio
         ) %>%
         separate(categoria, into = c("ordem", "nome"), sep = 2, remove = FALSE) %>%
-        select(mes_lancamento, everything())
+        select(any_of(c("mes_lancamento", "data_lancamento")), everything())
     }
   })
   
@@ -333,23 +448,104 @@ aplicar_criterios <- function(df, criterios, group_vars = NULL) {
 }
 ```
 
-```         
+```{r}
+# Função simplificada para consolidar todas as dataframes com prefixo "df_criterios"
+consolidar_criterios <- function() {
+  # Obter todos os objetos no ambiente global
+  objetos <- ls(envir = .GlobalEnv)
+  
+  # Filtrar apenas as dataframes que começam com "df_criterios"
+  df_criterios <- objetos[grepl("^df_criterios", objetos)]
+  
+  if (length(df_criterios) == 0) {
+    stop("Nenhuma dataframe com prefixo 'df_criterios' foi encontrada")
+  }
+  
+  # Obter todas as dataframes e combiná-las
+  tabelas <- map(df_criterios, ~ get(.x, envir = .GlobalEnv))
+  
+  # Padronizar tipos de colunas antes de combinar
+  tabelas_padronizadas <- map(tabelas, function(tabela) {
+    tabela %>%
+      mutate(
+        item_informacao_codigo = as.character(item_informacao_codigo),
+        item_informacao_nome = as.character(item_informacao_nome)
+      )
+  })
+  
+  # Combinar todas as tabelas
+  resultado_completo <- bind_rows(tabelas_padronizadas)
+  
+  # Agrupar apenas por mes_lancamento e identificadores do item
+  resultado <- resultado_completo %>%
+    group_by(
+      mes_lancamento, ordem, nome, metrica, dataframe_nome, dataframe_filtros,
+      relatorio, anexo_codigo, anexo_nome, detalhe, print, filtro,
+      item_informacao_nome, item_informacao_codigo
+    ) %>%
+    summarise(valor = sum(valor, na.rm = TRUE), .groups = "drop") %>%
+    arrange(mes_lancamento, relatorio, anexo_codigo, detalhe, ordem) %>%
+    mutate(
+      # Converter mes_lancamento para data (último dia do mês)
+      data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1),
+      # Criar chave única
+      chave = paste0(
+        mes_lancamento, "_", 
+        tolower(relatorio), "_", 
+        tolower(anexo_codigo), "_", 
+        tolower(detalhe), "_", 
+        ordem
+      )
+    ) %>%
+    select(
+      chave, mes_lancamento, data_lancamento, 
+      dataframe_nome, dataframe_filtros, 
+      relatorio, anexo_codigo, anexo_nome, 
+      detalhe, print, filtro, metrica, 
+      item_informacao_nome, item_informacao_codigo, 
+      ordem, nome, valor
+    )
+  
+  # Criar nome da dataframe baseado no mês mais recente
+  mes_recente <- max(resultado$mes_lancamento)
+  ano <- substr(as.character(mes_recente), 1, 4)
+  mes_num <- substr(as.character(mes_recente), 5, 6)
+  
+  nome_df <- paste0("criterios_consolidados_", ano, "_", mes_num)
+  
+  # Salvar no ambiente global
+  assign(nome_df, resultado, envir = .GlobalEnv)
+  
+  # Mensagem informativa
+  cat(sprintf("\n✓ Consolidação concluída: %s dataframes consolidadas\n", length(df_criterios)))
+  cat(sprintf("✓ Total de registros: %s\n", nrow(resultado)))
+  cat(sprintf("✓ Dataframe criada: %s\n\n", nome_df))
+  
+  return(resultado)
+}
 ```
 
-# 📋 Anexo 1 (Despesa com Pessoal)
+# 📋 RGF Anexo 01 (Despesa com Pessoal)
 
 ```{r}
 #| code-fold: true
 #| eval: true
+# ==============================================================================
+# CRITÉRIOS RGF ANEXO 01 - REORGANIZADO NA ORDEM OFICIAL
+# ==============================================================================
+# Numeração compatível com separate(categoria, sep = 2):
+# - Grupo I: 11, 12, 13, 14, 15, 16, 17
+# - Grupo II: 21, 22, 23, 24
+# ==============================================================================
+
 criterios_rgf_A01_pessoal_rgf <- list(
   
-  # PESSOAL TOTAL
-  `01  Pessoal Total` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' | (grupo_despesa_codigo_grupo == '3' & elemento_despesa_codigo == '34')"
-  ),
+  # ===========================================================================
+  # GRUPO I - COMPONENTES DA DESPESA BRUTA (ordem 1x)
+  # ===========================================================================
   
-  # VENCIMENTOS, VANTAGENS E OUTRAS DESPESAS VARIÁVEIS
-  `02  Vencimentos, Vantagens e Outras Despesas Variáveis` = list(
+  # 11 - VENCIMENTOS, VANTAGENS E OUTRAS DESPESAS VARIÁVEIS
+  `11  Vencimentos, Vantagens e Outras Despesas Variáveis` = list(
     criterio = "
     grupo_despesa_codigo_grupo == '1' &
     !elemento_despesa_codigo %in% c('01', '03', '34') &
@@ -374,7 +570,7 @@ criterios_rgf_A01_pessoal_rgf <- list(
       str_detect(natureza_despesa_detalhada_codigo, '0599')
     ) &
     
-    # EXCLUSÃO: Filtro - Anexo 1 - Termos de Outros Inativos vg2024 (COM WORD BOUNDARIES)
+    # EXCLUSÃO: Filtro - Anexo 1 - Termos de Outros Inativos vg2024
     !str_detect(natureza_despesa_detalhada_nome, '\\\\bAPOSENT|\\\\bINAT|\\\\bREFORMA|\\\\bPENS|LEI 7\\\\.963/1989') &
     
     # EXCLUSÃO: Filtro Pessoal INATIVO - Benefícios Previdenciários vg2024
@@ -390,43 +586,54 @@ criterios_rgf_A01_pessoal_rgf <- list(
     "
   ),
   
-  # OBRIGAÇÕES PATRONAIS
-  `03  Obrigações Patronais` = list(
+  # 12 - OBRIGAÇÕES PATRONAIS
+  `12  Obrigações Patronais` = list(
     criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('13', '07') | natureza_despesa_detalhada_codigo %in% c('31909213', '31919213', '31909207')"
   ),
   
-  # BENEFÍCIOS PREVIDENCIÁRIOS ATIVO
-  `04  Benefícios Previdenciários ATIVO` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0599') | natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')"
-  ),
-  
-  # APOSENTADORIAS, RESERVA E REFORMAS
-  `05  Aposentadorias, Reserva e Reformas` = list(
+  # 13 - APOSENTADORIAS, RESERVA E REFORMAS
+  `13  Aposentadorias, Reserva e Reformas` = list(
     criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '01' | natureza_despesa_detalhada_codigo %in% c('31901702', '31909109', '31909112', '31909115', '31909118', '31909123', '31909124', '31909128', '31909129', '31909201', '31909403', '31909404', '31909413', '31909414')"
   ),
   
-  # PENSÕES
-  `06  Pensões` = list(
+  # 14 - PENSÕES
+  `14  Pensões` = list(
     criterio = "grupo_despesa_codigo_grupo == '1' & (elemento_despesa_codigo == '03' | natureza_despesa_detalhada_codigo %in% c('31909110', '31909113', '31909116', '31909119', '31909131', '31909136', '31909137', '31909130', '31909203', '31909220', '31909221', '31909406', '31909413'))"
   ),
   
-  # OUTRAS DESPESAS COM INATIVOS
-  `07  Outras Despesas com Inativos` = list(
+  # 15 - OUTRAS DESPESAS COM INATIVOS
+  `15  Outras Despesas com Inativos` = list(
     criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32') & str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7\\\\.963/1989') & !(str_detect(natureza_despesa_detalhada_codigo, '0599') & natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')) & !(str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508'))"
   ),
   
-  # BENEFÍCIOS PREVIDENCIÁRIOS INATIVO  
-  `08  Benefícios Previdenciários INATIVO` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & (elemento_despesa_codigo == '05' | (str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508')))"
-  ),
-  
-  # OUTRAS DESPESAS DE PESSOAL DECORRENTES DE CONTRATOS DE TERCEIRIZAÇÃO
-  `09  Outras Despesas de Pessoal - Terceirização` = list(
+  # 16 - OUTRAS DESPESAS DE PESSOAL - TERCEIRIZAÇÃO
+  `16  Outras Despesas de Pessoal - Terceirização` = list(
     criterio = "grupo_despesa_codigo_grupo %in% c('1', '3') & elemento_despesa_codigo == '34'"
   ),
   
-  # DECORRENTES DE DECISÃO JUDICIAL
-  `10  Decorrentes de Decisão Judicial` = list(
+  # 17 - DESPESA COM PESSOAL NÃO EXECUTADA ORÇAMENTARIAMENTE
+  `17  Despesa com Pessoal não Executada Orçamentariamente` = list(
+    criterio = "FALSE"  # Placeholder - ajustar conforme necessário
+  ),
+  
+  # ===========================================================================
+  # GRUPO II - DESPESAS NÃO COMPUTADAS (ordem 2x)
+  # ===========================================================================
+  
+  # 21 - INDENIZAÇÕES POR DEMISSÃO E INCENTIVOS
+  `21  Indenizações por Demissão e Incentivos` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == '1' &
+    elemento_despesa_codigo == '94' &
+    !(
+      fonte_recursos_codigo %in% c('023', '024', '055', '056') &
+      str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7\\\\.963/1989')
+    )
+    "
+  ),
+  
+  # 22 - DECORRENTES DE DECISÃO JUDICIAL
+  `22  Decorrentes de Decisão Judicial` = list(
     criterio = "
     grupo_despesa_codigo_grupo == '1' &
     elemento_despesa_codigo == '91' &
@@ -437,8 +644,20 @@ criterios_rgf_A01_pessoal_rgf <- list(
     "
   ),
   
-  # INATIVOS E PENSIONISTAS COM RECURSOS VINCULADOS
-  `11  Inativos e Pensionistas com Recursos Vinculados` = list(
+  # 23 - DESPESAS DE EXERCÍCIOS ANTERIORES
+  `23  Despesas de Exercícios Anteriores` = list(
+    criterio = "
+    grupo_despesa_codigo_grupo == '1' &
+    elemento_despesa_codigo == '92' &
+    !(
+      fonte_recursos_codigo %in% c('023', '024', '055', '056') &
+      str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7\\\\.963/1989')
+    )
+    "
+  ),
+  
+  # 24 - INATIVOS E PENSIONISTAS COM RECURSOS VINCULADOS
+  `24  Inativos e Pensionistas com Recursos Vinculados` = list(
     criterio = "
     grupo_despesa_codigo_grupo == '1' &
     fonte_recursos_codigo %in% c('023', '024', '055', '056') &
@@ -450,77 +669,6 @@ criterios_rgf_A01_pessoal_rgf <- list(
       )
     )
     "
-  ),
-  
-  # INDENIZAÇÕES POR DEMISSÃO E INCENTIVOS À DEMISSÃO VOLUNTÁRIA
-  `12  Indenizações por Demissão e Incentivos` = list(
-    criterio = "
-    grupo_despesa_codigo_grupo == '1' &
-    elemento_despesa_codigo == '94' &
-    !(
-      fonte_recursos_codigo %in% c('023', '024', '055', '056') &
-      str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7\\\\.963/1989')
-    )
-    "
-  ),
-  
-  # DESPESAS DE EXERCÍCIOS ANTERIORES
-  `13  Despesas de Exercícios Anteriores` = list(
-    criterio = "
-    grupo_despesa_codigo_grupo == '1' &
-    elemento_despesa_codigo == '92' &
-    !(
-      fonte_recursos_codigo %in% c('023', '024', '055', '056') &
-      str_detect(natureza_despesa_detalhada_nome, 'APOSENT|INAT|REFORMA|PEN|LEI 7\\\\.963/1989')
-    )
-    "
-  ),
-  
-  # FILTROS ESPECÍFICOS APLICADOS
-  
-  # Filtro Amapá
-  `14  FILTRO_AMAPA` = list(
-    criterio = "unidade_orcamentaria_codigo == '73113' & plano_orcamentario_codigo_po == '0004' & acao_governo_codigo %in% c('0179', '0181', '214H')"
-  ),
-  
-  # Filtro Elementos de Despesa de Outros Inativos
-  `15  FILTRO_ELEMENTOS_OUTROS_INATIVOS` = list(
-    criterio = "elemento_despesa_codigo %in% c('05', '08', '09', '17', '31', '32', '34')"
-  ),
-  
-  # Filtro Fontes dos Recursos Vinculados
-  `16  FILTRO_FONTES_RECURSOS_VINCULADOS` = list(
-    criterio = "fonte_recursos_codigo %in% c('023', '024', '055', '056')"
-  ),
-  
-  # Filtro GDF
-  `17  FILTRO_GDF` = list(
-    criterio = "unidade_orcamentaria_codigo == '73901'"
-  ),
-  
-  # Filtro Roraima
-  `18  FILTRO_RORAIMA` = list(
-    criterio = "unidade_orcamentaria_codigo == '73113' & plano_orcamentario_codigo_po == '0003' & acao_governo_codigo %in% c('0179', '0181', '214H')"
-  ),
-  
-  # Filtro Termos de Outros Inativos
-  `19  FILTRO_TERMOS_OUTROS_INATIVOS` = list(
-    criterio = "str_detect(natureza_despesa_detalhada_nome, 'APOSENT') | str_detect(natureza_despesa_detalhada_nome, 'INAT') | str_detect(natureza_despesa_detalhada_nome, 'REFORMA') | str_detect(natureza_despesa_detalhada_nome, 'PEN') | str_detect(natureza_despesa_detalhada_nome, 'LEI 7\\\\.963/1989')"
-  ),
-  
-  # Filtro Obrigações Patronais
-  `20  FILTRO_OBRIGACOES_PATRONAIS` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo %in% c('13', '07') | natureza_despesa_detalhada_codigo %in% c('31909213', '31919213', '31909207')"
-  ),
-  
-  # Filtro Pessoal ATIVO - Benefícios Previdenciários
-  `21  FILTRO_PESSOAL_ATIVO_BENEFICIOS` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & str_detect(natureza_despesa_detalhada_codigo, '0599') & natureza_despesa_detalhada_codigo %in% c('31909205', '31919205')"
-  ),
-  
-  # Filtro Pessoal INATIVO - Benefícios Previdenciários
-  `22  FILTRO_PESSOAL_INATIVO_BENEFICIOS` = list(
-    criterio = "grupo_despesa_codigo_grupo == '1' & elemento_despesa_codigo == '05' & (str_detect(natureza_despesa_detalhada_codigo, '0505') | str_detect(natureza_despesa_detalhada_codigo, '0506') | str_detect(natureza_despesa_detalhada_codigo, '0507') | str_detect(natureza_despesa_detalhada_codigo, '0508'))"
   )
 )
 ```
@@ -563,6 +711,162 @@ rgf_a01 <- rgf_a01 %>%
       TRUE ~ "demais"
     )
   )
+
+pessoal <- aplicar_criterios(rgf_a01 %>% filter(item_informacao_codigo == "25") , criterios_rgf_A01_pessoal_rgf,         group_vars = c("categoria_pessoal"))
+
+
+pessoal_rp <- aplicar_criterios(rgf_a01 %>% filter(item_informacao_codigo == "27"  ) , criterios_rgf_A01_pessoal_rgf,         group_vars = c("categoria_pessoal"))
+
+categorias <- c("AP", "DF", "RR", "executivo")
+
+categorias_rp <- c( "DF",  "executivo")
+```
+
+```{r}
+#| code-fold: true
+#| eval: true
+#| column: page
+
+
+
+gerar_tabela_pessoal <- function(
+  data_pessoal, 
+  data_pessoal_rp, 
+  categoria_filtro, 
+  formato_numero = TRUE
+) {
+  
+  # --------------------------------------------------------------------------
+  # PREPARAR DADOS DE PESSOAL (item 25)
+  # --------------------------------------------------------------------------
+  pessoal_prep <- data_pessoal %>% 
+    filter(categoria_pessoal == categoria_filtro) %>% 
+    mutate(
+      mes_ano = paste0(
+        toupper(month(data_lancamento, label = TRUE, abbr = TRUE, locale = "pt_BR.UTF-8")),
+        "/",
+        str_sub(year(data_lancamento), 3, 4)
+      ),
+      tipo = "pessoal"
+    )
+  
+  # --------------------------------------------------------------------------
+  # PREPARAR DADOS DE RP (item 27) - se existirem
+  # --------------------------------------------------------------------------
+  rp_prep <- data_pessoal_rp %>% 
+    filter(categoria_pessoal == categoria_filtro)
+  
+  if (nrow(rp_prep) > 0) {
+    rp_prep <- rp_prep %>%
+      mutate(
+        mes_ano = "RPNP",
+        tipo = "rp"
+      )
+  }
+  
+  # --------------------------------------------------------------------------
+  # RBIND: COMBINAR PESSOAL + RP
+  # --------------------------------------------------------------------------
+  dados_combinados <- bind_rows(pessoal_prep, rp_prep)
+  
+  # --------------------------------------------------------------------------
+  # CRIAR TABELA PIVOTADA
+  # --------------------------------------------------------------------------
+  # Ordenar meses
+  dados_combinados <- dados_combinados %>%
+    arrange(data_lancamento) %>%
+    mutate(mes_ano = factor(mes_ano, levels = unique(mes_ano)))
+  
+  tabela <- dados_combinados %>% 
+    group_by(mes_ano, categoria) %>% 
+    summarise(valor = sum(valor / 1000), .groups = "drop") %>% 
+    pivot_wider(names_from = mes_ano, values_from = valor, values_fill = 0)
+  
+  # --------------------------------------------------------------------------
+  # ADICIONAR COLUNA DE TOTAL DOS 12 MESES (excluindo RPNP)
+  # --------------------------------------------------------------------------
+  # Identificar colunas de meses (todas exceto categoria e RPNP)
+  colunas_meses <- setdiff(names(tabela), c("categoria", "RPNP"))
+  
+  # Calcular total dos últimos 12 meses
+  tabela <- tabela %>%
+    mutate(
+      `TOTAL (ÚLTIMOS 12 MESES)` = rowSums(select(., all_of(colunas_meses)), na.rm = TRUE)
+    )
+  
+  # Reordenar colunas: categoria, meses, total, RPNP (se existir)
+  if ("RPNP" %in% names(tabela)) {
+    tabela <- tabela %>%
+      select(categoria, all_of(colunas_meses), `TOTAL (ÚLTIMOS 12 MESES)`, RPNP)
+  } else {
+    tabela <- tabela %>%
+      select(categoria, all_of(colunas_meses), `TOTAL (ÚLTIMOS 12 MESES)`)
+  }
+  
+  # --------------------------------------------------------------------------
+  # CRIAR DATATABLE (sem linha de totais)
+  # --------------------------------------------------------------------------
+  dt <- datatable(
+    tabela,
+    caption = paste("Categoria:", categoria_filtro),
+    rownames = FALSE,
+    options = list(
+      pageLength = -1,
+      scrollX = TRUE,
+      dom = 'ft'
+    )
+  )
+  
+  if (formato_numero) {
+    colunas_numericas <- which(sapply(tabela, is.numeric))
+    
+    dt <- dt %>% 
+      formatRound(
+        columns = colunas_numericas, 
+        digits = 0, 
+        mark = ".",
+        dec.mark = ","
+      )
+  }
+  
+  return(dt)
+}
+
+
+```
+
+```{r}
+#| code-fold: true
+#| eval: true
+#| column: page
+
+gerar_tabela_pessoal(pessoal, pessoal_rp, "executivo")
+
+```
+
+```{r}
+#| code-fold: true
+#| eval: true
+#| column: page
+
+gerar_tabela_pessoal(pessoal, pessoal_rp, "AP")
+```
+
+```{r}
+#| code-fold: true
+#| eval: true
+#| column: page
+
+gerar_tabela_pessoal(pessoal, pessoal_rp, "RR")
+
+```
+
+```{r}
+#| code-fold: true
+#| eval: true
+#| column: page
+
+gerar_tabela_pessoal(pessoal, pessoal_rp, "DF")
 ```
 
 ```{r}
@@ -588,24 +892,7 @@ REFORMA - R\$ 1,19M em "REFORMA AGRÁRIA" (falso positivo confirmado) PEN - R\$ 
 
 Análise do print do TG: O Tesouro Gerencial usa o operador "Contém" que é equivalente ao nosso padrão sem word boundaries, confirmando que eles têm o mesmo
 
-```{r}
-#| code-fold: true
-#| eval: true
-
-
-pessoal <- aplicar_criterios(rgf_a01, criterios_rgf_A01_pessoal_rgf, 
-                  group_vars = c("categoria_pessoal"))
-
-
-datatable(pessoal %>% filter(ordem < 14, categoria_pessoal != "demais") %>% group_by(ordem, nome, categoria_pessoal) %>% summarise(valor = sum(valor)) %>% pivot_wider(names_from = categoria_pessoal, values_from = valor) ) %>% formatRound(
-    c("AP", "DF", "RR", "executivo") ,
-    digits = 2, 
-    mark = ".", 
-    dec.mark = ","
-  )
-```
-
-# 📋 Anexo 2 (Dívida Consolidada Líquida)
+# 📋 RGF Anexo 02 (Dívida Consolidada Líquida)
 
 ```{r}
 #| code-fold: true
@@ -766,46 +1053,42 @@ criterios_rgf_A02_dcl_creditos_bancarios <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_entidade <- list(
   
-  `01 - DÍVIDA MOBILIÁRIA TN INTERNA - PARTE 1` = list(
+  `01 - DÍVIDA MOBILIÁRIA TN INTERNA` = list(
     criterio = "
+    conta_contabil_numero %in% c('899913900', '899913901', '899913902', '899913903', 
+                                '899913904', '899913905', '899913906') &
     entidade_c_cor_numero %in% c('DP1000001', 'DP1400001', 'DP1500001', 'DP1700001', 
                                 'DP1800001', 'DP2000001', 'DP2300007', 'DP2400001', 
                                 'DP2600001', 'DP2800001', 'DP3000001', 'DP3400001', 
                                 'DP5000001', 'DP5500001', 'DP5800001', 'DP6100001', 
                                 'DP6200001', 'DP6300001', 'DP6600001', 'DP7000001', 
-                                'DP8000001', 'DP9000001', 'DP1200001')
+                                'DP8000001', 'DP9000001', 'DP9102001', 'DP1200001')
     "
   ),
   
-  `01 - DÍVIDA MOBILIÁRIA TN INTERNA - PARTE 2` = list(
-    criterio = "
-    entidade_c_cor_numero == 'DP9102001'
-    "
-  ),
+ 
   
   `03 - DÍVIDA MOBILIÁRIA DO TN (EM BCB)` = list(
     criterio = "
+    conta_contabil_numero %in% c('899913901', '899913902', '899913907', '899913908') &
     entidade_c_cor_numero %in% c('DP1500010', 'DP1700010', 'DP1800010', 'DP2300010', 
                                 'DP5500010', 'DP7000010', 'DP9000010', 'DP3201450')
     "
   ),
   
-  `04 - DÍVIDA SECURITIZADA - PARTE 1` = list(
+  `04 - DÍVIDA SECURITIZADA` = list(
     criterio = "
-    entidade_c_cor_numero %in% c('DP3100001', 'DP3200001', 'DP3200002', 'DP3201031', 
-                                'DP3201032', 'DP3201059', 'DP3201077', 'DP3201078', 
-                                'DP3201080', 'DP3201081', 'DP3201145', 'DP3201202', 
-                                'DP3201222', 'DP3201228', 'DP3201233', 'DP3201250', 
-                                'DP3201256', 'DP3201257', 'DP3201258', 'DP3201259', 
-                                'DP3201260', 'DP3201262', 'DP3201271', 'DP3201272', 
-                                'DP3201275', 'DP3201276', 'DP3201277', 'DP3201280', 
-                                'DP3201281', 'DP3201296', 'DP3201299', 'DP3201362', 
-                                'DP3201368', 'DP3201378', 'DP3201390')
-    "
-  ),
-  
-  `04 - DÍVIDA SECURITIZADA - PARTE 2` = list(
-    criterio = "
+    (conta_contabil_numero %in% c('899913900', '899913901', '899913902', '899913903', 
+                                 '899913904', '899913905', '899913906') &
+     entidade_c_cor_numero %in% c('DP3100001', 'DP3200001', 'DP3200002', 'DP3201031', 
+                                 'DP3201032', 'DP3201059', 'DP3201077', 'DP3201078', 
+                                 'DP3201080', 'DP3201081', 'DP3201145', 'DP3201202', 
+                                 'DP3201222', 'DP3201228', 'DP3201233', 'DP3201250', 
+                                 'DP3201256', 'DP3201257', 'DP3201258', 'DP3201259', 
+                                 'DP3201260', 'DP3201262', 'DP3201271', 'DP3201272', 
+                                 'DP3201275', 'DP3201276', 'DP3201277', 'DP3201280', 
+                                 'DP3201281', 'DP3201296', 'DP3201299', 'DP3201362', 
+                                 'DP3201368', 'DP3201378', 'DP3201390')) |
     conta_contabil_numero %in% c('212110202', '222110102')
     "
   )
@@ -975,10 +1258,50 @@ criterios_rgf_A02_dcl_balancete_fundos <- list(
     "
   )
 )
+
+
+# ===============================================================================
+# BASE: rgf_a02_passivo_atuarial
+# Filtros TG: Orçamento Fiscal
+# ===============================================================================
+
+criterios_rgf_A02_passivo_atuarial <- list(
+  
+  `40 - RPPS Civil` = list(
+    criterio = "
+    ug_executora_codigo == '400043' &
+    conta_contabil_numero %in% c('217919900', '227210301', '227210303', '227210304', 
+                                  '227210401', '227210402', '227210403', '227210404')
+    "
+  ),
+  
+  `41 - Despesas Previdenciárias do FCDF` = list(
+    criterio = "
+    ug_executora_codigo == '170392' &
+    conta_contabil_numero %in% c('217919900', '227210301', '227210303', '227210304', 
+                                  '227210401', '227210402', '227210403', '227210404')
+    "
+  ),
+  
+  `42 - Militares Inativos` = list(
+    criterio = "
+    ug_executora_codigo %in% c('120052', '160063', '773200') &
+    conta_contabil_numero %in% c('217910700', '227910700')
+    "
+  ),
+  
+  `43 - Pensões Militares` = list(
+    criterio = "
+    ug_executora_codigo %in% c('120052', '160063', '773200') &
+    conta_contabil_numero %in% c('217910600', '227910600')
+    "
+  )
+)
 ```
 
 ```{r}
 #| code-fold: true
+#| column: page
 #| eval: true
 # ===============================================================================
 # PROCESSAMENTO DOS CRITÉRIOS DCL
@@ -1187,15 +1510,23 @@ linhas_sem_dados <- df_rgf_A02_dcl_consolidado %>%
 # 18. EXIBIR RESULTADOS
 # ===============================================================================
 
-datatable(valores_linhas) %>% 
+datatable(
+  valores_linhas,
+  rownames = FALSE,
+  options = list(
+    pageLength = -1,
+    scrollX = TRUE,
+    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'Todas'))
+  )
+) %>% 
   formatRound(c("valor_total", "valor_absoluto"), 2, mark = ".", dec.mark = ",")
 ```
 
-# 📋 Anexo 3 (Garantias e Contragarantias)
+# 📋 RGF Anexo 03 (Garantias e Contragarantias)
 
 ```{r}
 #| code-fold: true
-#| eval: false
+#| eval: true
 criterios_rgf_A03_garantias <- list(
   
   # ===========================================================================
@@ -1392,15 +1723,25 @@ criterios_rgf_A03_garantias <- list(
   )
 )
 
-datatable(aplicar_criterios(rgf_a03, criterios_rgf_A03_garantias) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
+datatable(aplicar_criterios(rgf_a03, criterios_rgf_A03_garantias) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)),
+  rownames = FALSE,
+  options = list(
+    pageLength = -1,
+    scrollX = TRUE,
+    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'Todas')),
+    columnDefs = list(
+      list(visible = FALSE, targets = 0)  # Oculta a primeira coluna (ordem)
+    )
+  ))%>% 
   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
 ```
 
-# 📋 Anexo 4 (Operações de Crédito)
+# 📋 RGF Anexo 04 (Operações de Crédito)
 
 ```{r}
 #| code-fold: true
 #| eval: true
+#| column: page
 
 
 criterios_rgf_A04_receitas <- list(
@@ -1624,33 +1965,60 @@ criterios_rgf_A04_extra_orcamentarias <- list(
   )
 )
 
-datatable(aplicar_criterios(rgf_a04_receitas, criterios_rgf_A04_receitas) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>%   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+
+df_criterios_rgf_A04_despesas <- aplicar_criterios(rgf_a04_despesas, criterios_rgf_A04_despesas)
+df_criterios_rgf_A04_receitas <- aplicar_criterios(rgf_a04_receitas, criterios_rgf_A04_receitas)
+
+df_criterios_rgf_A04_extra_orcamentarias <- aplicar_criterios(rgf_a02_balancete, criterios_rgf_A04_extra_orcamentarias)
+
+datatable(aplicar_criterios(rgf_a04_receitas, criterios_rgf_A04_receitas) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
+  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+
+
+df_rgf_a04 <- rbind(df_criterios_rgf_A04_despesas, df_criterios_rgf_A04_receitas)
+
+df_rgf_a04 <- rbind(df_rgf_a04 , df_criterios_rgf_A04_extra_orcamentarias)
+
+datatable(aplicar_criterios(rgf_a04_despesas, criterios_rgf_A04_despesas) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
+  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
 
 
 
-datatable(aplicar_criterios(rgf_a04_despesas, criterios_rgf_A04_despesas) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>%   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+datatable(aplicar_criterios(rgf_a02_balancete, criterios_rgf_A04_extra_orcamentarias) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
+  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
 
 
 
-datatable(aplicar_criterios(rgf_a02_balancete, criterios_rgf_A04_extra_orcamentarias) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>%   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+datatable(
+  df_rgf_a04 %>% 
+    group_by(ordem, nome) %>% 
+    summarise(valor = sum(valor), .groups = "drop"),
+  rownames = FALSE,
+  options = list(
+    pageLength = -1,
+    scrollX = TRUE,
+    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'Todas'))
+  )
+) %>% 
+  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
 ```
 
-# 📋 Anexo 5 (Disponibilidades)
+# 📋 RGF Anexo 05 (Disponibilidades)
 
 ```{r}
 
 
 
-dados_rgf_a05 <- dados_rgf_a05 %>% mutate(orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte , "_", fonte_recursos_codigo ))
+rgf_a05 <- rgf_a05 %>% mutate(orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte , "_", fonte_recursos_codigo ))
 
-dados_rgf_a05 <- dados_rgf_a05 %>% mutate(tg_orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte  ))
+rgf_a05 <- rgf_a05 %>% mutate(tg_orgao_fonte = str_c(detalhe_orgao_central_codigo_detalhe_oc,"_" ,detalhe_orgao_central_id_fonte  ))
 
 # =============================================================================
 # APLICAR CLASSIFICAÇÃO DE LINHAS (FONTES) SE NECESSÁRIO
 # =============================================================================
 
-if(!"linhas" %in% names(dados_rgf_a05)) {
-  dados_rgf_a05 <- dados_rgf_a05 %>%
+if(!"linhas" %in% names(rgf_a05)) {
+  rgf_a05 <- rgf_a05 %>%
     mutate(
       linhas = case_when(
         fonte_recursos_codigo %in% c("000") ~ "0_nao_vinculados",
@@ -1946,7 +2314,7 @@ get_col <- function(df, nome_coluna) {
 
 # Aplicar critérios de filtro
 resultado_rgf_a05 <- aplicar_criterios(
-  df = dados_rgf_a05,
+  df = rgf_a05,
   criterios = criterios_rgf_a05_disponibilidade,
   group_vars = c("linhas")
 )
@@ -2121,5 +2489,287 @@ write_xlsx(
 ```
 
 ```{r}
-datatable(rgf_a05_formatada)
+#| column: screen
+# datatable(rgf_a05_formatada)
+
+
+# Pegar nomes originais e modificar
+novos_nomes <- rgf_a05_formatada %>% 
+  select(-mes_lancamento) %>% 
+  colnames() %>%
+  gsub("_clean", "", .) %>%
+  gsub("_", " ", .) %>%
+  gsub("nao pagos", "NP", .) %>%
+  gsub("exercicios", "exerc.", .) %>%
+  gsub("anteriores", "ant.", .) %>%
+  gsub("disponibilidade", "disp.", .)
+
+datatable(
+  rgf_a05_formatada %>% select(-mes_lancamento),
+  colnames = novos_nomes,
+  options = list(
+    scrollX = TRUE,
+    pageLength = 15
+  ),
+  rownames = FALSE
+) %>%
+  formatCurrency(2:11, "", mark = ".", dec.mark = ",", digits = 2)
+```
+
+# 📋 RREO Receita Corrente Líquida (RCL)
+
+```{r}
+#| code-fold: true
+#| output: false
+
+
+# ===============================================================================
+# CRITÉRIOS PARA RECEITAS - ANEXO 3 RCL
+# ===============================================================================
+
+criterios_rreo_A03_rcl_receitas_rcl <- list(
+  
+  # === RECEITAS CORRENTES POR ORIGEM (01-09) ===
+  
+  # IMPOSTOS, TAXAS E CONTRIBUIÇÕES DE MELHORIA
+  `01  Impostos, Taxas e Contribuições de Melhoria` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 1"
+  ),
+  
+  # RECEITA DE CONTRIBUIÇÕES
+  `02  Receita de Contribuições` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 2"
+  ),
+  
+  # RECEITA PATRIMONIAL
+  `03  Receita Patrimonial` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 3"
+  ),
+  
+  # RECEITA AGROPECUÁRIA
+  `04  Receita Agropecuária` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 4"
+  ),
+  
+  # RECEITA INDUSTRIAL
+  `05  Receita Industrial` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 5"
+  ),
+  
+  # RECEITA DE SERVIÇOS
+  `06  Receita de Serviços` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 6"
+  ),
+  
+  # TRANSFERÊNCIAS CORRENTES
+  `07  Transferências Correntes` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7"
+  ),
+  
+  # RECEITAS CORRENTES A CLASSIFICAR
+  `08  Receitas Correntes a Classificar` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 8"
+  ),
+  
+  # OUTRAS RECEITAS CORRENTES
+  `09  Outras Receitas Correntes` = list(
+    criterio = "nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 9"
+  ),
+  
+  # === ITENS ESPECÍFICOS PARA CÁLCULO DA RCL ===
+  
+  # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
+  `10  Transferências Constitucionais e Legais` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & nre2_origem_receita_codigo_origem == 7 & (
+      grepl('FPE|FPM|CONSTITUCIONAL|LEGAL', natureza_receita_nome, ignore.case = TRUE) |
+      grepl('^172[0-9]', natureza_receita_codigo_completo) |
+      grepl('^171[0-9]', natureza_receita_codigo_completo)
+    )
+    "
+  ),
+  
+  # CONTRIB. EMPREGADORES E TRAB. PARA SEG. SOCIAL
+  `11  Contrib. Empregadores e Trabalhadores para Seguridade Social` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & fonte_recursos_codigo == '054' & 
+    !natureza_receita_codigo_completo %in% c(
+      '19900300', '19900310', '19900311', '19900312', '19900313', '19900314',
+      '19990300', '19990301', '19990302', '19990303', '19990304'
+    )
+    "
+  ),
+  
+  # CONTRIB. DO SERVIDOR PARA O PLANO DE PREVIDÊNCIA
+  `12  Contrib. Plano Seguridade Social do Servidor` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      fonte_recursos_codigo %in% c('055', '056') |
+      natureza_receita_codigo_completo == '12150116'
+    )
+    "
+  ),
+  
+  # COMPENSAÇÃO FINANC. ENTRE REGIMES PREVIDÊNCIA
+  `13  Compensação Financeira entre Regimes RPPS` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & natureza_receita_codigo_completo %in% c(
+      '19900300', '19900310', '19900311', '19900312', '19900313', '19900314',
+      '19990300', '19990301', '19990302', '19990303', '19990304'
+    )
+    "
+  ),
+  
+  # CONTRIB. DOS MILITARES PARA O CUSTEIO DAS PENSÕES
+  `14  Contrib. para Custeio Pensões Militares` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      grepl('^1210051', natureza_receita_codigo_completo) |
+      grepl('^1215041', natureza_receita_codigo_completo) |
+      grepl('^121911', natureza_receita_codigo_completo)
+    )
+    "
+  ),
+  
+  # CONTRIBUIÇÕES PARA PIS/PASEP
+  `15  Contribuição para PIS/PASEP` = list(
+    criterio = "
+    nre1_categoria_economica_codigo == 1 & (
+      (grepl('^1210091|^1212', natureza_receita_codigo_completo) & 
+       !fonte_recursos_codigo %in% c('055', '056', '054')) |
+      (!grepl('^1210091|^1212', natureza_receita_codigo_completo) & 
+       fonte_recursos_codigo %in% c('040', '041'))
+    )
+    "
+  ),
+  
+  # DEDUÇÕES DAS RECEITAS
+  `16  Deduções das Receitas` = list(
+    criterio = "
+    (grepl('^1212', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('031', '032', '040', '041')) |
+    (grepl('^1214', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1215', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('023', '032', '055', '056')) |
+    (grepl('^1219', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1911', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1922', natureza_receita_codigo_completo) & fonte_recursos_codigo %in% c('040', '054', '056')) |
+    (grepl('^1923', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054') |
+    (grepl('^1999', natureza_receita_codigo_completo) & fonte_recursos_codigo == '054')
+    "
+  )
+)
+
+
+aplicar_criterios(rreo_a03_rcl_receitas, criterios_rreo_A03_rcl_receitas_rcl)
+
+
+```
+
+```{r}
+#| code-fold: true
+#| output: false
+# ===============================================================================
+# CRITÉRIOS PARA DESPESAS (DEDUÇÕES) - ANEXO 3 RCL
+# ===============================================================================
+
+criterios_rreo_A03_rcl_despesas_rcl <- list(
+  
+  # TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS (DESPESAS)
+  `17  Transferências Constitucionais e Legais` = list(
+    criterio = "
+    
+    acao_governo_codigo %in% c('0E36', '00SB') | 
+    grepl('^28846090900RX', programa_governo_codigo) | 
+    (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+     modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+     acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', 
+                                '00G6', '0169', '0223', '0369', '0546', '0547', '0999', 
+                                '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', 
+                                '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))
+    "
+  ),
+  
+  # OUTRAS DEDUÇÕES (DESPESAS)
+  `18  Outras Deduções` = list(
+    criterio = "
+    
+    acao_governo_codigo %in% c('0E36', '00SB') | 
+    grepl('^28846090900RX', programa_governo_codigo) | 
+    (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+     modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+     acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', 
+                                '00G6', '0169', '0223', '0369', '0546', '0547', '0999', 
+                                '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', 
+                                '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))
+    "
+  )
+)
+
+
+criterios_rreo_A03_rcl_rp_cancelado_rcl <- list(
+  
+ 
+  
+    # RP CANCELADOS DE TRANSFERÊNCIAS CONSTITUCIONAIS E LEGAIS
+  `19 RP Cancelados de Transferências Constitucionais e Legais` = list(
+    criterio = "
+    
+    # CONDIÇÃO 1: Ações específicas visualizadas no print
+    acao_governo_codigo %in% c('0044', '0045', '006M', '0A53', '0C33') |
+    
+    # CONDIÇÃO 2: Programa que começa com código específico (do SQL original)
+    grepl('^28846090900RX', programa_governo_codigo) |
+    
+    # CONDIÇÃO 3: Combinação de critérios do SQL original
+    (programa_governo_codigo %in% c('0903', '2030', '2080') & 
+     modalidade_aplicacao_codigo %in% c(30, 31, 32, 35, 36, 40, 41, 42, 45, 46) & 
+     acao_governo_codigo %in% c('0044', '0045', '0046', '0050', '0051', '00H6', '006M', 
+                                '00G6', '0169', '0223', '0369', '0546', '0547', '0999', 
+                                '099B', '0A53', '0C03', '0C33', '0E25', '0E36', '00PX', 
+                                '00QR', '00S3', '00S7', '00S8', '00SE', '00RX', '00UH'))
+    "
+)
+
+)
+
+
+
+aplicar_criterios(df = rreo_a03_rcl_despesas %>% filter(item_informacao_codigo == "25"), criterios_rreo_A03_rcl_despesas_rcl)
+
+
+
+aplicar_criterios(df = rreo_a03_rcl_despesas %>% filter(item_informacao_codigo == "51"), criterios_rreo_A03_rcl_rp_cancelado_rcl)
+```
+
+```{r}
+rcl <- rbind(df_criterios_rreo_A03_rcl_receitas_rcl,df_criterios_rreo_A03_rcl_despesas_rcl)
+
+rcl <- rbind(rcl,df_criterios_rreo_A03_rcl_rp_cancelado_rcl)
+
+apuracao <- rcl %>% filter(mes_lancamento <= mes_filtro)  %>%
+  filter(data_lancamento >= max(data_lancamento) %m-% months(11)) %>% 
+  mutate(
+    tipo =
+      case_when(
+        ordem %in% c("01" , "02", "03", "04", "05", "06", "07", "08" , "09") ~ "receitas",
+        ordem %in% c( "11" , "12", "13", "14", "15", "17" ) ~ "deducoes",
+        ordem == "19" ~ "rp_cancelado"
+        )
+  )
+
+
+valor_rcl <- (apuracao %>% group_by( tipo) %>% summarise(valor = sum(valor))  %>% pivot_wider(names_from = tipo, values_from = valor, values_fill = 0 ) %>% mutate(resultado = receitas - deducoes + rp_cancelado) )$resultado
+
+
+formatar_real <- function(valor, decimais = 2, prefixo = "R$ ") {
+  paste0(prefixo, 
+         format(valor, 
+                big.mark = ".",
+                decimal.mark = ",",
+                nsmall = decimais,
+                scientific = FALSE))
+}
+
+# Uso
+formatar_real(valor_rcl)
+
 ```
