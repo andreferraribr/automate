@@ -50,19 +50,13 @@ options(scipen = 999)
 # Configurações DT
 options(DT.options = 
   list(
-    pageLength = 20,
+    pageLength = 50,
     lengthMenu = c(5, 10, 25, 50, 100),
     language = list(url = '//cdn.datatables.net/plug-ins/1.10.11/i18n/Portuguese.json')
   )
 )
 
-# Carregar dependências JavaScript para botões
-htmltools::tagList(
-  tags$script(src = "https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"),
-  tags$script(src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"),
-  tags$script(src = "https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"),
-  tags$link(rel = "stylesheet", href = "https://cdn.datatables.net/buttons/2.4.2/css/buttons.dataTables.min.css")
-)
+
 
 # Operadores customizados
 `%notin%` <- Negate(`%in%`)
@@ -86,23 +80,12 @@ print(paste("📅 Mês de referência definido:", mes_filtro))
 
 ## 💰 Dados de Despesa
 
-Criar variáveis:
-
-tipo_modalidade
-
-refinanciamento
-
-transferencia
-
 ```{r dados_despesa}
 #| echo: true
 #| eval: true
 
 
-
 # RCL
-
-# RGF Anexo 1
 rreo_a03_rcl_despesas <- read_excel(str_c(mes_pasta, "rreo_a03_rcl_despesas.xlsx"), skip = 5) %>%
   clean_names() %>%
   mutate(
@@ -159,61 +142,6 @@ rgf_a04_despesas <- read_excel(str_c(mes_pasta, "rgf_a04_despesas.xlsx"), skip =
 ```
 
 ## 🏦 Dados Contábeis e Específicos
-
-```{r dados_contabeis}
-#| echo: true
-#| eval: false
-
-
-
-# Function to read and process each file
-read_and_process <- function(file) {
-  dados <- read_excel(str_c(mes_pasta, file), skip = 5) %>%
-    clean_names() %>%
-    mutate(
-      ug = "demais",
-      saldo_r_conta_contabil = as.numeric(saldo_r_conta_contabil),
-      mes_lancamento = as.numeric(mes_lancamento),
-      data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
-    )
-  return(dados)
-}
-
-# Create individual data frames for each Excel file
-rgf_a02_precatorios <- read_and_process("rgf_a02_precatorios.xlsx")
-rgf_a02_rp_exceto_170600 <- read_and_process("rgf_a02_rp_exceto_170600.xlsx")
-rgf_a02_rp_todas_ugs <- read_and_process("rgf_a02_rp_todas_ugs.xlsx")
-rgf_a02_ug_170512 <- read_and_process("rgf_a02_ug_170512.xlsx")
-rgf_a02_creditos_bancarios <- read_and_process("rgf_a02_creditos_bancarios.xlsx")
-rgf_a02_entidade <- read_and_process("rgf_a02_entidade.xlsx")
-rgf_a02_balancete <- read_and_process("rgf_a02_balancete.xlsx")
-
-# Linha 02
-rgf_a02_aplicacao_titulos_publicos <- read_and_process("rgf_a02_aplicacao_titulos_publicos.xlsx")
-
-# Linhas 07 e 12
-rgf_a02_balancete <- read_and_process("rgf_a02_balancete.xlsx")
-
-# Linha 13
-rgf_a02_balancete_fat <- read_and_process("rgf_a02_balancete_fat.xlsx")
-
-# Linha 14
-rgf_a02_balancete_fundos_111215100 <- read_and_process("rgf_a02_balancete_fundos_111215100.xlsx")
-
-# Linhas 15 e 16
-rgf_a02_balancete_fundos <- read_and_process("rgf_a02_balancete_fundos.xlsx")
-
-
-rgf_a02_balancete_deducoes_depositos_a_vista <-  read_and_process("rgf_a02_balancete_deducoes_depositos_a_vista.xlsx")
-
-
-
-
-
-
-
-
-```
 
 ```{r}
 # Função para ler e processar arquivo Excel individual
@@ -909,7 +837,7 @@ Análise do print do TG: O Tesouro Gerencial usa o operador "Contém" que é equ
 # ===============================================================================
 criterios_rgf_A02_dcl_precatorios <- list(
   
-  `08 - PRECATÓRIOS POSTERIORES A 05/05/2000` = list(
+  `08 Precatórios posteriores a 05/05/2000` = list(
     criterio = "
     acao_governo_codigo %in% c('0005', '00U9', '00UP', '0EC8', '0EC7', '00WU') |
     (unidade_orcamentaria_codigo == '71103' & acao_governo_codigo == '0Z01')
@@ -923,7 +851,7 @@ criterios_rgf_A02_dcl_precatorios <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_rp_exceto_170600 <- list(
   
-  `25 - RESTOS A PAGAR PROCESSADOS - PARTE 1` = list(
+  `25 Restos a pagar processados parte 1` = list(
     criterio = "
     TRUE
     "
@@ -936,7 +864,7 @@ criterios_rgf_A02_dcl_rp_exceto_170600 <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_rp_todas_ugs <- list(
   
-  `25 - RESTOS A PAGAR PROCESSADOS - PARTE 2` = list(
+  `25 Restos a pagar processados parte 2` = list(
     criterio = "
     TRUE
     "
@@ -949,7 +877,7 @@ criterios_rgf_A02_dcl_rp_todas_ugs <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_ug_170512 <- list(
   
-  `09 - DÍVIDA ASSUMIDA PELA UNIÃO` = list(
+  `09 Dívida assumida pela União` = list(
     criterio = "
     conta_contabil_numero %in% c('218912600', '228911600', '227310401') &
     isf_lancamento == 'P' &
@@ -957,7 +885,7 @@ criterios_rgf_A02_dcl_ug_170512 <- list(
     "
   ),
   
-  `17 - DÍVIDAS RENEGOCIADAS - DEDUÇÃO` = list(
+  `17 Dívidas renegociadas dedução` = list(
     criterio = "
     conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
                                 '121140301', '121150301', '112440100', '112450100', 
@@ -972,7 +900,7 @@ criterios_rgf_A02_dcl_ug_170512 <- list(
     "
   ),
   
-  `18 - CRÉDITOS LEI 8.727/93 - DEDUÇÃO` = list(
+  `18 Créditos Lei 8.727/93 dedução` = list(
     criterio = "
     conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
                                 '121140301', '121150301', '112440100', '112450100', 
@@ -984,7 +912,7 @@ criterios_rgf_A02_dcl_ug_170512 <- list(
     "
   ),
   
-  `19 - DÍVIDA EXTERNA RENEGOCIADA - DEDUÇÃO` = list(
+  `19 Dívida externa renegociada dedução` = list(
     criterio = "
     conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
                                 '121140301', '121150301', '112440100', '112450100', 
@@ -1004,7 +932,7 @@ criterios_rgf_A02_dcl_ug_170512 <- list(
     "
   ),
   
-  `20 - DEMAIS DÍVIDAS RENEGOCIADAS - DEDUÇÃO` = list(
+  `20 Demais dívidas renegociadas dedução` = list(
     criterio = "
     conta_contabil_numero %in% c('121110301', '112410100', '121110318', '112410600', 
                                 '121140301', '121150301', '112440100', '112450100', 
@@ -1014,7 +942,7 @@ criterios_rgf_A02_dcl_ug_170512 <- list(
     "
   ),
   
-  `21 - AJUSTES PARA PERDAS (POSITIVO)` = list(
+  `21 Ajustes para perdas (positivo)` = list(
     criterio = "
     conta_contabil_numero %in% c('112940401', '112950401', '113940101', '112910401', 
                                 '113950101', '121119902', '121149904', '121159904', 
@@ -1029,7 +957,7 @@ criterios_rgf_A02_dcl_ug_170512 <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_creditos_bancarios <- list(
   
-  `22 - OUTROS CRÉDITOS BANCÁRIOS - DEDUÇÃO` = list(
+  `22 Outros créditos bancários dedução` = list(
     criterio = "
     conta_contabil_numero %in% c('112410301', '112410303', '112440301', '112450301', 
                                 '112440303', '112450303', '112410100', '121110301', 
@@ -1040,7 +968,7 @@ criterios_rgf_A02_dcl_creditos_bancarios <- list(
     "
   ),
   
-  `23 - OUTROS CRÉDITOS BANCÁRIOS - AJUSTES (POSITIVO)` = list(
+  `23 Outros créditos bancários ajustes (positivo)` = list(
     criterio = "
     conta_contabil_numero %in% c('112910401', '121119904', '121119907', '112910403')
     "
@@ -1053,7 +981,7 @@ criterios_rgf_A02_dcl_creditos_bancarios <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_entidade <- list(
   
-  `01 - DÍVIDA MOBILIÁRIA TN INTERNA` = list(
+  `01 Dívida mobiliária TN interna` = list(
     criterio = "
     conta_contabil_numero %in% c('899913900', '899913901', '899913902', '899913903', 
                                 '899913904', '899913905', '899913906') &
@@ -1066,9 +994,7 @@ criterios_rgf_A02_dcl_entidade <- list(
     "
   ),
   
- 
-  
-  `03 - DÍVIDA MOBILIÁRIA DO TN (EM BCB)` = list(
+  `03 Dívida mobiliária do TN (em BCB)` = list(
     criterio = "
     conta_contabil_numero %in% c('899913901', '899913902', '899913907', '899913908') &
     entidade_c_cor_numero %in% c('DP1500010', 'DP1700010', 'DP1800010', 'DP2300010', 
@@ -1076,7 +1002,7 @@ criterios_rgf_A02_dcl_entidade <- list(
     "
   ),
   
-  `04 - DÍVIDA SECURITIZADA` = list(
+  `04 Dívida securitizada` = list(
     criterio = "
     (conta_contabil_numero %in% c('899913900', '899913901', '899913902', '899913903', 
                                  '899913904', '899913905', '899913906') &
@@ -1101,7 +1027,7 @@ criterios_rgf_A02_dcl_entidade <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_aplicacao_titulos_publicos <- list(
   
-  `02 - APLICAÇÃO EM TÍTULOS PÚBLICOS` = list(
+  `02 Aplicação em títulos públicos` = list(
     criterio = "
     !conta_contabil_numero %in% c('111115005', '111115011', '111115012')
     "
@@ -1114,19 +1040,19 @@ criterios_rgf_A02_dcl_aplicacao_titulos_publicos <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_balancete <- list(
   
-  `05 - DÍVIDA MOBILIÁRIA EXTERNA` = list(
+  `05 Dívida mobiliária externa` = list(
     criterio = "
     conta_contabil_numero %in% c('899913903', '899913904')
     "
   ),
   
-  `06 - OPERAÇÕES DE EQUALIZAÇÃO CAMBIAL` = list(
+  `06 Operações de equalização cambial` = list(
     criterio = "
     conta_contabil_numero %in% c('218912902', '218942902', '218952902', '218912901')
     "
   ),
   
-  `07 - DEMAIS DÍVIDAS CONTRATUAIS` = list(
+  `07 Demais dívidas contratuais` = list(
     criterio = "
     isf_lancamento == 'P' &
     conta_contabil_numero %in% c(
@@ -1138,16 +1064,17 @@ criterios_rgf_A02_dcl_balancete <- list(
     )
     "
   ),
-`10 - PASSIVOS POR INSUFICIÊNCIA DE RECURSOS` = list(
-  criterio = "
-  conta_contabil_numero %in% c('213110400', '211110101', '214419800', '223110100', 
-                               '211210100', '213140400', '213150400', 
-                               '214119900', '211459800', '211419800') &
-  isf_lancamento == 'P'
-  "
-),
   
-  `11 - DEPÓSITOS DO TN (EM BCB) - DEDUÇÃO` = list(
+  `10 Passivos por insuficiência de recursos` = list(
+    criterio = "
+    conta_contabil_numero %in% c('213110400', '211110101', '214419800', '223110100', 
+                                 '211210100', '213140400', '213150400', 
+                                 '214119900', '211459800', '211419800') &
+    isf_lancamento == 'P'
+    "
+  ),
+  
+  `11 Depósitos do TN (em BCB) dedução` = list(
     criterio = "
     startsWith(conta_contabil_numero, '1111102') |
     startsWith(conta_contabil_numero, '1111103') |
@@ -1155,7 +1082,7 @@ criterios_rgf_A02_dcl_balancete <- list(
     "
   ),
   
-  `12 - DEPÓSITOS À VISTA - DEDUÇÃO - PARTE 2` = list(
+  `12 Depósitos à vista dedução` = list(
     criterio = "
     startsWith(conta_contabil_numero, '1112102') |
     startsWith(conta_contabil_numero, '1112103') |
@@ -1164,13 +1091,13 @@ criterios_rgf_A02_dcl_balancete <- list(
     "
   ),
   
-  `24 - RESULTADO POSITIVO TN/BCB - DEDUÇÃO` = list(
+  `24 Resultado positivo TN/BCB dedução` = list(
     criterio = "
     conta_contabil_numero %in% c('113813001', '113813002')
     "
   ),
   
-  `26 - DÍVIDA MOBILIÁRIA TN INTERNA (INTRA) - DEDUÇÃO` = list(
+  `26 Dívida mobiliária TN interna (intra) dedução` = list(
     criterio = "
     conta_contabil_numero == '222120101'
     "
@@ -1183,7 +1110,7 @@ criterios_rgf_A02_dcl_balancete <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_balancete_fat <- list(
   
-  `13 - DISPONIBILIDADE FAT - DEDUÇÃO` = list(
+  `13 Disponibilidade FAT dedução` = list(
     criterio = "
     startsWith(conta_contabil_numero, '1111119') |
     startsWith(conta_contabil_numero, '1124103') |
@@ -1215,7 +1142,7 @@ criterios_rgf_A02_dcl_balancete_fat <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista <- list(
   
-  `12 - DEPÓSITOS À VISTA - DEDUÇÃO - PARTE 1` = list(
+  `12 Depósitos à vista dedução` = list(
     criterio = "
     startsWith(conta_contabil_numero, '1111119')
     "
@@ -1228,7 +1155,7 @@ criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_balancete_fundos_111215100 <- list(
   
-  `14 - APLICAÇÕES EM FUNDOS DIVERSOS 1 - DEDUÇÃO` = list(
+  `14 Aplicações em fundos diversos 1 dedução` = list(
     criterio = "
     TRUE
     "
@@ -1241,33 +1168,33 @@ criterios_rgf_A02_dcl_balancete_fundos_111215100 <- list(
 # ===============================================================================
 criterios_rgf_A02_dcl_balancete_fundos <- list(
   
-  `15 - APLICAÇÕES EM FUNDOS DIVERSOS 2 - DEDUÇÃO` = list(
+  `15 Aplicações em fundos diversos 2 dedução` = list(
     criterio = "
     startsWith(conta_contabil_numero, '23')
     "
   ),
   
-  `16 - APLICAÇÕES EM FUNDOS DIVERSOS 3 - DEDUÇÃO` = list(
+  `16 Aplicações em fundos diversos 3 dedução` = list(
     criterio = "
     startsWith(conta_contabil_numero, '1111102') |
     startsWith(conta_contabil_numero, '1111103') |
     startsWith(conta_contabil_numero, '1111104') |
     startsWith(conta_contabil_numero, '1111119') |
     conta_contabil_numero %in% c('111210200', '111210300', '111215000', '111215200') |
-    c_con_subgrupo_3_nome %in% c('INVESTIMENTOS', 'IMOBILIZADO', 'INTANGIVEL', 'DIFERIDO')
+    c_con_subgrupo_3_nome %in% c('INVESTIMENTOS', 'IMOBILIZADO', '
+
+INTANGIVEL', 'DIFERIDO')
     "
   )
 )
-
 
 # ===============================================================================
 # BASE: rgf_a02_passivo_atuarial
 # Filtros TG: Orçamento Fiscal
 # ===============================================================================
-
 criterios_rgf_A02_passivo_atuarial <- list(
   
-  `40 - RPPS Civil` = list(
+  `40 RPPS civil` = list(
     criterio = "
     ug_executora_codigo == '400043' &
     conta_contabil_numero %in% c('217919900', '227210301', '227210303', '227210304', 
@@ -1275,7 +1202,7 @@ criterios_rgf_A02_passivo_atuarial <- list(
     "
   ),
   
-  `41 - Despesas Previdenciárias do FCDF` = list(
+  `41 Despesas previdenciárias do FCDF` = list(
     criterio = "
     ug_executora_codigo == '170392' &
     conta_contabil_numero %in% c('217919900', '227210301', '227210303', '227210304', 
@@ -1283,14 +1210,14 @@ criterios_rgf_A02_passivo_atuarial <- list(
     "
   ),
   
-  `42 - Militares Inativos` = list(
+  `42 Militares inativos` = list(
     criterio = "
     ug_executora_codigo %in% c('120052', '160063', '773200') &
     conta_contabil_numero %in% c('217910700', '227910700')
     "
   ),
   
-  `43 - Pensões Militares` = list(
+  `43 Pensões militares` = list(
     criterio = "
     ug_executora_codigo %in% c('120052', '160063', '773200') &
     conta_contabil_numero %in% c('217910600', '227910600')
@@ -1403,6 +1330,15 @@ df_criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista <- aplicar_criteri
   criterios = criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista
 )
 
+
+# ===============================================================================
+# PROCESSAR: rgf_a02_passivo_atuarial
+# ===============================================================================
+df_criterios_rgf_A02_passivo_atuarial <- aplicar_criterios(
+  df = rgf_a02_passivo_atuarial,
+  criterios = criterios_rgf_A02_passivo_atuarial
+)
+
 # ===============================================================================
 # 13. CONSOLIDAR rgf_a02_rp (Linha 25 - partes 1 e 2)
 # ===============================================================================
@@ -1411,7 +1347,7 @@ df_criterios_rgf_A02_dcl_rp <- bind_rows(
   df_criterios_rgf_A02_dcl_rp_todas_ugs
 ) %>%
   mutate(
-    nome = str_replace(nome, " - PARTE [12]$", "")
+    nome = str_replace(nome, " parte [12]$", "")
   ) %>%
   group_by(mes_lancamento, dataframe_nome, dataframe_filtros, relatorio, 
            anexo_codigo, anexo_nome, detalhe, print, filtro, metrica, 
@@ -1424,10 +1360,10 @@ df_criterios_rgf_A02_dcl_rp <- bind_rows(
 df_criterios_rgf_A02_dcl_depositos_vista <- bind_rows(
   df_criterios_rgf_A02_dcl_balancete_deducoes_depositos_a_vista,
   df_criterios_rgf_A02_dcl_balancete %>% 
-    filter(str_detect(nome, "^12 -"))
+    filter(str_detect(nome, "^12 "))
 ) %>%
   mutate(
-    nome = str_replace(nome, " - PARTE [12]$", "")
+    nome = str_replace(nome, " parte [12]$", "")
   ) %>%
   group_by(mes_lancamento, dataframe_nome, dataframe_filtros, relatorio, 
            anexo_codigo, anexo_nome, detalhe, print, filtro, metrica, 
@@ -1444,15 +1380,15 @@ df_rgf_A02_dcl_consolidado <- bind_rows(
   df_criterios_rgf_A02_dcl_creditos_bancarios,
   df_criterios_rgf_A02_dcl_entidade,
   df_criterios_rgf_A02_dcl_balancete %>% 
-    filter(!str_detect(nome, "^12 -")),  # Excluir linha 12 parte 2 do balancete
+    filter(!str_detect(nome, "^12 ")),  # Excluir linha 12 parte 2 do balancete
   df_criterios_rgf_A02_dcl_aplicacao_titulos_publicos,
   df_criterios_rgf_A02_dcl_balancete_fat,
   df_criterios_rgf_A02_dcl_balancete_fundos_111215100,
   df_criterios_rgf_A02_dcl_balancete_fundos,
-  df_criterios_rgf_A02_dcl_depositos_vista  # Usar consolidado da linha 12
+  df_criterios_rgf_A02_dcl_depositos_vista,  # Usar consolidado da linha 12
+  df_criterios_rgf_A02_passivo_atuarial
 ) %>%
   arrange(mes_lancamento, ordem)
-
 # ===============================================================================
 # 14. RESUMO POR BASE
 # ===============================================================================
@@ -1530,166 +1466,77 @@ datatable(
 criterios_rgf_A03_garantias <- list(
   
   # ===========================================================================
-  # CONTRAGARANTIAS RECEBIDAS (CG)
+  # GARANTIAS CONCEDIDAS
   # ===========================================================================
   
-  `01 - CONTRAGARANTIAS (CG) - TOTAL GERAL` = list(
-    criterio = "
-    conta_contabil_numero %in% c('811110304', '811110404')
-    "
-  ),
-  
-  `02 - CG DOS ESTADOS - TOTAL` = list(
-    criterio = "
-    conta_contabil_numero %in% c('811110304', '811110404') &
-    conta_corrente %in% c('CG0000064', 'CG0000069')
-    "
-  ),
-  
-  `02.1 - CG DOS ESTADOS - OPERAÇÕES INTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '811110304' &
-    conta_corrente == 'CG0000064'
-    "
-  ),
-  
-  `02.2 - CG DOS ESTADOS - OPERAÇÕES EXTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '811110404' &
-    conta_corrente == 'CG0000069'
-    "
-  ),
-  
-  `03 - CG DOS MUNICÍPIOS - TOTAL` = list(
-    criterio = "
-    conta_contabil_numero %in% c('811110304', '811110404') &
-    conta_corrente %in% c('CG0000065', 'CG0000070')
-    "
-  ),
-  
-  `03.1 - CG DOS MUNICÍPIOS - OPERAÇÕES INTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '811110304' &
-    conta_corrente == 'CG0000065'
-    "
-  ),
-  
-  `03.2 - CG DOS MUNICÍPIOS - OPERAÇÕES EXTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '811110404' &
-    conta_corrente == 'CG0000070'
-    "
-  ),
-  
-  `04 - CG DAS ENTIDADES CONTROLADAS - TOTAL` = list(
-    criterio = "
-    conta_contabil_numero %in% c('811110304', '811110404') &
-    conta_corrente %in% c('CG0000067', 'CG0000071', 'CG0000072')
-    "
-  ),
-  
-  `04.1 - CG DAS ENTIDADES - OPERAÇÕES INTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '811110304' &
-    conta_corrente == 'CG0000067'
-    "
-  ),
-  
-  `04.2 - CG DAS ENTIDADES - OPERAÇÕES EXTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '811110404' &
-    conta_corrente %in% c('CG0000071', 'CG0000072')
-    "
-  ),
-  
-  # ===========================================================================
-  # GARANTIAS CONCEDIDAS (G)
-  # ===========================================================================
-  
-  `05 - GARANTIAS (G) - TOTAL GERAL` = list(
-    criterio = "
-    conta_contabil_numero %in% c('812110104', '812110110', '812110204', '899913301', '899913302')
-    "
-  ),
-  
-  `06 - G AOS ESTADOS - TOTAL` = list(
+  `01 Garantias aos estados total` = list(
     criterio = "
     conta_contabil_numero %in% c('812110104', '812110204', '899913301', '899913302') &
     conta_corrente %in% c('CG0000064', 'CG0000069')
     "
   ),
   
-  `06.1 - G AOS ESTADOS - OPERAÇÕES INTERNAS (Fianças)` = list(
+  `02 Garantias aos estados operações externas` = list(
     criterio = "
-    conta_contabil_numero == '812110104' &
-    conta_corrente == 'CG0000064'
+    (conta_contabil_numero == '812110204' &
+    conta_corrente == 'CG0000069') |
+    (conta_contabil_numero == '899913302' &
+    conta_corrente == 'CG0000069')
     "
   ),
   
-  `06.2 - G AOS ESTADOS - OPERAÇÕES INTERNAS (Garantias OP)` = list(
+  `03 Garantias aos estados operações internas` = list(
     criterio = "
-    conta_contabil_numero == '899913301' &
-    conta_corrente == 'CG0000064'
+    (conta_contabil_numero == '812110104' &
+    conta_corrente == 'CG0000064') |
+    (conta_contabil_numero == '899913301' &
+    conta_corrente == 'CG0000064')
     "
   ),
   
-  `06.3 - G AOS ESTADOS - OPERAÇÕES EXTERNAS (Fianças)` = list(
-    criterio = "
-    conta_contabil_numero == '812110204' &
-    conta_corrente == 'CG0000069'
-    "
-  ),
-  
-  `06.4 - G AOS ESTADOS - OPERAÇÕES EXTERNAS (Garantias OP)` = list(
-    criterio = "
-    conta_contabil_numero == '899913302' &
-    conta_corrente == 'CG0000069'
-    "
-  ),
-  
-  `07 - G AOS MUNICÍPIOS - TOTAL` = list(
+  `04 Garantias aos municípios total` = list(
     criterio = "
     conta_contabil_numero %in% c('812110104', '812110204') &
     conta_corrente %in% c('CG0000065', 'CG0000070')
     "
   ),
   
-  `07.1 - G AOS MUNICÍPIOS - OPERAÇÕES INTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '812110104' &
-    conta_corrente == 'CG0000065'
-    "
-  ),
-  
-  `07.2 - G AOS MUNICÍPIOS - OPERAÇÕES EXTERNAS` = list(
+  `05 Garantias aos municípios operações externas` = list(
     criterio = "
     conta_contabil_numero == '812110204' &
     conta_corrente == 'CG0000070'
     "
   ),
   
-  `08 - G ÀS ENTIDADES CONTROLADAS - TOTAL` = list(
+  `06 Garantias aos municípios operações internas` = list(
+    criterio = "
+    conta_contabil_numero == '812110104' &
+    conta_corrente == 'CG0000065'
+    "
+  ),
+  
+  `07 Garantias às entidades controladas total` = list(
     criterio = "
     conta_contabil_numero %in% c('812110104', '812110204') &
     conta_corrente %in% c('CG0000067', 'CG0000071', 'CG0000072')
     "
   ),
   
-  `08.1 - G ÀS ENTIDADES - OPERAÇÕES INTERNAS` = list(
-    criterio = "
-    conta_contabil_numero == '812110104' &
-    conta_corrente == 'CG0000067'
-    "
-  ),
-  
-  `08.2 - G ÀS ENTIDADES - OPERAÇÕES EXTERNAS` = list(
+  `08 Garantias às entidades operações externas` = list(
     criterio = "
     conta_contabil_numero == '812110204' &
     conta_corrente %in% c('CG0000071', 'CG0000072')
     "
   ),
   
-  `09 - G POR FUNDOS E PROGRAMAS - TOTAL` = list(
+  `09 Garantias às entidades operações internas` = list(
+    criterio = "
+    conta_contabil_numero == '812110104' &
+    conta_corrente == 'CG0000067'
+    "
+  ),
+  
+  `10 Garantias por fundos e programas total` = list(
     criterio = "
     (conta_contabil_numero == '812110104' & 
      (conta_corrente %in% c('CGASCA001', 'CGLEI8036') | 
@@ -1701,38 +1548,120 @@ criterios_rgf_A03_garantias <- list(
     "
   ),
   
-  `09.1 - G FUNDOS - SEGUROS-GARANTIA` = list(
+  `11 Garantias fundos seguros-garantia` = list(
     criterio = "
     conta_contabil_numero == '812110110' &
     (conta_corrente == '999' | is.na(conta_corrente))
     "
   ),
   
-  `09.2 - G FUNDOS - ASCA` = list(
+  `12 Garantias fundos ASCA` = list(
     criterio = "
     conta_contabil_numero == '812110104' &
     conta_corrente == 'CGASCA001'
     "
   ),
   
-  `09.3 - G FUNDOS - LEI 8036 (FGTS)` = list(
+  `13 Garantias fundos Lei 8036 (FGTS)` = list(
     criterio = "
     conta_contabil_numero == '812110104' &
     conta_corrente == 'CGLEI8036'
     "
+  ),
+  
+  `14 Garantias total geral` = list(
+    criterio = "
+    conta_contabil_numero %in% c('812110104', '812110110', '812110204', '899913301', '899913302')
+    "
+  ),
+  
+  # ===========================================================================
+  # CONTRAGARANTIAS RECEBIDAS
+  # ===========================================================================
+  
+  `15 Contragarantias dos estados total` = list(
+    criterio = "
+    conta_contabil_numero %in% c('811110304', '811110404') &
+    conta_corrente %in% c('CG0000064', 'CG0000069')
+    "
+  ),
+  
+  `16 Contragarantias dos estados operações externas` = list(
+    criterio = "
+    conta_contabil_numero == '811110404' &
+    conta_corrente == 'CG0000069'
+    "
+  ),  
+  
+  `17 Contragarantias dos estados operações internas` = list(
+    criterio = "
+    conta_contabil_numero == '811110304' &
+    conta_corrente == 'CG0000064'
+    "
+  ),
+  
+  `18 Contragarantias dos municípios total` = list(
+    criterio = "
+    conta_contabil_numero %in% c('811110304', '811110404') &
+    conta_corrente %in% c('CG0000065', 'CG0000070')
+    "
+  ),
+  
+  `19 Contragarantias dos municípios operações externas` = list(
+    criterio = "
+    conta_contabil_numero == '811110404' &
+    conta_corrente == 'CG0000070'
+    "
+  ),
+  
+  `20 Contragarantias dos municípios operações internas` = list(
+    criterio = "
+    conta_contabil_numero == '811110304' &
+    conta_corrente == 'CG0000065'
+    "
+  ),
+  
+  `21 Contragarantias das entidades controladas total` = list(
+    criterio = "
+    conta_contabil_numero %in% c('811110304', '811110404') &
+    conta_corrente %in% c('CG0000067', 'CG0000071', 'CG0000072')
+    "
+  ),
+  
+  `22 Contragarantias das entidades operações externas` = list(
+    criterio = "
+    conta_contabil_numero == '811110404' &
+    conta_corrente %in% c('CG0000071', 'CG0000072')
+    "
+  ),
+  
+  `23 Contragarantias das entidades operações internas` = list(
+    criterio = "
+    conta_contabil_numero == '811110304' &
+    conta_corrente == 'CG0000067'
+    "
+  ),
+  
+  `24 Contragarantias total geral` = list(
+    criterio = "
+    conta_contabil_numero %in% c('811110304', '811110404')
+    "
   )
 )
 
-datatable(aplicar_criterios(rgf_a03, criterios_rgf_A03_garantias) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)),
+
+datatable(
+  aplicar_criterios(rgf_a03, criterios_rgf_A03_garantias) %>% 
+    group_by(ordem, nome) %>% 
+    summarise(valor = sum(valor), .groups = "drop"),
   rownames = FALSE,
   options = list(
     pageLength = -1,
     scrollX = TRUE,
-    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'Todas')),
-    columnDefs = list(
-      list(visible = FALSE, targets = 0)  # Oculta a primeira coluna (ordem)
-    )
-  ))%>% 
+    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'Todas'))
+   
+  )
+) %>% 
   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
 ```
 
@@ -1743,13 +1672,17 @@ datatable(aplicar_criterios(rgf_a03, criterios_rgf_A03_garantias) %>% group_by(o
 #| eval: true
 #| column: page
 
+# ===============================================================================
+# CRITÉRIOS RGF ANEXO 04 - OPERAÇÕES DE CRÉDITO
+# ===============================================================================
 
+# ===============================================================================
+# PARTE 1: RECEITAS ORÇAMENTÁRIAS
+# Base: rgf_a04_receitas
+# ===============================================================================
 criterios_rgf_A04_receitas <- list(
   
-  # ===========================================================================
-  # 1. MOBILIÁRIA INTERNA - REFINANCIAMENTO (CORRIGIDO)
-  # ===========================================================================
-  `01_mob_interna_refinanciamento` = list(
+  `01 Mobiliária interna refinanciamento` = list(
     criterio = "
     conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
                                   '621330000', '621340000', '621390000') &
@@ -1760,10 +1693,7 @@ criterios_rgf_A04_receitas <- list(
     "
   ),
   
-  # ===========================================================================
-  # 2. MOBILIÁRIA INTERNA - OUTRAS ORÇAMENTÁRIAS (CORRIGIDO)
-  # ===========================================================================
-  `02_mob_interna_outras_orcamentarias` = list(
+  `02 Mobiliária interna outras orçamentárias` = list(
     criterio = "
     conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
                                   '621330000', '621340000', '621390000') &
@@ -1774,10 +1704,7 @@ criterios_rgf_A04_receitas <- list(
     "
   ),
   
-  # ===========================================================================
-  # 3. MOBILIÁRIA EXTERNA - REFINANCIAMENTO
-  # ===========================================================================
-  `03_mob_externa_refinanciamento` = list(
+  `06 Mobiliária externa refinanciamento` = list(
     criterio = "
     conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
                                   '621330000', '621340000', '621390000') &
@@ -1786,10 +1713,7 @@ criterios_rgf_A04_receitas <- list(
     "
   ),
   
-  # ===========================================================================
-  # 4. MOBILIÁRIA EXTERNA - DEMAIS EXTERNAS
-  # ===========================================================================
-  `04_mob_externa_demais_orcamentaria` = list(
+  `08 Mobiliária externa outras operações mobiliárias externas` = list(
     criterio = "
     conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
                                   '621330000', '621340000', '621390000') &
@@ -1798,10 +1722,7 @@ criterios_rgf_A04_receitas <- list(
     "
   ),
   
-  # ===========================================================================
-  # 5. CONTRATUAL INTERNA - ABERTURA DE CRÉDITO
-  # ===========================================================================
-  `05_contratual_interna_abertura` = list(
+  `09 Contratual interna abertura de crédito` = list(
     criterio = "
     conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
                                   '621330000', '621340000', '621390000') &
@@ -1809,10 +1730,15 @@ criterios_rgf_A04_receitas <- list(
     "
   ),
   
-  # ===========================================================================
-  # 6. CONTRATUAL EXTERNA - ABERTURA DE CRÉDITO - ORÇAMENTÁRIAS
-  # ===========================================================================
-  `06_contratual_externa_orcamentaria` = list(
+  `11 Contratual interna outras operações contratuais internas` = list(
+    criterio = "
+    conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
+                                  '621330000', '621340000', '621390000') &
+    startsWith(natureza_receita_codigo_completo, '2119001')
+    "
+  ),
+  
+  `12 Contratual externa abertura de crédito orçamentárias` = list(
     criterio = "
     conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
                                   '621330000', '621340000', '621390000') &
@@ -1821,146 +1747,109 @@ criterios_rgf_A04_receitas <- list(
     "
   ),
   
-  # ===========================================================================
-  # 7. OUTRAS OPERAÇÕES ORÇAMENTÁRIAS
-  # ===========================================================================
-  `07_outras_operacoes_orcamentarias` = list(
+  `15 Contratual externa outras operações contratuais externas` = list(
     criterio = "
     conta_contabil_numero %in% c('621200000', '621310000', '621320000', 
                                   '621330000', '621340000', '621390000') &
-    (startsWith(natureza_receita_codigo_completo, '2119001') |
-     startsWith(natureza_receita_codigo_completo, '2129001'))
+    startsWith(natureza_receita_codigo_completo, '2129001')
     "
   )
 )
 
+# ===============================================================================
+# PARTE 2: EXTRAORÇAMENTÁRIAS
+# Base: rgf_a02_balancete
+# ===============================================================================
+criterios_rgf_A04_extra_orcamentarias <- list(
+  
+  `03 Mobiliária interna extraorçamentárias aporte Bacen` = list(
+    criterio = "
+    conta_contabil_numero %in% c('896110303', '896110304')
+    "
+  ),
+  
+  `04 Mobiliária interna extraorçamentárias aporte em empresas` = list(
+    criterio = "
+    conta_contabil_numero %in% c('896110311', '896110312')
+    "
+  ),
+  
+  `05 Mobiliária interna extraorçamentárias trocas e demais operações internas` = list(
+    criterio = "
+    conta_contabil_numero %in% c('896110301', '896110302', '896110305', '896110306')
+    "
+  ),
+  
+  `07 Mobiliária externa assunção reconhecimento e confissão de dívidas` = list(
+    criterio = "
+    conta_contabil_numero %in% c('896110309', '896110310')
+    "
+  ),
+  
+  `10 Contratual interna assunção reconhecimento e confissão de dívidas` = list(
+    criterio = "
+    conta_contabil_numero == '212110398'
+    "
+  ),
+  
+  `13 Contratual externa abertura de crédito extraorçamentárias` = list(
+    criterio = "
+    conta_contabil_numero %in% c('896110307', '896110308')
+    "
+  ),
+  
+  `14 Contratual externa assunção reconhecimento e confissão de dívidas` = list(
+    criterio = "
+    FALSE
+    "
+  )
+)
 
 # ===============================================================================
-# PARTE 2: CRITÉRIOS PARA DESPESAS
-# Utiliza: conta_contabil_numero + grupo_despesa_codigo_grupo
+# PARTE 3: DESPESAS (APLICAÇÃO DOS RECURSOS)
+# Base: rgf_a04_despesas
 # ===============================================================================
-
 criterios_rgf_A04_despesas <- list(
   
-  # ===========================================================================
-  # 1. AMORTIZAÇÃO E REFINANCIAMENTO DA DÍVIDA
-  # ===========================================================================
-  `01_amortizacao_refinanciamento` = list(
+  `16 Amortização refinanciamento` = list(
     criterio = "
     conta_contabil_numero %in% c('622130400', '622130600', '622130700') &
     grupo_despesa_codigo_grupo == '6'
     "
   ),
   
-  # ===========================================================================
-  # 2. OUTRAS DESPESAS CORRENTES (Grupo 3)
-  # ===========================================================================
-  `02_outras_despesas_correntes` = list(
+  `17 Outras despesas correntes` = list(
     criterio = "
     conta_contabil_numero %in% c('622130400', '622130600', '622130700') &
     grupo_despesa_codigo_grupo == '3'
     "
   ),
   
-  # ===========================================================================
-  # 3. PESSOAL E ENCARGOS SOCIAIS (Grupo 1)
-  # ===========================================================================
-  `03_pessoal_encargos_sociais` = list(
+  `18 Pessoal e encargos sociais` = list(
     criterio = "
     conta_contabil_numero %in% c('622130400', '622130600', '622130700') &
     grupo_despesa_codigo_grupo == '1'
     "
   ),
   
-  # ===========================================================================
-  # 4. JUROS E ENCARGOS DA DÍVIDA (Grupo 2)
-  # ===========================================================================
-  `04_juros_encargos_divida` = list(
+  `19 Juros e encargos da dívida` = list(
     criterio = "
     conta_contabil_numero %in% c('622130400', '622130600', '622130700') &
     grupo_despesa_codigo_grupo == '2'
     "
   ),
   
-  # ===========================================================================
-  # 5. INVESTIMENTOS (Grupo 4)
-  # ===========================================================================
-  `05_investimentos` = list(
+  `20 Investimentos` = list(
     criterio = "
     conta_contabil_numero %in% c('622130400', '622130600', '622130700') &
     grupo_despesa_codigo_grupo == '4'
     "
   ),
   
-  # ===========================================================================
-  # 6. INVERSÕES FINANCEIRAS (Grupo 5)
-  # ===========================================================================
-  `06_inversoes_financeiras` = list(
+  `21 Inversões financeiras` = list(
     criterio = "
     conta_contabil_numero %in% c('622130400', '622130600', '622130700') &
     grupo_despesa_codigo_grupo == '5'
-    "
-  )
-)
-
-# ===============================================================================
-# PARTE 3: CRITÉRIOS PARA EXTRA-ORÇAMENTÁRIAS (Contas 896 e 212)
-# Nota: Estes critérios usam apenas conta_contabil_numero
-# ===============================================================================
-
-criterios_rgf_A04_extra_orcamentarias <- list(
-  
-  # ===========================================================================
-  # 1. MOBILIÁRIA INTERNA - ASSUNÇÃO E RECONHECIMENTO (NOVO)
-  # ===========================================================================
-  `01_mob_interna_assuncao` = list(
-    criterio = "
-    conta_contabil_numero %in% c('896110309', '896110310')
-    "
-  ),
-  
-  # ===========================================================================
-  # 2. MOBILIÁRIA INTERNA - APORTE BACEN (CORRIGIDO)
-  # ===========================================================================
-  `02_mob_interna_extra_aporte_bacen` = list(
-    criterio = "
-    conta_contabil_numero %in% c('896110303', '896110304')
-    "
-  ),
-  
-  # ===========================================================================
-  # 3. MOBILIÁRIA INTERNA - APORTE EMPRESAS
-  # ===========================================================================
-  `03_mob_interna_extra_aporte_empresas` = list(
-    criterio = "
-    conta_contabil_numero %in% c('896110311', '896110312')
-    "
-  ),
-  
-  # ===========================================================================
-  # 4. MOBILIÁRIA INTERNA - DEMAIS (CORRIGIDO)
-  # ===========================================================================
-  `04_mob_interna_extra_demais` = list(
-    criterio = "
-    conta_contabil_numero %in% c('896110301', '896110302', '896110305', '896110306')
-    "
-  ),
-  
-  # ===========================================================================
-  # 5. MOBILIÁRIA EXTERNA - EXTERNAS
-  # ===========================================================================
-  `05_mob_externa_externas` = list(
-    criterio = "
-    conta_contabil_numero %in% c('896110307', '896110308')
-    "
-  ),
-  
-  # ===========================================================================
-  # 6. CONTRATUAL INTERNA - DEMAIS INTERNAS
-  # ===========================================================================
-  `06_contratual_interna_demais` = list(
-    criterio = "
-    conta_contabil_numero == '212110398'
     "
   )
 )
@@ -1975,32 +1864,32 @@ datatable(aplicar_criterios(rgf_a04_receitas, criterios_rgf_A04_receitas) %>% gr
   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
 
 
-df_rgf_a04 <- rbind(df_criterios_rgf_A04_despesas, df_criterios_rgf_A04_receitas)
-
-df_rgf_a04 <- rbind(df_rgf_a04 , df_criterios_rgf_A04_extra_orcamentarias)
-
-datatable(aplicar_criterios(rgf_a04_despesas, criterios_rgf_A04_despesas) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
-  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
-
-
-
-datatable(aplicar_criterios(rgf_a02_balancete, criterios_rgf_A04_extra_orcamentarias) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
-  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
-
-
-
-datatable(
-  df_rgf_a04 %>% 
-    group_by(ordem, nome) %>% 
-    summarise(valor = sum(valor), .groups = "drop"),
-  rownames = FALSE,
-  options = list(
-    pageLength = -1,
-    scrollX = TRUE,
-    lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'Todas'))
-  )
-) %>% 
-  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+# df_rgf_a04 <- rbind(df_criterios_rgf_A04_despesas, df_criterios_rgf_A04_receitas)
+# 
+# df_rgf_a04 <- rbind(df_rgf_a04 , df_criterios_rgf_A04_extra_orcamentarias)
+# 
+# datatable(aplicar_criterios(rgf_a04_despesas, criterios_rgf_A04_despesas) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
+#   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+# 
+# 
+# 
+# datatable(aplicar_criterios(rgf_a02_balancete, criterios_rgf_A04_extra_orcamentarias) %>% group_by(ordem,nome) %>% summarise(valor = sum(valor)))%>% 
+#   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+# 
+# 
+# 
+# datatable(
+#   df_rgf_a04 %>% 
+#     group_by(ordem, nome) %>% 
+#     summarise(valor = sum(valor), .groups = "drop"),
+#   rownames = FALSE,
+#   options = list(
+#     pageLength = -1,
+#     scrollX = TRUE,
+#     lengthMenu = list(c(10, 25, 50, -1), c('10', '25', '50', 'Todas'))
+#   )
+# ) %>% 
+#   formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
 ```
 
 # 📋 RGF Anexo 05 (Disponibilidades)
@@ -2429,7 +2318,7 @@ rgf_a05_clean <- rgf_a05_clean %>%
 
 rgf_a05_clean <- rgf_a05_clean %>%
   mutate(
-    disponibilidade_antes_insc_rp_clean = 
+    disponibilidade_antes_inscr_rp_clean = 
       disponibilidade_bruta_clean - 
       rp_liquidados_nao_pagos_exercicios_anteriores - 
       rp_empenhados_nao_liquidados_exercicios_anteriores - 
@@ -2454,7 +2343,7 @@ rgf_a05_final <- rgf_a05_clean %>%
     rp_liquidados_nao_pagos_exercicio,
     rp_empenhados_nao_liquidados_exercicios_anteriores,
     demais_obrigacoes_financeiras_clean,
-    disponibilidade_antes_insc_rp_clean
+    disponibilidade_antes_inscr_rp_clean
   ) %>%
   arrange(linhas)
 
@@ -2502,6 +2391,8 @@ novos_nomes <- rgf_a05_formatada %>%
   gsub("nao pagos", "NP", .) %>%
   gsub("exercicios", "exerc.", .) %>%
   gsub("anteriores", "ant.", .) %>%
+  gsub("liquidados", "liq.", .) %>%
+  gsub("empenhados", "emp.", .) %>%
   gsub("disponibilidade", "disp.", .)
 
 datatable(
