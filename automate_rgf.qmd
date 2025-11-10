@@ -6,7 +6,7 @@ date: today
 execute:
   warning: false
   message: false
-  cache: true
+  cache: false
 format:
   html:
     theme: cosmo
@@ -69,7 +69,7 @@ print("✅ Bibliotecas carregadas com sucesso!")
 
 ```{r variaveis_globais}
 # Filtro principal do mês
-mes_filtro <- "202508"
+mes_filtro <- "202509"
 
 mes_pasta <- str_c("data/",mes_filtro,"/")
 
@@ -2664,3 +2664,314 @@ formatar_real <- function(valor, decimais = 2, prefixo = "R$ ") {
 formatar_real(valor_rcl)
 
 ```
+
+
+```{r}
+#| column: screen
+# ===============================================================================
+# ANEXO 5 RGF - UNIÃO E EXECUTIVO (CORRIGIDO)
+# Protótipo em R/RStudio
+# ===============================================================================
+
+library(dplyr)
+library(tidyr)
+library(readxl)
+library(writexl)
+library(janitor)
+library(DT)
+
+# ===============================================================================
+# FUNÇÃO AUXILIAR
+# ===============================================================================
+
+get_col <- function(df, nome_coluna) {
+  if (nome_coluna %in% names(df)) {
+    return(df[[nome_coluna]])
+  } else {
+    return(0)
+  }
+}
+
+# ===============================================================================
+# ETAPA 0: CRIAR VARIÁVEL ABRANGÊNCIA COM DUPLICAÇÃO DE REGISTROS
+# ===============================================================================
+
+# União: TODOS os registros
+rgf_a05_uniao <- rgf_a05 %>%
+  mutate(abrangencia = "uniao")
+
+# Executivo: Apenas Poder Executivo, exceto DPU (34000) e MPU (59000)
+rgf_a05_executivo <- rgf_a05 %>%
+  filter(
+    orgao_uge_poder_codigo == "0" & 
+    !(orgao_uge_orgao_maximo_codigo %in% c("34000", "59000"))
+  ) %>%
+  mutate(abrangencia = "executivo")
+
+# Combinar as duas abrangências (duplicando registros do Executivo)
+rgf_a05_abrangencia <- bind_rows(rgf_a05_uniao, rgf_a05_executivo)
+
+# Verificar distribuição
+cat("=== VERIFICAÇÃO DE ABRANGÊNCIA ===\n")
+rgf_a05_abrangencia %>% 
+  count(abrangencia) %>%
+  print()
+
+# Verificar registros excluídos do Executivo
+cat("\n=== ÓRGÃOS EXCLUÍDOS DO EXECUTIVO ===\n")
+rgf_a05 %>%
+  filter(orgao_uge_orgao_maximo_codigo %in% c("34000", "59000")) %>%
+  count(orgao_uge_orgao_maximo_codigo, orgao_uge_orgao_maximo_nome) %>%
+  print()
+
+# ===============================================================================
+# ETAPA 1: APLICAR CRITÉRIOS E PIVOTAR
+# ===============================================================================
+
+# Aplicar critérios de filtro COM abrangência
+resultado_rgf_a05 <- aplicar_criterios(
+  df = rgf_a05_abrangencia,
+  criterios = criterios_rgf_a05_disponibilidade,
+  group_vars = c("linhas", "abrangencia")
+)
+
+# Pivotar para formato wide
+rgf_a05_wide <- resultado_rgf_a05 %>%
+  select(mes_lancamento, linhas, abrangencia, categoria, valor) %>%
+  pivot_wider(names_from = categoria, values_from = valor, values_fill = 0)
+
+# ===============================================================================
+# ETAPA 2: RENOMEAR COLUNAS BÁSICAS
+# ===============================================================================
+
+rgf_a05_wide <- rgf_a05_wide %>%
+  mutate(
+    # Colunas de receitas e despesas
+    receitas = get_col(., "01_receitas"),
+    despesas = get_col(., "02_despesas"),
+    
+    # Disponibilidade de caixa
+    disponibilidade_caixa_bruta = get_col(., "03_disponibilidade_caixa_bruta"),
+    deducao_receitas_classificar = get_col(., "04_deducao_receitas_classificar"),
+    
+    # Restos a Pagar
+    rp_liquidados_nao_pagos_exercicios_anteriores = 
+      get_col(., "05_rp_liquidados_nao_pagos_exercicios_anteriores"),
+    rp_liquidados_nao_pagos_exercicio = 
+      get_col(., "06_rp_liquidados_nao_pagos_exercicio"),
+    rp_empenhados_nao_liquidados_exercicios_anteriores = 
+      get_col(., "07_rp_empenhados_nao_liquidados_exercicios_anteriores"),
+    
+    # Obrigações
+    demais_obrigacoes_new = get_col(., "21_demais_obrigacoes_new"),
+    demais_obrigacoes_subtracao = get_col(., "22_demais_obrigacoes_subtracao"),
+    
+    # TEDs
+    conta_894310000_disp_recursos_ted_liberar = 
+      get_col(., "15_conta_894310000_disp_recursos_ted_liberar"),
+    conta_894320000_disp_recursos_ted_receber = 
+      get_col(., "16_conta_894320000_disp_recursos_ted_receber")
+  )
+
+# ===============================================================================
+# ETAPA 3: CALCULAR DISPONIBILIDADE BRUTA CLEAN
+# ===============================================================================
+
+rgf_a05_clean <- rgf_a05_wide %>%
+  mutate(
+    disponibilidade_bruta_clean = case_when(
+      linhas == "7_fundos_orgaos_programa" ~ 
+        disponibilidade_caixa_bruta + 
+        conta_894320000_disp_recursos_ted_receber - 
+        conta_894310000_disp_recursos_ted_liberar,
+      
+      linhas == "9_nao_classificados" ~ 
+        disponibilidade_caixa_bruta - deducao_receitas_classificar,
+      
+      TRUE ~ disponibilidade_caixa_bruta
+    )
+  )
+
+# ===============================================================================
+# ETAPA 4: CALCULAR DEMAIS OBRIGAÇÕES FINANCEIRAS CLEAN
+# ===============================================================================
+
+rgf_a05_clean <- rgf_a05_clean %>%
+  mutate(
+    demais_obrigacoes_financeiras_clean = case_when(
+      linhas == "7_fundos_orgaos_programa" ~ 
+        demais_obrigacoes_new - demais_obrigacoes_subtracao,
+      
+      TRUE ~ 
+        demais_obrigacoes_new - demais_obrigacoes_subtracao + 
+        conta_894310000_disp_recursos_ted_liberar - 
+        conta_894320000_disp_recursos_ted_receber
+    )
+  )
+
+# ===============================================================================
+# ETAPA 5: LER E PREPARAR DISPONIBILIDADE INICIAL DAS DUAS ABAS
+# ===============================================================================
+
+# Ler aba União
+disp_inicial_uniao <- read_excel("disponibilidade_inicial.xlsx", sheet = "uniao") %>%
+  mutate(abrangencia = "uniao")
+
+# Ler aba Executivo
+disp_inicial_executivo <- read_excel("disponibilidade_inicial.xlsx", sheet = "executivo") %>%
+  mutate(abrangencia = "executivo")
+
+# Combinar as duas abas
+disponibilidade_inicial <- bind_rows(disp_inicial_uniao, disp_inicial_executivo)
+
+# ===============================================================================
+# ETAPA 6: JOIN COM DISPONIBILIDADE INICIAL
+# ===============================================================================
+
+rgf_a05_clean <- rgf_a05_clean %>%
+  left_join(disponibilidade_inicial, by = c("linhas", "abrangencia"))
+
+# ===============================================================================
+# ETAPA 7: CALCULAR DEMAIS FLUXOS CLEAN
+# ===============================================================================
+
+rgf_a05_clean <- rgf_a05_clean %>%
+  mutate(
+    demais_fluxos_clean = 
+      disponibilidade_inicial + 
+      receitas - 
+      despesas - 
+      disponibilidade_bruta_clean
+  )
+
+# ===============================================================================
+# ETAPA 8: CALCULAR DISPONIBILIDADE ANTES DA INSCRIÇÃO DE RP
+# ===============================================================================
+
+rgf_a05_clean <- rgf_a05_clean %>%
+  mutate(
+    disponibilidade_antes_inscr_rp_clean = 
+      disponibilidade_bruta_clean - 
+      rp_liquidados_nao_pagos_exercicios_anteriores - 
+      rp_empenhados_nao_liquidados_exercicios_anteriores - 
+      rp_liquidados_nao_pagos_exercicio - 
+      demais_obrigacoes_financeiras_clean
+  )
+
+# ===============================================================================
+# ETAPA 9: SELECIONAR E ORDENAR COLUNAS FINAIS
+# ===============================================================================
+
+rgf_a05_final <- rgf_a05_clean %>%
+  select(
+    mes_lancamento,
+    linhas,
+    abrangencia,
+    disponibilidade_inicial,
+    receitas,
+    despesas,
+    demais_fluxos_clean,
+    disponibilidade_bruta_clean,
+    rp_liquidados_nao_pagos_exercicios_anteriores,
+    rp_liquidados_nao_pagos_exercicio,
+    rp_empenhados_nao_liquidados_exercicios_anteriores,
+    demais_obrigacoes_financeiras_clean,
+    disponibilidade_antes_inscr_rp_clean
+  ) %>%
+  arrange(abrangencia, linhas)
+
+# ===============================================================================
+# ETAPA 10: SEPARAR UNIÃO E EXECUTIVO
+# ===============================================================================
+
+# Tabela União
+rgf_a05_uniao <- rgf_a05_final %>%
+  filter(abrangencia == "uniao") %>%
+  select(-abrangencia)
+
+# Tabela Executivo
+rgf_a05_executivo <- rgf_a05_final %>%
+  filter(abrangencia == "executivo") %>%
+  select(-abrangencia)
+
+# ===============================================================================
+# ETAPA 11: FORMATAR TABELAS EM MILHÕES
+# ===============================================================================
+
+formatar_tabela <- function(df) {
+  df %>% 
+    filter(linhas != "outros") %>% 
+    adorn_totals("row") %>%
+    mutate(
+      across(
+        where(is.numeric) & !matches("mes_lancamento"),
+        ~ round(.x, 2)
+      )
+    )
+}
+
+rgf_a05_uniao_formatada <- formatar_tabela(rgf_a05_uniao)
+rgf_a05_executivo_formatada <- formatar_tabela(rgf_a05_executivo)
+
+# ===============================================================================
+# ETAPA 12: EXPORTAR
+# ===============================================================================
+
+write_xlsx(
+  list(
+    "Uniao_Final" = rgf_a05_uniao,
+    "Uniao_Milhoes" = rgf_a05_uniao_formatada,
+    "Executivo_Final" = rgf_a05_executivo,
+    "Executivo_Milhoes" = rgf_a05_executivo_formatada,
+    "Completo" = rgf_a05_final,
+    "Disponibilidade_Inicial" = disponibilidade_inicial
+  ),
+  path = "rgf_a05_final_completo.xlsx"
+)
+
+# ===============================================================================
+# ETAPA 13: VISUALIZAÇÃO - UNIÃO
+# ===============================================================================
+
+novos_nomes <- rgf_a05_uniao_formatada %>% 
+  select(-mes_lancamento) %>% 
+  colnames() %>%
+  gsub("_clean", "", .) %>%
+  gsub("_", " ", .) %>%
+  gsub("nao pagos", "NP", .) %>%
+  gsub("exercicios", "exerc.", .) %>%
+  gsub("anteriores", "ant.", .) %>%
+  gsub("liquidados", "liq.", .) %>%
+  gsub("empenhados", "emp.", .) %>%
+  gsub("disponibilidade", "disp.", .)
+
+cat("\n=== TABELA UNIÃO ===\n")
+datatable(
+  rgf_a05_uniao_formatada %>% select(-mes_lancamento),
+  colnames = novos_nomes,
+  caption = "RGF Anexo 5 - UNIÃO (Todos os Poderes)",
+  options = list(scrollX = TRUE, pageLength = 15),
+  rownames = FALSE
+) %>%
+  formatCurrency(2:11, "", mark = ".", dec.mark = ",", digits = 2)
+
+# ===============================================================================
+# ETAPA 14: VISUALIZAÇÃO - EXECUTIVO
+# ===============================================================================
+
+
+```
+
+```{r}
+#| column: screen
+cat("\n=== TABELA EXECUTIVO ===\n")
+datatable(
+  rgf_a05_executivo_formatada %>% select(-mes_lancamento),
+  colnames = novos_nomes,
+  caption = "RGF Anexo 5 - PODER EXECUTIVO (exceto DPU e MPU)",
+  options = list(scrollX = TRUE, pageLength = 15),
+  rownames = FALSE
+) %>%
+  formatCurrency(2:11, "", mark = ".", dec.mark = ",", digits = 2)
+```
+

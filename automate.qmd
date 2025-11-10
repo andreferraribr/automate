@@ -63,7 +63,7 @@ print("✅ Bibliotecas carregadas com sucesso!")
 
 ```{r variaveis_globais}
 # Filtro principal do mês
-mes_filtro <- "202509"
+mes_filtro <- "202508"
 
 mes_pasta <- str_c("data/",mes_filtro,"/")
 
@@ -76,7 +76,7 @@ print(paste("📅 Mês de referência definido:", mes_filtro))
 
 ```{r dados_receita}
 #| echo: true
-#| eval: true
+#| eval: false
 
 dados_receita_liquida <- read_excel(str_c(mes_pasta, "tg_receita_liquida.xlsx"), skip = 5) %>% 
   clean_names() %>% 
@@ -2702,11 +2702,18 @@ criterios_rgf_A02_dcl_2b <- list(
 )
 
 
-datatable(aplicar_criterios(dcl_1, criterios_rgf_A02_dcl_1))
+dcl_p1 <- (aplicar_criterios(dcl_1, criterios_rgf_A02_dcl_1))
 
-datatable(aplicar_criterios(dcl_2a, criterios_rgf_A02_dcl_2a))
+dcl_p2 <- (aplicar_criterios(dcl_2a, criterios_rgf_A02_dcl_2a))
 
-datatable(aplicar_criterios(dcl_2b, criterios_rgf_A02_dcl_2b))
+dcl_p3 <- (aplicar_criterios(dcl_2b, criterios_rgf_A02_dcl_2b))
+
+
+dcl_p4 <-  rbind(dcl_p1, dcl_p2)
+
+dcl_p4 <- rbind(dcl_p3, dcl_p4)
+
+datatable(dcl_p4 %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))
 
 
 ```
