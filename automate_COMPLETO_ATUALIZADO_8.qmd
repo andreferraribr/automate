@@ -26,7 +26,7 @@ format:
 params:
   # === RELATÓRIOS A GERAR ===
   relatorios_ativos:
-    value: [ "RREO_T03"]
+    value: [ "RGF_A01", "RGF_A02", "RGF_A03", "RGF_A04", "RGF_A05", "RGF_T04", "RREO_A01", "RREO_A02", "RREO_A03", "RREO_A04", "RREO_A06", "RREO_A07", "RREO_A08", "RREO_A09", "RREO_A11", "RREO_A12", "RREO_T01", "RREO_T02", "RREO_T03", "RREO_T04"]
     choices: [
       # RGF - Relatório de Gestão Fiscal
       "RGF_A01",  # Despesa com Pessoal
@@ -344,6 +344,10 @@ options(DT.options =
 # Operadores customizados
 `%notin%` <- Negate(`%in%`)
 `%||%` <- function(x, y) if(is.null(x) || length(x) == 0 || is.na(x)) y else x
+
+formatar_numero <- function(x) {
+  format(x, big.mark = ".", decimal.mark = ",", scientific = FALSE, nsmall = 2)
+}
 
 print("✅ Bibliotecas carregadas com sucesso!")
 ```
@@ -3511,13 +3515,7 @@ dados_despesa <- map_df(arq_despesa, ~ read_excel(.x, skip = 5, col_types = "tex
   )
 
 
-# RGF Anexo 1
-rgf_a01 <- read_excel(str_c(mes_pasta, "rgf_a01.xlsx"), skip = 5) %>% 
-  clean_names() %>%
-  mutate(
-    mes_lancamento = as.numeric(mes_lancamento),
-    data_lancamento = ceiling_date(ymd(paste0(mes_lancamento, "01")), "month") - days(1)
-  )
+
 ```
 
 ## 📋 Dados de Restos a Pagar
@@ -3560,7 +3558,7 @@ dados_rp_anexo_08 <- read_excel(str_c(mes_pasta, "tg_rp_anexo_08.xlsx"), skip = 
   )
 
 # RP Anexo 03 RCL
-dados_rp_anexo_03_rcl <- read_excel(str_c(mes_pasta, "tg_rp_anexo_03_rcl.xlsx"), skip = 5) %>% 
+dados_rp_anexo_03_rcl <- read_excel(str_c(mes_pasta, "tg_rp_anexo_03_rcl.xlsx"), skip = 5) %>%
   clean_names() %>%
   mutate(
     mes_lancamento = as.numeric(mes_lancamento),
@@ -5133,9 +5131,9 @@ criterios_rreo_A01_despesas_bo <- list(
 )
 datatable(aplicar_criterios(dados_despesa, criterios_rreo_A01_despesas_bo))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 
-bo_depsesa <- (aplicar_criterios(dados_despesa, criterios_rreo_A01_despesas_bo))
+bo_depsesa <- (aplicar_criterios(dados_despesa%>% filter(item_informacao_codigo == "23"), criterios_rreo_A01_despesas_bo))
 
-datatable(bo_depsesa %>% filter(item_informacao_codigo == "23") %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
+datatable(bo_depsesa  %>% group_by(ordem, nome) %>% summarise(valor = sum(valor)))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 
 
 datatable(dados_despesa %>%filter(item_informacao_codigo == 23, tipo_modalidade != "intra") %>% group_by(categoria_economica_despesa_codigo, categoria_economica_despesa_nome, grupo_despesa_codigo_grupo,grupo_despesa_nome , refinanciamento, tipo_modalidade) %>% summarise(saldo_r_item_informacao = sum(saldo_r_item_informacao)))%>% formatRound("saldo_r_item_informacao", 2, mark = ".", dec.mark = "," )
@@ -5185,6 +5183,7 @@ datatable(dados_despesa %>% group_by(funcao_governo_codigo, funcao_governo_nome,
 ```{r criterios-receitas}
 #| eval: !expr executar_relatorio("RREO_A03")
 #| code-fold: true
+
 
 
 # ===============================================================================
@@ -5325,9 +5324,9 @@ criterios_rreo_A03_rcl_receitas_rcl <- list(
 )
 
 
-datatable(aplicar_criterios(dados_receita, criterios_rreo_A03_rcl_receitas_rcl))
+# datatable(aplicar_criterios(dados_receita, criterios_rreo_A03_rcl_receitas_rcl))
 
-datatable(consolidar_criterios())
+
 ```
 
 ```{r criterios_despesas}
@@ -5368,7 +5367,7 @@ criterios_rreo_A03_rcl_despesas_rcl <- list(
   )
 )
 
-datatable(aplicar_criterios(df = dados_despesa %>% unique(), criterios_rreo_A03_rcl_despesas_rcl))
+# datatable(aplicar_criterios(df = dados_despesa %>% unique(), criterios_rreo_A03_rcl_despesas_rcl))
 ```
 
 ```{r criterio_rp_cancelados_transferencias}
@@ -5525,6 +5524,41 @@ datatable(aplicar_criterios(df = dados_despesa %>%
  
 ```
 
+
+### Resultado RGPS
+
+```{r resuldado_rgps}
+formatar_numero(resultado_rgps <- (
+  aplicar_criterios(df = dados_receita %>% 
+    filter(
+      unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917) | 
+      natureza_receita_codigo_completo == 79900211,
+           item_informacao_codigo %in% c(5)
+      ), criterios_rreo_A04_rgps_receitas_rgps) %>% filter(ordem != "02") %>% summarise(valor=sum(valor))
+  -
+    aplicar_criterios(df = dados_despesa %>% 
+    filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917),
+           item_informacao_codigo %in% c(25)
+           ), criterios_rreo_A04_rgps_despesas_rgps)%>% summarise(valor=sum(valor))
+))
+
+datatable( aplicar_criterios(df = dados_receita %>% 
+    filter(
+      unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917) | 
+      natureza_receita_codigo_completo == 79900211,
+           item_informacao_codigo %in% c(5)
+      ), criterios_rreo_A04_rgps_receitas_rgps))%>% 
+  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+
+datatable(aplicar_criterios(df = dados_despesa %>% 
+    filter(unidade_orcamentaria_codigo %in% c(33904, 40904, 55902, 25917),
+           item_informacao_codigo %in% c(25)
+           ), criterios_rreo_A04_rgps_despesas_rgps))%>% 
+  formatRound(c("valor"), 2, mark = ".", dec.mark = ",")
+
+```
+
+
 ## 👥 REGIME PRÓPRIO DE PREVIDÊNCIA SOCIAL (RPPS)
 
 ### 💰 Critérios de Receitas RPPS
@@ -5676,6 +5710,28 @@ datatable(aplicar_criterios(df = dados_despesa %>%
 
 ```
 
+### Resultado RPPS
+
+```{r resultado_rpps}
+formatar_numero(resultado_rpps <- (
+  aplicar_criterios(df = dados_receita %>% 
+    filter(
+      unidade_orcamentaria_codigo %notin% c(73901),
+      fonte_recursos_codigo %notin% c('054'),
+           item_informacao_codigo %in% c(5)
+    ), criterios_rreo_A04_rpps_receitas_civil_militar_rpps)%>% summarise(valor=sum(valor))
+  -
+  aplicar_criterios(df = dados_despesa %>% 
+    filter(
+      unidade_orcamentaria_codigo %notin% c(73901),
+      elemento_despesa_codigo %notin% c('04', '07', '11', '13', '16', '39', '67', '96'),
+      acao_governo_codigo != '09HB',
+           item_informacao_codigo %in% c(25)
+    ), criterios_rreo_A04_rpps_despesas_civil_militar_rpps)%>% summarise(valor=sum(valor))
+))
+```
+
+
 ## 🏛️ REGIME PRÓPRIO DE PREVIDÊNCIA SOCIAL - FCDF
 
 ### 💰 Critérios de Receitas FCDF
@@ -5781,6 +5837,30 @@ datatable(aplicar_criterios(df = dados_despesa %>%
 
 
 ```
+
+### Resultado FCDF
+
+```{r}
+formatar_numero(resultado_fcdf <- (
+  aplicar_criterios(df = dados_receita %>% 
+    filter(unidade_orcamentaria_codigo %in% c(73901),
+           item_informacao_codigo %in% c(5)),
+    criterios_rreo_A04_rpps_receitas_fcdf)%>% summarise(valor=sum(valor))
+    -
+aplicar_criterios(df = dados_despesa %>% 
+    filter(
+      unidade_orcamentaria_codigo %in% c(73901),
+      elemento_despesa_codigo %notin% c('04', '07', '11', '13', '16', '39', '67', '96'),
+      acao_governo_codigo != '09HB',
+      item_informacao_codigo %in% c(25)
+    ),
+    criterios_rreo_A04_rpps_despesas_fcdf)%>% summarise(valor=sum(valor))
+))
+
+```
+
+
+
 
 # 📋 RREO Anexo 06 (Resultado Primário)
 
@@ -6318,7 +6398,7 @@ criterios_rreo_A08_mde_despesas <- list(
     criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134', '213', '242') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '368'"
   ),
   `04 - ENSINO SUPERIOR` = list(
-    criterio = "fonte_recursos_codigo %notin% c(157, 175, 193, 109, 134, 181) & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo %in% c('364')"
+    criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134', '213', '242') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo %in% c('364')"
   ),
   `05 - ENSINO PROFISSIONAL NÃO INTEGRADO AO ENSINO REGULAR` = list(
     criterio = "fonte_recursos_codigo %notin% c('008', '035', '133', '134') & iduso_codigo == 8 & elemento_despesa_codigo %notin% c('01', '03', '59') & subfuncao_governo_codigo == '363'"
@@ -6349,7 +6429,7 @@ criterios_rreo_A08_mde_despesas <- list(
   )
 )
 
-datatable(aplicar_criterios(dados_despesa, criterios_rreo_A08_mde_despesas))
+datatable(aplicar_criterios(dados_despesa %>% filter(item_informacao_codigo == "25"), criterios_rreo_A08_mde_despesas))%>% formatRound("valor", 2, mark = ".", dec.mark = "," )
 ```
 
 ## 💰 Cálculo da Receita Líquida de Impostos (RLI)
@@ -6526,9 +6606,9 @@ print(paste("📅 RLI para", mes_filtro, ":", formatar_numero(rli_atual)))
 #| eval: !expr executar_relatorio("RREO_A08")
 
 # Despesas MDE das categorias principais (02, 03, 04, 05, 06)
-datatable(despesa_mde <- aplicar_criterios(dados_despesa, criterios_rreo_A08_mde_despesas) %>% 
+datatable(despesa_mde <- aplicar_criterios(dados_despesa %>% filter(item_informacao_codigo == 25), criterios_rreo_A08_mde_despesas) %>% 
   filter(
-    item_informacao_codigo == 25, mes_lancamento == mes_filtro,
+    mes_lancamento == mes_filtro,
     ordem %in% c(
       "03",
       "04", 
